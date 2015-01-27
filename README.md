@@ -7,7 +7,7 @@ A relatively simple web application that uses web.py (http://webpy.org/) to impl
 
 exocortex_sip_client/
 
-A command line application (mostly) that can be used to place calls into the PSTN via a Voice-Over-IP provider and play a .wav file into the call.  I designed it to work as part of a larger toolkit of utilities.
+A command line application (mostly) that can be used to place calls into the PSTN via a Voice-Over-IP provider and play a .wav file into the call.  I designed it to work as part of a larger toolkit of utilities.  Requires PJSIP (http://www.pjsip.org/) (but NOT PJSUA) to implement SIP functionality.
 
 Special thanks to The Test Call (http://thetestcall.blogspot.com/) for providing the default phone number for debugging.  I got kind of tired of rickrolling myself...
 
