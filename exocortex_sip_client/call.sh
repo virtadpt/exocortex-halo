@@ -9,7 +9,7 @@
 
 # Variables
 # Full path to where exocortex_sip_client.py is installed.
-SIP_CLIENT_DIR="/home/drwho/exocortex_sip_client"
+SIP_CLIENT_DIR="/path/to/exocortex_sip_client/installation/dir"
 
 # Core code.
 cd $SIP_CLIENT_DIR
