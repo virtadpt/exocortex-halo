@@ -1,0 +1,13 @@
+{
+  "post_url": "http://127.0.0.1:8080/",
+  "expected_receive_period_in_days": "3650",
+  "content_type": "form",
+  "method": "get",
+  "payload": {
+    "number": "NPANXXXXXX",
+    "message": "Something dreadful has happened in testing and I don't know what to do.  I need to pad this message somehow so it'll be large enough to play back fully.  Help me, Obi Wan Kenobi, you're my only hope.  Daisy.  Daisy.  Give me your answer, do.  I'm half crazy, all for the love of you... Ga ga ga.... I'm out of stuff to type..."
+  },
+  "headers": {
+    "X-API-Key": "AllYourBaseAreBelongTo!UsGreatJustice!"
+  }
+}
