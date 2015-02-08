@@ -18,7 +18,12 @@ cd $SIP_CLIENT_DIR
 # as this happens.
 source env/bin/activate
 
-# Call the SIP client with the command line args.
+# Grab the first command line argument (which should be a number) and sleep
+# that many seconds.  This is totally a yucky hack.
+sleep $1
+shift
+
+# Call the SIP client with the remaining command line args.
 ./exocortex_sip_client.py $@
 
 # Clean up.
