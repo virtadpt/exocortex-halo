@@ -24,6 +24,9 @@
 
 # License: GPLv3
 
+# v1.1.1 - Added an optional delay between receiving a message to process and
+#   placing a call.  Updated online documentation to reflect this.
+
 # v1.1 - Change default listen-on IP to 127.0.0.1.
 # - Make web.py accept a port number as a command line argument and listen on
 #   that instead of 8080/tcp.  Just in case, to prevent conflict with other
@@ -31,7 +34,7 @@
 # - Change the default HTTP method to POST.
 # - Restructured the POST method handler to do things a little more sanely.
 # - Added some better error checking.
-# - Moveed the API key into a field of the incoming JSON request instead of an
+# - Moved the API key into a field of the incoming JSON request instead of an
 #   HTTP header.
 # - return() some HTML or JSON at the end of the HTTP request handler so that
 #   Huginn has something to go from.  Probably JSON so that the PostAgent can
@@ -55,7 +58,7 @@ urls = (
     )
 
 # API key to minimize monkey business from outside.
-API_KEY = '<change this>'
+API_KEY = '<API key here>'
 
 # Path to the speech synthesis utility.
 GENERATE = '/usr/bin/text2wave'
@@ -95,19 +98,21 @@ class http_request_parser:
         {
           "api key":"AllYourBaseAreBelongToUs",
           "number":"2064560649",
-          "message":"I'm sorry, Dave, I can't let you do that."
+          "message":"I'm sorry, Dave, I can't let you do that.",
+          "delay": 120
         }
         </pre>
 
         <p>(Note: The phone number 206-456-0649 belongs to <a href="http://thetestcall.blogspot.com/">The Test Call</a>, a free and legal public service which implements some features useful for testing and debugging VoIP software.  I started using them when I got tired of rickrolling myself.  If you find their service useful, I highly recommend sending them some money!)</p>
 
-        <p>Anyway, Huginn's PostAgent will do this for you, so all you have to do is set it up right and that's it.  What you do with this agent after that is your business.  The API key is a string that you define yourself by changing the value of the <i>API_KEY</i> in the code.  I use the command <b>pwgen 30</b> to generate mine.  I know, I know, why not put it in a config file or make it a command line option?  I'll get around to it.  Or better yet, file a pull request. ;)</p>
+        <p>The number "delay" is just that - a delay (in seconds) between this server receiving the call request and the request actually going out.  This is to work around VoIP providers that are kind of twitchy about placing multiple calls in a relatively short period of time, stacking up several outbound calls, and generally giving yourself some breathing room when debugging.</p>
+
+        <p>Huginn's PostAgent will do all of this for you so all you have to do is configure it, start it and that's it.  What you do with this agent after that is your business.  The API key is a string that you define yourself by changing the value of the <i>API_KEY</i> in the code.  I use the command <b>pwgen 30</b> to generate mine.  I know, I know, why not put it in a config file or make it a command line option?  I'll get around to it.  Or better yet, file a pull request. ;)</p>
 
         <p>If you want to experiment with it or debug any changes made, use <a href="http://curl.haxx.se/">curl</a>.  Here's one way to go about it: <b>curl -X POST -H "Content-Type: application/json" -d '{ "message":"This is where my message goes", "api key":"AllYourBaseAreBelongToUs", "number":"2064560649" }' http://localhost:3030/</b></p>
         </body>
 
         """
-
         return html
 
     # This HTTP method handler does the work of figuring out what the user
@@ -117,6 +122,10 @@ class http_request_parser:
         # Reference the few global variables required in this app.
         global phone_number
         global message
+
+        # Set up the local delay between processing this request and actually
+        # placing the call.  Default to 120 seconds.
+        call_delay = 120
 
         # Extract the data submitted by the agent.
         data = json.loads(web.data())
@@ -128,7 +137,7 @@ class http_request_parser:
         # only kind of job.
         if remote_addr != '127.0.0.1':
             web.ctx.status = '401 Unauthorized'
-            return "Error 401: Ya ain't from around these parts, are ya'?"
+            return
 
         # If no API key was submitted at all, bounce.
         if not 'api key' in data.keys():
@@ -149,6 +158,10 @@ class http_request_parser:
         if not 'number' in data.keys():
             web.ctx.status = '400 Bad Request'
             return "Error 400 - Required Argument Missing (key: 'number')"
+
+        # If a delay was specified in the request, use that instead.
+        if 'delay' in data.keys():
+            call_delay = int(data['delay'])
 
         # Generate tempfiles we're going to need for the text and generated
         # speech.
@@ -173,8 +186,9 @@ class http_request_parser:
         # Call exocortex_sip_client to place the phone call.  Yes, this is
         # kind of ugly but to make the SIP software work on Ubuntu I had to
         # put everything into a virtualenv, which means wrapper scripts.  Yay.
-        call_command = exocortex_sip_client + ' --production '
-        call_command = call_command + '--phone-number ' + phone_number
+        call_command = exocortex_sip_client + ' ' + str(call_delay)
+        call_command = call_command + ' --production'
+        call_command = call_command + ' --phone-number ' + phone_number
         call_command = call_command + ' --message ' + temp_text_filename
         call_command = call_command + '.wav'
         subprocess.call(call_command, shell=True)
