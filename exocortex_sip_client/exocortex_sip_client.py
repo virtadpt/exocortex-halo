@@ -17,6 +17,34 @@
 # - Fixed off-by-one errors in SIP response parsers.
 # - Changed playback delay to 5 seconds, because why not, VoIP is hard.
 # - Updated comments here and there.  Nothing to write home about.
+# - Changed the speech playback code so that it time.sleep()'s for
+#   ((duration of .wav) + 1) * 2 for a sick, stupid reason that required an
+#   ugly hack.  When testing this code in the field I spent most of a day
+#   figuring out why PJSIP kept killing itself way prematurely.  As it turns
+#   out, down where the code places the call and goes to sleep to wait for the
+#   .wav file to finish playing, it was waiting only as long as the .wav file
+#   would play and then terminating itself normally, after that many seconds.
+#   What wasn't obvious was that the way PJSIP uses callbacks and their
+#   associated threads the timer starts running the moment the call attempt
+#   begins and not when the other end picks up the phone.  So I doubled the
+#   amount of Time the core code time.sleep()'s and it magickally started to
+#   work.  I realize and fully admit that this is a truly ugly hack that only
+#   Helen Keller could love on payday but it made everything work after a
+#   frustrating day.  I mostly wrote this lengthy and unnecessary changelog
+#   entry in the hope that Google, et al index this text and save other users
+#   of PJSIP twelve hours of cursing, scratching their heads, and drinking way
+#   too much coffee.  The text PJSIP barfs up right before it kills itself is:
+#
+# python2: ../src/pjsua-lib/pjsua_acc.c:586: pjsua_acc_get_user_data: Assertion `pjsua_var.acc[acc_id].valid' failed.
+# Aborted (core dumped)
+#
+#   I didn't want to do something less weird like hardcode a delay between the
+#   start of the call attempt and the confirmation of the call attempt because
+#   you can't make those kinds of assumptions.  Network weather patterns differ
+#   from moment to moment, servers at different VoIP providers are different,
+#   and the system load of the underlying VPS you might be running this on
+#   changes.  And that's just spitballing reasons.  So, make the delay long and
+#   let the other end hang up on their own.
 
 # v1.0
 # - Initial release.
@@ -232,7 +260,7 @@ try:
 
     # Display registration status.
     print "\n"
-    print "SIP registration complete, status=", account.info().reg_status
+    print "SIP registration complete, status=", account.info().reg_status,
     print account.info().reg_reason
     print "\n"
 
@@ -255,7 +283,9 @@ try:
         wav_frames = wav_file.getnframes()
         wav_rate = wav_file.getframerate()
         wav_duration = wav_frames / float(wav_rate)
-        wav_duration = int(round(wav_duration)) + 1
+
+        # Oh gods, this is an ugly hack.
+        wav_duration = (int(round(wav_duration)) + 1) * 2
 
     # Sleep that long to wait for the .wav file to finish.
     time.sleep(wav_duration)
