@@ -12,7 +12,14 @@
 
 # License: GPLv3
 
-# v1.0 - Initial release.
+# v1.1
+# - Added handlers for SIP response codes 30x.
+# - Fixed off-by-one errors in SIP response parsers.
+# - Changed playback delay to 5 seconds, because why not, VoIP is hard.
+# - Updated comments here and there.  Nothing to write home about.
+
+# v1.0
+# - Initial release.
 
 # TO-DO:
 
@@ -34,7 +41,7 @@ PASSWORD = '<SIP provider password>'
 
 # How long to wait before telling the media processor to start playback.
 # Delay is in seconds.
-DELAY_BEFORE_PLAYBACK = 4
+DELAY_BEFORE_PLAYBACK = 5
 
 # Global variables.
 # Handles for the PJSUA objects that need to be instantiated.
@@ -52,7 +59,7 @@ call_destination = ''
 argparser = ''
 args = ''
 
-# Holds the path of a .wav file to play back into the call.
+# Path of a .wav file to play back into the call.
 outbound_message = ''
 
 # Flag that specifies whether or not it's being run on an Exocortex server.
@@ -96,16 +103,21 @@ class MyAccountCallback(pjsua.AccountCallback):
         if self.semaphore:
             # If we are successfully registered with the SIP provider, release
             # the semaphore.
-            if self.account.info().reg_status >= 200:
+            if self.account.info().reg_status >= 200 and self.account.info().reg_status < 300:
                 self.semaphore.release()
 
+            # Detect redirection responses.
+            if self.account.info().reg_status >= 300 and self.account.info().reg_status < 400:
+                print "ERROR: Server sent a redirection response: ",
+                print self.account.info().reg_reason
+
             # Detect client failures, i.e., problems or mistakes on our end.
-            if self.account.info().reg_status >= 400 and self.account.info().reg_status <= 500:
+            if self.account.info().reg_status >= 400 and self.account.info().reg_status < 500:
                 print "ERROR: Client registration error: ",
                 print self.account.info().reg_reason
 
             # Detect server failures, i.e., problems not on our end.
-            if self.account.info().reg_status >= 500 and self.account.info().reg_status <= 600:
+            if self.account.info().reg_status >= 500 and self.account.info().reg_status < 600:
                 print "ERROR: Server communication or registration error: ",
                 print self.account.info().reg_reason
 
@@ -155,8 +167,6 @@ class MyCallCallback(pjsua.CallCallback):
             print "Media processor is now active."
         else:
             print "Media processor is now inactive."
-
-# Functions.
 
 # Core code...
 # Set up the command line argument parser.
