@@ -221,10 +221,10 @@ try:
     account_callback.wait()
 
     # Display registration status.
-    print "\n\n"
+    print "\n"
     print "SIP registration complete, status=", account.info().reg_status
     print account.info().reg_reason
-    print "\n\n"
+    print "\n"
 
     # Create a SIP URI for the destination to call.
     call_destination = 'sip:' + phone_number + '@' + HOST
@@ -233,7 +233,7 @@ try:
     wav_player = lib.create_player(outbound_message)
     wav_player_slot = lib.player_get_slot(wav_player)
 
-    # Try to place a call to a known SIP URI.  In this case, my cellphone.
+    # Try to place a call to the generated SIP URI.
     print "Placing call to ", call_destination, "..."
     try:
         account.make_call(call_destination, cb=MyCallCallback())
