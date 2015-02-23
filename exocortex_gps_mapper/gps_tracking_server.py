@@ -16,6 +16,13 @@
 
 # License: GPLv3
 
+# v1.1 - Added API key support to the /coordinates endpoint, so that someone
+#   can't just connect to the server and find out where the user is.
+# - When the app status changes to 'stop', reset the current GPS coordinates
+#   to known values (0.0 / 0.0) so that third party code has a stop value to
+#   look out for.
+# - Fixed a bug in which the /coordinates endpoint didn't return valid JSON
+#   because I'm dumb.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -29,7 +36,6 @@
 # - Find a mapping service that will let me do Hollywood-style "follow me
 #   around" tracking.  That'll probably involve serving up a local HTML page
 #   with the right kinds of JavaScript.  Have to ask around about that.
-# - Add password authentication to /coordiantes, too.
 
 # Load modules.
 import json
@@ -59,6 +65,7 @@ class gps_tracker:
         # Redeclare these as global so their values can be updated.
         global current_latitude
         global current_longitude
+        global app_status
 
         # Extract the arguments passed to this REST rail.
         uri_args = web.input()
@@ -92,6 +99,12 @@ class gps_tracker:
         if uri_args.get('tracker'):
             app_status = uri_args.tracker
             print "Current app status: " + app_status
+
+        # If the tracking app has just shut down, reset the coordinates to a
+        # known value.
+        if app_status == 'stop':
+            current_latitude = 0.0
+            current_longitude = 0.0
 
 # current_location: Sets up a REST rail that redirects whoever accesses it to
 #   a relatively hi-res map centered on my current GPS coordinates.  Right now
