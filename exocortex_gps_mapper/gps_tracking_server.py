@@ -114,13 +114,28 @@ class current_location:
         # Redirect to the mapping service.
         raise web.seeother(map_url)
 
-# coordinates: Sets up a REST rail that listens for HTTP requests and returns
-#   a JSON doc of the last known set of map coordinates.  The JSON doc takes
-#   the form {"lat": current_latitude, "lon", current_longitude}
+# coordinates: Sets up a REST rail that listens for HTTP requests of the form
+#   /coordinates?api_key=<foo> and returns a JSON doc of the last known set of
+#   map coordinates.  The JSON doc takes the form
+#   {"lat": current_latitude, "lon", current_longitude}
 class coordinates:
     def GET(self):
+
+        # Extract the arguments passed to this REST rail.
+        uri_args = web.input()
+
+        # Check the API key.  If it isn't there, send back a 401 (unauthorized).
+        # If they don't match, send back a 403 (forbidden).
+        if not uri_args.get('api_key'):
+            web.ctx.status = '401 Unauthorized'
+            return
+        if uri_args.api_key != API_KEY:
+            web.ctx.status = '403 Forbidden'
+            return
+
+        # If the checks have all passed, return the current map coordinates.
         coordinates = {"lat":current_latitude, "lon":current_longitude}
-        return coordinates
+        return json.dumps(coordinates)
 
 # Core code...
 # Define the API rails the server will listen for.
