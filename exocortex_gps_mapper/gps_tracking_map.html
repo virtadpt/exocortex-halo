@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Where am I?</title>
+<style type="text/css">
+	body { font: normal 14px Verdana; }
+	h1 { font-size: 24px; }
+	h2 { font-size: 18px; }
+	#main { padding-right: 15px; }
+	.infoWindow { width: 220px; }
+</style>
+
+<!-- Orbital Laser Cannon-type map that tracks the user.  Updates every 10 seconds by default.
+     Developed by The Doctor [412/724/301/703/415][ZS] with significant help from Sarah Clark
+     (because I don't know what I'm doing).  Designed to be served from gps_tracking_server.py.
+     If you're not okay with using Google Maps, it should be fairly straightforward to port it
+     over to Open Streetmaps or something (pull requests gratefully accepted!) -->
+
+<script type="text/javascript" src="https://maps.google.com/maps/api/js?sensor=false"></script>
+
+<script type="text/javascript">
+//<![CDATA[
+
+// Keep the global namespace clean. (IIFE)
+(function() {
+
+    // Allocate a map object, a marker object, and a center reference for the map.
+	var map, marker;
+	var center = new google.maps.LatLng(0.0, 0.0);
+
+    function sendRequest() {
+        // Allocate a new XMLHttpRequest object to contact the application server.
+        var httpRequest = new XMLHttpRequest();
+
+        // Make a request to the application server for a set of coordinates to
+        // set the initial position position of the marker.
+        httpRequest.onreadystatechange = function() {
+            // Check ready state to make sure the request went through.
+            if (httpRequest.readyState !== 4){
+                return;
+                }
+
+            // Check the server's HTTP response.
+            if (httpRequest.status !== 200) {
+                console.log("ERROR: Didn't get a 200 from the server: " + httpRequest.status);
+                return;
+                }
+
+            // Pull the map coordinates from the HTTP response.
+            var json = httpRequest.responseText;
+            console.log("NOTICE: The coordinates I got were: " + json);
+
+            // Parse the JSON and sanity check the coordinates.
+            var coordinates = JSON.parse(json);
+            if (coordinates.lat === 0.0 && coordinates.lon === 0.0){
+                console.log("ERROR: Got the default 0.0 by 0.0 map coordinates.");
+                return;
+                }
+
+            // Set the map marker's position.
+	        var center = new google.maps.LatLng(coordinates.lat, coordinates.lon);
+            marker.setPosition(center);
+            map.setCenter(center);
+            }
+
+        // Make an HTTP request of the application server.
+        httpRequest.open('GET', '/coordinates?api_key=neverGONNAgiveYOUup');
+
+        // Passing 'null' because we're using the HTTP GET method.  If we were using POST, the data
+        // would go in here.
+        httpRequest.send(null);
+        }
+
+    // Initialize the new map object.
+	function init() {
+        // Set some defaults for the new map object.
+		var mapOptions = {
+		zoom: 20,
+		center: center,
+		mapTypeId: google.maps.MapTypeId.ROADMAP,
+		panControl:false,
+		streetViewControl:false
+		}
+
+        // Instantiate a new Google Map.
+		map = new google.maps.Map(document.getElementById("map_canvas"), mapOptions);
+
+        // Put a location marker on the map in the center.
+		marker = new google.maps.Marker({
+			map: map,
+			position: center,
+            title: 'Here I am!'
+			});
+
+        // Make an initial sendRequest() to kick things off.
+        sendRequest();
+
+        // Every 10 seconds, hit the application server for a new set of coordinates.
+        setInterval(sendRequest, 10000);
+		}
+
+})();
+
+//]]>
+</script>
+</head>
+
+<!-- When this HTML is loaded and parsed, run the map initializer. -->
+<body onload="init();">
+
+<!-- Draw a map canvas in the middle of the page. -->
+<section id="main">
+<div id="map_canvas" style="width: 100%; height: 800px;"></div>
+</section>
+
+</body>
+</html>
