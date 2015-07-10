@@ -22,9 +22,6 @@
 <script type="text/javascript">
 //<![CDATA[
 
-// Keep the global namespace clean. (IIFE)
-(function() {
-
     // Allocate a map object, a marker object, and a center reference for the map.
 	var map, marker;
 	var center = new google.maps.LatLng(0.0, 0.0);
@@ -99,8 +96,6 @@
         // Every 10 seconds, hit the application server for a new set of coordinates.
         setInterval(sendRequest, 10000);
 		}
-
-})();
 
 //]]>
 </script>
