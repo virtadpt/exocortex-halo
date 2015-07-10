@@ -65,7 +65,7 @@
             }
 
         // Make an HTTP request of the application server.
-        httpRequest.open('GET', '/coordinates?api_key=neverGONNAgiveYOUup');
+        httpRequest.open('GET', 'http://exocortex.virtadpt.net:8080/coordinates?api_key=oS4jeuwo');
 
         // Passing 'null' because we're using the HTTP GET method.  If we were using POST, the data
         // would go in here.
@@ -90,7 +90,7 @@
 		marker = new google.maps.Marker({
 			map: map,
 			position: center,
-            title: 'Here I am!'
+            title: 'Bryce!'
 			});
 
         // Make an initial sendRequest() to kick things off.
