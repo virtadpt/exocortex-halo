@@ -16,6 +16,13 @@
 
 # License: GPLv3
 
+# v1.2 - Renamed current_location to map, because, what was I thinking?
+# - Changed the URI for serving the HTML page to /.
+# - Added code that forces the user to log into the application if they want
+#   to look at the map.  Added code that requests the cookie the app sets in
+#   the browser and compares it to the nonce created at start-time.
+# - Added code that returns the HTML page gps_tracking_map.html static page
+#   when a logged-in user visits the root URI.
 # v1.1 - Added API key support to the /coordinates endpoint, so that someone
 #   can't just connect to the server and find out where the user is.
 # - When the app status changes to 'stop', reset the current GPS coordinates
@@ -38,7 +45,10 @@
 #   with the right kinds of JavaScript.  Have to ask around about that.
 
 # Load modules.
+import base64
 import json
+import random
+import re
 import sys
 import web
 
@@ -46,18 +56,31 @@ import web
 # API key that the GPS tracker software has to include in its target URL to
 # keep people from messing with it.  I'll probably change this before I go
 # live.
-API_KEY = "<put a bunch of junk here as your API key>"
+API_KEY = "123456"
 
 # Global variables.
-# Current GPS coordinates, as signed floating point values.
+# Current GPS coordinates as signed floating point values.
 current_latitude = 0.0
 current_longitude = 0.0
 
 # The tracker app's status.
 app_status = ''
 
-# Classes.
+# Usernames and passwords of users who are allowed to view the map.  Can be
+# extended arbitrarily but for now just one will do.  Note that the final pair
+# in teh list needs a comma after it for authentication to work.
+credentials = (
+    ('user', 'password'),
+    )
 
+# This is a randomly generated nonce given to the browser upon a successful
+# login.  It's used to determine whether or not the loaded map page can access
+# the user's coordinates.
+random.seed()
+nonce = random.getrandbits(64)
+nonce = base64.b64encode(str(nonce))
+
+# Classes.
 # gps_tracker: Sets up a REST rail that listens for HTTP requests of the form
 #   /gps?api_key=<foo>&lat=<bar>&lon=<baz>.
 class gps_tracker:
@@ -106,26 +129,68 @@ class gps_tracker:
             current_latitude = 0.0
             current_longitude = 0.0
 
-# current_location: Sets up a REST rail that redirects whoever accesses it to
-#   a relatively hi-res map centered on my current GPS coordinates.  Right now
-#   it uses gps-coordinates.net, and their API takes the form
-#   /latitude-longitude/<lat>/<lon>/<zoom>/roadmap
-#   <zoom> is an integer value that controls the map's level of resolution.
-class current_location:
-
-    # They default to 10, 20 suits my purposes better.
-    zoom = 20
-
+# map: Sets up a REST rail that redirects whoever accesses it to a relatively
+#   hi-res map centered on the user's current GPS coordinates.  Requires the
+#   user to enter a username and passphrase to log in, which is hardcoded above.
+class map:
     def GET(self):
-        # Assemble a URL for the map.
-        map_url = 'http://www.gps-coordinates.net/latitude-longitude/'
-        map_url = map_url + str(current_latitude) + '/'
-        map_url = map_url + str(current_longitude) + '/'
-        map_url = map_url + str(self.zoom) + '/'
-        map_url = map_url + 'roadmap'
+        # Check to see if the viewer has logged into the app.  If they are,
+        # return the gps_tracking_map.html page.  If not, redirect them to the
+        # login handler.
+        if web.ctx.env.get('HTTP_AUTHORIZATION') is not None:
+            # Check to see if the browser is authenticated (i.e. has a cookie
+            # set).
+            cookie = web.cookies().get('gps-tracking-server-key')
+            if cookie == nonce:
+                raise web.seeother('/static/gps_tracking_map.html')
+            else:
+                return "Waitaminute..."
+        else:
+            raise web.seeother('/login')
 
-        # Redirect to the mapping service.
-        raise web.seeother(map_url)
+# login: HTTP basic auth handler that protects the map rail from casual or
+#   malicious browsers.
+class login:
+    def GET(self):
+        # Check the HTTP session's environment for for the existence of the
+        # "I'm authenticated!" header.
+        auth = web.ctx.env.get('HTTP_AUTHORIZATION')
+
+        # Is this an authorization request?
+        auth_req = False
+
+        # Not authenticated yet.
+        if auth is None:
+            auth_req = True
+        else:
+            # Extract the presented username and passphrase from the auth
+            # header.
+            auth = re.sub('^Basic ', '', auth)
+            (username, password) = base64.decodestring(auth).split(':')
+
+            # Test to see if the presented credentials are in the hardcoded
+            # list of credentials at the top level.  Remember that when the
+            # global credentials() list is edited, each entry must have a
+            # comma after it, even if it's at the end.
+            # (I spent way too long troubleshooting that bit.)
+            if (username, password) in credentials:
+                # Set a cookie in the browser.  It'll expire when the browser
+                # closes.
+                web.setcookie('gps-tracking-server-key', nonce)
+
+                # Redirect to the map.
+                raise web.seeother('/')
+            else:
+                # Credentials not found, next time through there will be
+                # another authentication attempt.
+                auth_req = True
+
+        # If this is an authentication request, send a 401 back to the browser.
+        if auth_req:
+            web.header('WWW-Authenticate',
+                'Basic realm="Orbital Laser Targeting"')
+            web.ctx.status = '401 Unauthorized'
+            return
 
 # coordinates: Sets up a REST rail that listens for HTTP requests of the form
 #   /coordinates?api_key=<foo> and returns a JSON doc of the last known set of
@@ -133,10 +198,11 @@ class current_location:
 #   {"lat": current_latitude, "lon", current_longitude}
 class coordinates:
     def GET(self):
-
         # Extract the arguments passed to this REST rail.
         uri_args = web.input()
 
+        # MOOF MOOF MOOF - This is going away and will be replaced with a
+        # cookie check.
         # Check the API key.  If it isn't there, send back a 401 (unauthorized).
         # If they don't match, send back a 403 (forbidden).
         if not uri_args.get('api_key'):
@@ -153,9 +219,10 @@ class coordinates:
 # Core code...
 # Define the API rails the server will listen for.
 urls = (
+    '/coordinates', 'coordinates',
     '/gps', 'gps_tracker',
-    '/map', 'current_location',
-    '/coordinates', 'coordinates'
+    '/login', 'login',
+    '/', 'map'
     )
 
 # Allocate an HTTP server and kick it off.
