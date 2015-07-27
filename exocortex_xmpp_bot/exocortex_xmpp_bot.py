@@ -2,41 +2,29 @@
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
-# This is the base class for an exocortex bot that:
-# - Reads a configuration file for all bots of its type.
-# - Reads a configuration file specific to its name.
+# This is the base class for an Exocortex bot that:
+# - Reads a configuration file.  By default, if the name of the script is
+#   HAL (for example), it'll look in the current working directory for the
+#   config file HAL.conf.
 # - Logs into the XMPP server it considers home base.
-# - Logs into a persistent MUC it considers its "war room."
-# - Opens a private chat session with its master and prints its on-startup
+# - Opens a private chat session with its owner and sends its on-startup
 #   status report as it executes its startup process.
 # - Opens any databases it needs.
 # - Opens any files it needs.
-# - Contacts any other systems and services it needs.
-# - Prints its "ready" message to the "war room."
+# - Opens a unique port on localhost that its REST API listens on.
 # - Goes into an event loop in which it listens for commands to execute,
-#   carries them out, and prints the results to the "war room" or a private
-#   chat.
+#   carries them out, and sends the results to its own via the configured
+#   output XMPP address.
 
 # - If commanded to restart, the bot will run its cleanup-and-shutdown
 #   procedure without actually shutting down, and then go into its startup
 #   cycle, which will cause it to re-load everything.
-# - This can be a command in the MUC, a private command, or a signal from a
-#   shell.
+# - This can be a command in a private message from its owner or a signal from
+#   the shell it's running under shell.
 
 # This base class must be instantiated before it can be turned into a bot.  It
-# is designed to be extensible to transform it into a bot of any different
-# kind.  The filename of the bot is the name it considers its own.  For
-# example, floyd.py means that the bot calls itself Floyd, and listens for
-# authorized users calling its name to give it commands.
-
-# Exocortex bots will only accept commands from their master by default.  They
-# can be commanded to accept orders from other users waiting in their war
-# room.  They can also be commanded to stop responding to orders from other
-# users.  They will under no circumstances ignore orders from their master,
-# whose username is hardcoded into their configuration file.
-
-# Exocortex bots will eventually be able to recognize each other and pass data
-# between one another for analysis, but that's in the future.
+# is designed to be extensible to transform it into a bot of a different
+# kind.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -45,9 +33,7 @@
 # Pre-requisite modules have their own licenses.
 
 # Load modules.
-import ConfigParser
 import json
-from optparse import OptionParser
 import os
 import random
 import resource
