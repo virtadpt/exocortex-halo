@@ -54,21 +54,18 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
     # Method that fires as an event handler when an XMPP message is received
     # from someone
-    def message(self, msg):
-        message_body = ""
-        agent = ""
-        command = ""
-
+    def message(self, message):
         # Test to see if the message came from the agent's owner.  If it did
         # not, drop the message and return.
-        if msg['from'] != owner:
+        if message['from'] != owner:
             logger.warn("Received a message from someone that isn't authorized.")
+            logger.warn("Message was sent from JID " + message['from'] + ".")
             return
 
         # Potential message types: normal, chat, error, headline, groupchat
-        if msg['type'] in ('normal', 'chat'):
+        if message['type'] in ('normal', 'chat'):
             # Extract the XMPP message body for processing.
-            message_body = msg['body']
+            message_body = message['body']
 
             # Split off the part of the sentence before the first comma or the
             # first space.  That's where the name of the agent can be found.
@@ -96,17 +93,17 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 # loglevel = 'logging.' + loglevel
 # I can't have a pony, either.  Takes a string, returns a Python loglevel.
 def process_loglevel(loglevel):
-    if loglevel == 'critical':
+    if loglevel == "critical":
         return 50
-    if loglevel == 'error':
+    if loglevel == "error":
         return 40
-    if loglevel == 'warning':
+    if loglevel == "warning":
         return 30
-    if loglevel == 'info':
+    if loglevel == "info":
         return 20
-    if loglevel == 'debug':
+    if loglevel == "debug":
         return 10
-    if loglevel == 'notset':
+    if loglevel == "notset":
         return 0
 
 # Start of the Mosquitto MQTT client stuff.
@@ -130,9 +127,9 @@ def on_disconnect(client, useradata, rc):
     logger.debug("I am no longer connected to MQTT broker " + host + " " + port + "/tcp.")
 
 # Callback handler that fires when a message is received from a broker.
-def on_message(client, useradata, msg):
-    # Fields of msg we care about: payload, topic (name of the queue)
-    logger.debug("I've received a message on " + msg.topic + ": " + msg.payload)
+def on_message(client, useradata, message):
+    # Fields of message we care about: payload, topic (name of the queue)
+    logger.debug("I've received a message on " + message.topic + ": " + message.payload)
 
 # Core code...
 if __name__ == '__main__':
@@ -147,29 +144,29 @@ if __name__ == '__main__':
 
     # Define command line switches for the bot, starting with being able to
     # specify an arbitrary configuration file for a particular bot.
-    optionparser.add_option('-c', '--conf', dest='configfile', action='store',
-        type='string', help='Specify an arbitrary config file for this bot.  Defaults to exocortex_xmpp_bridge.conf.')
+    optionparser.add_option("-c", "--conf", dest="configfile", action="store",
+        type="string", help="Specify an arbitrary config file for this bot.  Defaults to exocortex_xmpp_bridge.conf.")
 
     # Add a command line option that lets you override the config file's
     # loglevel.  This is for kicking a bot into debug mode without having to
     # edit the config file.
-    optionparser.add_option('-l', '--loglevel', dest='loglevel', action='store',
-        help='Specify the default logging level of the bot.  Choose from CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET.  Defaults to INFO.')
+    optionparser.add_option("-l", "--loglevel", dest="loglevel", action="store",
+        help="Specify the default logging level of the bot.  Valid options are CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET.  Defaults to INFO.")
 
     # Add a command line option that lets you override the MQTT host specified
     # in the configuration file.
-    optionparser.add_option('--host', dest='host', action='store',
-        help='Specify the IP address the web service should listen on.  Defaults to localhost.')
+    optionparser.add_option("--host", dest="host", action="store",
+        help="Specify the IP address the web service should listen on.  Defaults to localhost.")
 
     # Add a command line option that lets you override the MQTT port specified
     # in the configuration file.
-    optionparser.add_option('-p', '--port', dest='port', action='store',
-        help='Specify the TCP port the web service should listen on.  Defaults to 1883/tcp.')
+    optionparser.add_option("-p", "--port", dest="port", action="store",
+        help="Specify the TCP port the web service should listen on.  Defaults to 1883/tcp.")
 
     # Add a command line option that lets you override the MQTT queue specified
     # in the configuration file.
-    optionparser.add_option('--queue', dest='queue', action='store',
-        help='Specify the MQTT queue messages get published to.  Defaults to agents/.')
+    optionparser.add_option("--queue", dest="queue", action="store",
+        help="Specify the MQTT queue messages get published to.  Defaults to agents/.")
 
     # Parse the command line args.
     (options, args) = optionparser.parse_args()
@@ -180,22 +177,24 @@ if __name__ == '__main__':
     # parser object.
     config = ConfigParser.ConfigParser()
     if options.configfile:
+        # MOOF MOOF MOOF - test to see if the config file exists.
         config.read(options.configfile)
     else:
-        config.read('exocortex_xmpp_bridge.conf')
+        # MOOF MOOF MOOF - test to see if the config file exists.
+        config.read("exocortex_xmpp_bridge.conf")
     conf = config.sections()[0]
 
     # Get configuration options from the configuration file.
-    owner = config.get(conf, 'owner')
-    username = config.get(conf, 'username')
-    password = config.get(conf, 'password')
-    host = config.get(conf, 'host')
-    port = config.get(conf, 'port')
-    queue = config.get(conf, 'queue')
+    owner = config.get(conf, "owner")
+    username = config.get(conf, "username")
+    password = config.get(conf, "password")
+    host = config.get(conf, "host")
+    port = config.get(conf, "port")
+    queue = config.get(conf, "queue")
 
     # Figure out how to configure the logger.  Start by reading from the config
     # file.
-    config_log = config.get(conf, 'loglevel').lower()
+    config_log = config.get(conf, "loglevel").lower()
     if config_log:
         loglevel = process_loglevel(config_log)
 
@@ -214,10 +213,10 @@ if __name__ == '__main__':
     xmppbot = XMPPBot(username, password)
 
     # Enable the Service Discovery plugin.
-    xmppbot.register_plugin('xep_0030')
+    xmppbot.register_plugin("xep_0030")
 
     # Enable the Ping plugin.
-    xmppbot.register_plugin('xep_0199')
+    xmppbot.register_plugin("xep_0199")
 
     # Instantiate a copy of the Mosquitto client, attach some event handlers,
     # and connect to the broker.
