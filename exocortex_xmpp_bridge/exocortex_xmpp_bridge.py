@@ -50,7 +50,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         # inside a try/except to retry or error out.
         self.get_roster()
 
-        logger.debug("I've successfully connected to the XMPP server.")
+        logging.debug("I've successfully connected to the XMPP server.")
 
     # Method that fires as an event handler when an XMPP message is received
     # from someone
@@ -58,8 +58,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         # Test to see if the message came from the agent's owner.  If it did
         # not, drop the message and return.
         if message['from'] != owner:
-            logger.warn("Received a message from someone that isn't authorized.")
-            logger.warn("Message was sent from JID " + message['from'] + ".")
+            logging.warn("Received a message from someone that isn't authorized.")
+            logging.warn("Message was sent from JID " + message['from'] + ".")
             return
 
         # Potential message types: normal, chat, error, headline, groupchat
@@ -81,7 +81,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
             command = command.strip()
             command = command.strip('.')
             command = command.lower()
-            logger.debug(command)
+            logging.debug(command)
 
             # Push the command into the agent's message queue.
             my_queue = queue + "/" + agent
@@ -111,7 +111,7 @@ def process_loglevel(loglevel):
 # Callback handler for when the agent connects to a broker.  Fires when it
 # receives a CONNACK event.
 def on_connect(client, userdata, rc):
-    logger.debug("I'm connected to MQTT broker " + host + " " + port + "/tcp.")
+    logging.debug("I'm connected to MQTT broker " + host + " " + port + "/tcp.")
 
     # Subscribe to the MQTT queue we'll be publishing messages to because, if
     # we get disconnected mosquitto will automatically reconnect, and it'll
@@ -124,12 +124,12 @@ def on_connect(client, userdata, rc):
 
 # Callback handler for when the agent disconnects from a broker.
 def on_disconnect(client, useradata, rc):
-    logger.debug("I am no longer connected to MQTT broker " + host + " " + port + "/tcp.")
+    logging.debug("I am no longer connected to MQTT broker " + host + " " + port + "/tcp.")
 
 # Callback handler that fires when a message is received from a broker.
 def on_message(client, useradata, message):
     # Fields of message we care about: payload, topic (name of the queue)
-    logger.debug("I've received a message on " + message.topic + ": " + message.payload)
+    logging.debug("I've received a message on " + message.topic + ": " + message.payload)
 
 # Core code...
 if __name__ == '__main__':
