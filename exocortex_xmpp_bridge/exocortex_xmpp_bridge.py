@@ -2,202 +2,249 @@
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
-# This is the base class for an Exocortex bot that:
-# - Reads a configuration file.  By default, if the name of the construct is
-#   HAL (for example), it'll look in the current working directory for the
-#   filename HAL.conf.
-# - Logs into the XMPP server it considers home base.
-# - Sends its on-startup status report to its owner's XMPP address as it
-#   executes its startup process.
-# - Opens a unique port on localhost that its REST API listens on.
-# - Goes into an event loop in which it listens for commands to execute,
-#   carries them out, and sends the results to its own via the configured
-#   output XMPP address.
+# exocortex_xmpp_bridge.py - A microservice in Python that logs into an XMPP
+#   server with credentials in a configuration file, connects to an MQTT broker,
+#   and listens for messages sent to the account by a designated owner.  Each
+#   message must have the name of the agent the command is for.  The
+#   microservice pushes messages into the destination agent's queue to be
+#   processed later.  Unmatched agents are silently (to the sender) dropped.
 
-# - If commanded to restart, the bot will run its cleanup-and-shutdown
-#   procedure without actually shutting down, and then go into its startup
-#   cycle, which will cause it to re-load everything.
-# - This can be a command in a private message from its owner or a signal from
-#   the shell it's running under shell.
+# This is an unholy combination of OO and not-OO, and I'm sorry.  I'm so, so
+# sorry.  Mosquitto doesn't lend itself to OO very well.
 
-# http://localhost:31337/v1/event/get
-# The REST API takes each command and emits an event that looks like this:
-# {
-#   "agent": "agentname",
-#   "command": "some command that needs to be parsed.",
-#   "guid": "<guid>"
-# }
-
-# Each agent network running in Huginn looks at each event, but if the value
-# of the "agent" field doesn't match its name, it ignores it.  If it does
-# match it'll POST back to the microservice telling it to delete it from the
-# event queue:
-# http://localhost:31337/v1/event/delete
-# {
-#   "guid": "<guid>"
-# }
+# TODO:
+# - Replace print statements with logger statements.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
 
 # License: GPLv3
-# Pre-requisite modules have their own licenses.
 
-# Load modules.
-import json
-import os
-import random
-import resource
-import string
-import sys
+import ConfigParser
 import logging
-from sleekxmpp import ClientXMPP
-from sleekxmpp.exceptions import IqError, IqTimeout
-import time
-import uuid
+import mosquitto
+from optparse import OptionParser
+import sleekxmpp
+import sys
 
-# Classes.
-class ExocortexBot(ClientXMPP):
-    # This is a simple XMPP bot written using the SleekXMPP library which,
-    # at the moment, logs into an XMPP server listening on the loopback host.
-    # It also starts up a small web application server listening on whatever
-    # host and port it's told to which makes received messages available in
-    # the form of JSON documents (documented above).
+class XMPPBot(sleekxmpp.ClientXMPP):
 
-    # Class attributes go up here so they're easy to find.
-    owner = ""
-    username = ""
-    password = ""
-    imalive = ""
-    host = ""
-    port = ""
+    # Initializer method for the XMPPBot class.
+    def __init__(self, jid, password):
+        super(XMPPBot, self).__init__(jid, password)
 
-    # A list of commands defined on bots descended from this particular class.
-    # There's undoubtedly a better way to go about this, but it's late and I
-    # don't want to forget to do this.
-    commands = ['status', 'shut down/shutdown', 'help']
+        # Set up an event handler for when the XMPPBot starts up.
+        self.add_event_handler('session_start', self.start)
 
-    # Initialize the bot when it's instantiated.
-    def __init__(self, owner, username, password, imalive, host, port):
+        # Set up an event handler that processes incoming messages.
+        self.add_event_handler('message', self.message)
 
-        self.owner = owner.split()[0]
-        self.jid = username
-        self.password = password
-        self.imalive = imalive
-        self.host = host
-        self.port = port
-
-        # Log into the server.
-        ClientXMPP.__init__(self, jid, password)
-
-        # Set appropriate event handlers for this session.  Please note that a
-        # single event many be processed by multiple matching event handlers.
-        self.add_event_handler("session_start", self.start, threaded=True)
-        self.add_event_handler("message", self.message, threaded=True)
-
-        # Register plugins to support XEPs.
-        self.register_plugin('xep_0030') # Service discovery
-        self.register_plugin('xep_0199') # Ping
-
-    # Event handler the fires whenever an XMPP session starts (i.e., it
-    # logs into the server on this JID.  You can put just about any session
-    # initialization code here that you want.  The argument 'event' is an empty
-    # dict.
+    # Method that fires as an event handler when XMPPBot starts running.
     def start(self, event):
-        # Tell the server the bot has initiated a session.
+
+        # Needed to tell the XMPP server "I'm here!"
         self.send_presence()
+
+        # If the XMPP account has a roster ("Buddy list") on the server, pull
+        # it.
+        # Note: This can time out under bad conditions.  Consider putting it
+        # inside a try/except to retry or error out.
         self.get_roster()
 
-        # Start a private chat with the bot's owner.
-        self.send_message(mto=self.owner, mbody="%s is now online." %
-            self.botname)
+        print "I've successfully connected to the XMPP server."
 
-    # Event handler that fires whenever a message is sent to this JID. The
-    # argument 'msg' represents a message stanza.  This method is meant to be
-    # extensible when the base class is used to build other kinds of bots.
+    # Method that fires as an event handler when an XMPP message is received
+    # from someone
     def message(self, msg):
-        # Potential message types: normal, chat, error, headline, groupchat
-        if msg['type'] in ('chat', 'normal'):
-            # If it's not the bot's owner messaging, ignore.
-            msg_from = str(msg.getFrom())
-            msg_from = string.split(msg_from, '/')[0]
-            if msg_from != self.owner:
-                print "\n\nChat request did not come from self.owner.\n\n"
-                return
+        message_body = ""
+        agent = ""
+        command = ""
 
-            # To make parsing easier, lowercase the message body before
-            # matching against it.
-            message = msg['body'].lower()
-            if "help" in message:
-                self.send_message(mto=msg['from'],
-                    mbody="Hello.  My name is %s.  I am a generic ExocortexBot bot.  %s  I support the following commands:\n\n%s" % (self.botname, self.function, self.commands))
-                return
-
-            # Return a status report to the user.
-            if "status" in message:
-                status = self._process_status(self.botname)
-                self.send_message(mto=msg['from'], mbody=status)
-                return
-
-            # Print all known commands.
-            if "list commands" in message or "commands" in message:
-                self.send_message(mto=msg['from'],
-                    mbody="This Exocortex bot supports the following commands:\n %s" % str(self.commands))
-                return
-
-            # If the user tells the bot to terminate, do so.
-            # "quit"
-            if "shut down" in message or "shutdown" in message:
-                self._shutdown(msg['from'])
-
-            # End of event handler.
+        # Test to see if the message came from the agent's owner.  If it did
+        # not, drop the message and return.
+        if msg[''] != owner:
+            print "Received a message from someone that isn't authorized."
             return
 
-    # Helper method that cleanly shuts down the bot.  Broken out so that
-    # it's not part of the parser's code, plus it makes it overloadable in the
-    # future so that subclasses can extend it. The argument 'destination' is the
-    # JID to send the shutdown messages to.
-    def _shutdown(self, destination):
-        # Alert the user that the bot is shutting down...
-        self.send_message(mto=destination,
-            mbody="%s is shutting down..." % self.botname)
-        self.disconnect(wait=True)
+        # Potential message types: normal, chat, error, headline, groupchat
+        if msg['type'] in ('normal', 'chat'):
+            # Extract the XMPP message body for processing.
+            message_body = msg['body']
 
-        # Bounce!
-        sys.exit(0)
+            # Split off the part of the sentence before the first comma or the
+            # first space.  That's where the name of the agent can be found.
+            # Bad agent names wind up in spurious message queues, and will
+            # eventually time out and be deleted by the MQTT broker.
+            if ',' in message_body:
+                agent = message_body.split(',')[0]
+            else:
+                agent = message_body.split(' ')[0]
 
-    # This method prints out some basic system status information for the
-    # user, should they ask for it.
-    def _process_status(self, botname):
-        procstat = ""
+            # Extract the command to the agent and clean it up.
+            command = message_body.split(',')[1]
+            command = command.strip()
+            command = command.strip('.')
+            command = command.lower()
+            print command
 
-        # Pick information out of the OS that we'll need later.
-        current_pid = os.getpid()
-        procfile = "/proc/" + str(current_pid) + "/status"
+            # Push the command into the agent's message queue.
+            my_queue = queue + "/" + agent
+            mosquitto_client.publish(my_queue, payload=command)
 
-        # Start assembling the status report.
-        status = "%s is fully operational on %s.\n" % (botname, time.ctime())
-        status = status + "I am operating from directory %s.\n" % os.getcwd()
-        status = status + "My current process ID is %d.\n" % current_pid
+# Figure out what to set the logging level to.  There isn't a straightforward
+# way of doing this because Python uses constants that are actually integers
+# under the hood, and I'd really like to be able to do something like
+# loglevel = 'logging.' + loglevel
+# I can't have a pony, either.  Takes a string, returns a Python loglevel.
+def process_loglevel(loglevel):
+    if loglevel == 'critical':
+        return 50
+    if loglevel == 'error':
+        return 40
+    if loglevel == 'warning':
+        return 30
+    if loglevel == 'info':
+        return 20
+    if loglevel == 'debug':
+        return 10
+    if loglevel == 'notset':
+        return 0
 
-        # Pull the /proc/<pid>/status info into a string for analysis.
-        try:
-            s = open(procfile)
-            procstat = s.read()
-            s.close()
-        except:
-            status = status + "I was unable to read my process status info.\n"
+# Start of the Mosquitto MQTT client stuff.
 
-        # Determine how much RAM the bot is using.
-        memory_utilization = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        status = status + "I am currently using %d KB of RAM.\n" % memory_utilization
+# Callback handler for when the agent connects to a broker.  Fires when it
+# receives a CONNACK event.
+def on_connect(client, userdata, rc):
+    print "I'm connected to MQTT broker " + host + " " + port + "/tcp."
 
-        # Get the current system load.
-        status = status + "The current system load is %s." % str(os.getloadavg())
-        return status
+    # Subscribe to the MQTT queue we'll be publishing messages to because, if
+    # we get disconnected mosquitto will automatically reconnect, and it'll
+    # have to resubscribe.
+    mosquitto_client.subscribe(queue + "/#")
+
+    # Send an "It's alive!  It's alive!" message to the MQTT broker.
+    my_queue = queue + "/exocortex_xmpp_bridge.py"
+    mosquitto_client.publish(my_queue, payload="I have connected.")
+
+# Callback handler for when the agent disconnects from a broker.
+def on_disconnect(client, useradata, rc):
+    print "I am no longer connected to MQTT broker " + host + " " + port + "/tcp."
+
+# Callback handler that fires when a message is received from a broker.
+def on_message(client, useradata, msg):
+    # Fields of msg we care about: payload, topic (name of the queue)
+    print "I've received a message on " + msg.topic + ": " + msg.payload
 
 # Core code...
 if __name__ == '__main__':
-    # I really need to put unit tests here.
-    sys.exit(0)
+    # If we're running in a Python environment earlier than v3.0, set the
+    # default text encoding to UTF-8 because XMPP requires it.
+    if sys.version_info < (3, 0):
+        reload(sys)
+        sys.setdefaultencoding('utf-8')
+
+    # Instantiate a command line options parser.
+    optionparser = OptionParser()
+
+    # Define command line switches for the bot, starting with being able to
+    # specify an arbitrary configuration file for a particular bot.
+    optionparser.add_option('-c', '--conf', dest='configfile', action='store',
+        type='string', help='Specify an arbitrary config file for this bot.  Defaults to microservice.conf.')
+
+    # Add a command line option that lets you override the config file's
+    # loglevel.  This is for kicking a bot into debug mode without having to
+    # edit the config file.
+    optionparser.add_option('-l', '--loglevel', dest='loglevel', action='store',
+        help='Specify the default logging level of the bot.  Choose from CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET.  Defaults to INFO.')
+
+    # Add a command line option that lets you override the MQTT host specified
+    # in the configuration file.
+    optionparser.add_option('--host', dest='host', action='store',
+        help='Specify the IP address the web service should listen on.  Defaults to localhost.')
+
+    # Add a command line option that lets you override the MQTT port specified
+    # in the configuration file.
+    optionparser.add_option('-p', '--port', dest='port', action='store',
+        help='Specify the TCP port the web service should listen on.  Defaults to 1883/tcp.')
+
+    # Add a command line option that lets you override the MQTT queue specified
+    # in the configuration file.
+    optionparser.add_option('--queue', dest='queue', action='store',
+        help='Specify the MQTT queue messages get published to.  Defaults to agents/.')
+
+    # Parse the command line args.
+    (options, args) = optionparser.parse_args()
+
+    # Read the configuration file.  There is a command line argument for
+    # specifying a configuration file, but it defaults to taking the name
+    # of the bot and appending '.conf' to it.  Then load it into a config file
+    # parser object.
+    config = ConfigParser.ConfigParser()
+    if options.configfile:
+        config.read(options.configfile)
+    else:
+        config.read('exocortex_xmpp_bridge.conf')
+    conf = config.sections()[0]
+
+    # Get configuration options from the configuration file.
+    owner = config.get(conf, 'owner')
+    username = config.get(conf, 'username')
+    password = config.get(conf, 'password')
+    host = config.get(conf, 'host')
+    port = config.get(conf, 'port')
+    queue = config.get(conf, 'queue')
+
+    # Figure out how to configure the logger.  Start by reading from the config
+    # file.
+    config_log = config.get(conf, 'loglevel').lower()
+    if config_log:
+        loglevel = process_loglevel(config_log)
+
+    # Then try the command line.
+    if options.loglevel:
+        loglevel = process_loglevel(options.loglevel.lower())
+
+    # Default to WARNING.
+    if not options.loglevel and not loglevel:
+        loglevel = logging.WARNING
+
+    # Configure the logger.
+    logging.basicConfig(level=loglevel,
+        format='%(levelname)-8s %(message)s')
+
+    # Instantiate a copy of XMPPBot.
+    xmppbot = XMPPBot(username, password)
+
+    # Enable the Service Discovery plugin.
+    xmppbot.register_plugin('xep_0030')
+
+    # Enable the Ping plugin.
+    xmppbot.register_plugin('xep_0199')
+
+    # Instantiate a copy of the Mosquitto client, attach some event handlers,
+    # and connect to the broker.
+    mosquitto_client = mosquitto.Mosquitto()
+    mosquitto_client.on_connect = on_connect
+    mosquitto_client.on_disconnect = on_connect
+    mosquitto_client.on_message = on_message
+    mosquitto_client.connect(host=host, port=port)
+
+    # Subscribe to the MQTT queue we'll be publishing messages to.  We do it
+    # this way because '#' is a wildcard in MQTT but a comment here, and it
+    # breaks config files.
+    mosquitto_client.subscribe(queue + "/#")
+
+    # Connect to the XMPP server and commence operation.  SleekXMPP's state
+    # engine will run inside its own thread because we need to contact other
+    # services.
+    if xmppbot.connect():
+        xmppbot.process(block=False)
+    else:
+        print "Uh-oh - unable to connect to JID " + username + "."
+        sys.exit(1)
+
+    # Start the MQTT client loop.
+    mosquitto_client.loop_forever()
+
 # Fin.
+
