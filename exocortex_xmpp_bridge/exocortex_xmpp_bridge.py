@@ -59,7 +59,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         # not, drop the message and return.
         if message['from'] != owner:
             logging.warn("Received a message from someone that isn't authorized.")
-            logging.warn("Message was sent from JID " + message['from'] + ".")
+            logging.warn("Message was sent from JID " +
+                str(message['from']) + ".")
             return
 
         # Potential message types: normal, chat, error, headline, groupchat
