@@ -79,7 +79,10 @@ class XMPPBot(sleekxmpp.ClientXMPP):
                 agent = message_body.split(' ')[0]
 
             # Extract the command to the agent and clean it up.
-            command = message_body.split(',')[1]
+            if ',' in message_body:
+                command = message_body.split(',')[1]
+            else:
+                command = message_body.split(' ')[1]
             command = command.strip()
             command = command.strip('.')
             command = command.strip('?')
