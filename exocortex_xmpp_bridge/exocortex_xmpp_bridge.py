@@ -66,6 +66,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         # Potential message types: normal, chat, error, headline, groupchat
         if message['type'] in ('normal', 'chat'):
             # Extract the XMPP message body for processing.
+            logging.debug("I've received a command from my owner via XMPP!")
             message_body = message['body']
 
             # Split off the part of the sentence before the first comma or the
@@ -88,6 +89,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
             # Push the command into the agent's message queue.
             my_queue = queue + "/" + agent
+            logging.debug("The queue I'm publishing to is " + queue + "/" +
+                agent)
             mosquitto_client.publish(my_queue, payload=command)
 
 # Figure out what to set the logging level to.  There isn't a straightforward
@@ -123,7 +126,7 @@ def on_connect(client, userdata, rc):
 
     # Send an "It's alive!  It's alive!" message to the MQTT broker.
     my_queue = queue + "/exocortex_xmpp_bridge.py"
-    mosquitto_client.publish(my_queue, payload="I have connected.")
+    mosquitto_client.publish(my_queue, payload="The XMPP-to-MQTT bridge daemon has connected.")
 
 # Callback handler for when the agent disconnects from a broker.
 def on_disconnect(client, useradata, rc):
