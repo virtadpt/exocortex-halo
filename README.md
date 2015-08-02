@@ -11,3 +11,7 @@ A command line application (mostly) that can be used to place calls into the PST
 
 Special thanks to The Test Call (http://thetestcall.blogspot.com/) for providing the default phone number for debugging.  I got kind of tired of rickrolling myself...
 
+exocortex_xmpp_bridge/
+
+A daemon that logs into an arbitrary XMPP server on one side, and connects to an arbitrary MQTT v3.1 broker on the other (I used Mosquitto http://mosquitto.org/ when developing but most any compliant MQTT broker that speaks v3.1 of the protocol should work.  The idea is that you should be able to send chat messages to the XMPP address the daemon logs into (it checks to see if they are from the bot's registered owner) and forward the contents of the messages to Huginn (https://github.com/cantino/huginn/) agents (MQTTagents in particular).  Basically, this is so you can send orders to Huginn agents to command them to do something.  It's a work a progress, a lot of the processing will have to be done in the Huginn agent networks themselves.
+
