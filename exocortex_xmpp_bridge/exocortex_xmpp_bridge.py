@@ -20,11 +20,20 @@
 
 # License: GPLv3
 
+from BaseHTTPServer import HTTPServer
+from BaseHTTPServer import BaseHTTPRequestHandler
 import ConfigParser
+import json
 import logging
 from optparse import OptionParser
 import sleekxmpp
 import sys
+import time
+
+# Globals.
+# This hashtable's keys are the names of agents, the associated values are
+# lists which implement the message queues.
+message_queue = {}
 
 # XMPPBot: XMPP bot class built from SleekXMPP that connects to an XMPP server
 #   specified in the configuration file with matching credentials.
@@ -86,7 +95,58 @@ class XMPPBot(sleekxmpp.ClientXMPP):
             logging.debug(command)
 
             # Push the command into the agent's message queue.
-            # MOOF MOOF MOOF
+            message_queue[agent].append(command)
+            logging.debug("The message queue for " + agent + " now contains: " + str(message_queue[agent]))
+
+# RESTRequestHandler: Subclass that implements a REST API service.  The main
+#   rails are the names of agent networks that will poll message queues for
+#   commands.  Each time they poll, they get a JSON dump of all of the
+#   commands waiting for them.
+class RESTRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        # If someone requests /, return the current internal configuration of
+        # this microservice to be helpful.
+        if self.path == '/':
+            logging.debug("User requested /.  Returning online help.")
+            self.send_response(200)
+            self.send_header("Content-type:", "application/json")
+            self.wfile.write('\n')
+            json.dump({"active agents": message_queue.keys()}, self.wfile)
+            return
+
+        # Figure out if the base API rail contacted is one of the agents
+        # monitoring this microservice.  If not, return a 404.
+        agent = self.path.strip('/')
+        if agent not in message_queue.keys():
+            logging.debug("Message queue for agent " + agent + " not found.")
+            self.send_response(404)
+            self.send_header("Content-type:", "application/json")
+            self.wfile.write('\n')
+            json.dump({agent: "not found"}, self.wfile)
+            return
+
+        # If the message queue is empty, return an empty JSON document.
+        if not len(message_queue[agent]):
+            logging.debug("Message queue for agent " + agent + " is empty.")
+            json.dump({}, self.wfile)
+            return
+
+        # Get the current time since the epoch because we need a key to attach
+        # the command to.
+        current_time = time.time()
+
+        # Extract the earliest command from the agent's message queue.
+        command = message_queue[agent].pop(0)
+
+        # Assemble a JSON document of the earliest pending command.  Then send
+        # the JSON document to the agent.  Multiple hits will be required to
+        # empty the queue.
+        logging.debug("Returning earliest command from message queue " + agent + ": " + command)
+        self.send_response(200)
+        self.send_header("Content-type:", "application/json")
+        self.wfile.write('\n')
+        json.dump({time: command}, self.wfile)
+        return
 
 # Figure out what to set the logging level to.  There isn't a straightforward
 # way of doing this because Python uses constants that are actually integers
@@ -149,9 +209,11 @@ if __name__ == '__main__':
     owner = config.get(conf, "owner")
     username = config.get(conf, "username")
     password = config.get(conf, "password")
+    agents = config.get(conf, "agents")
 
     # Get the names of the agents to set up queues for from the config file.
-    # MOOF MOOF MOOF
+    for i in agents.split(','):
+        message_queue[i] = []
 
     # Figure out how to configure the logger.  Start by reading from the config
     # file.
@@ -179,11 +241,6 @@ if __name__ == '__main__':
     # Enable the Ping plugin.
     xmppbot.register_plugin("xep_0199")
 
-    # Set up a dictionary, the keys of which are the names of agents from the
-    # configuration file.  The values are arrays which implement the message
-    # queues.
-    # MOOF MOOF MOOF
-
     # Connect to the XMPP server and commence operation.  SleekXMPP's state
     # engine will run inside its own thread because we need to contact other
     # services.
@@ -193,8 +250,9 @@ if __name__ == '__main__':
         logging.fatal("Uh-oh - unable to connect to JID " + username + ".")
         sys.exit(1)
 
-    # Start up the Simple HTTP Server instance.
-    # MOOF MOOF MOOF
+    # Allocate and start the Simple HTTP Server instance.
+    api_server = HTTPServer(("localhost", 8003), RESTRequestHandler)
+    api_server.serve_forever()
 
 # Fin.
 
