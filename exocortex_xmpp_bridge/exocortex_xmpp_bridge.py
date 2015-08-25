@@ -129,15 +129,18 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             json.dump({agent: "not found"}, self.wfile)
             return
 
-        # If the message queue is empty, return an empty JSON document.
-        if not len(message_queue[agent]):
-            logging.debug("Message queue for agent " + agent + " is empty.")
-            json.dump({}, self.wfile)
-            return
-
         # Get the current time since the epoch because we need a key to attach
         # the command to.
         current_time = time.time()
+
+        # If the message queue is empty, return an empty JSON document.
+        if not len(message_queue[agent]):
+            logging.debug("Message queue for agent " + agent + " is empty.")
+            self.send_response(200)
+            self.send_header("Content-type:", "application/json")
+            self.wfile.write('\n')
+            json.dump({current_time: "no commands"}, self.wfile)
+            return
 
         # Extract the earliest command from the agent's message queue.
         command = message_queue[agent].pop(0)
@@ -149,7 +152,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type:", "application/json")
         self.wfile.write('\n')
-        json.dump({time: command}, self.wfile)
+        json.dump({current_time: command}, self.wfile)
         return
 
 # Figure out what to set the logging level to.  There isn't a straightforward
