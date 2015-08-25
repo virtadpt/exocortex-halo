@@ -14,6 +14,8 @@
 # TODO:
 # - Write a signal handler that makes the agent reload its configuration file
 #   (whether it's the default one or specified on the command line).
+# - Consider adding a SQLite database to serialize the message queues to in
+#   the event the microservice ABENDs or gets shut down.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -68,9 +70,11 @@ class XMPPBot(sleekxmpp.ClientXMPP):
     def message(self, message):
         # Test to see if the message came from the agent's owner.  If it did
         # not, drop the message and return.
-        if message['from'] != owner:
+        message_from = str(message['from']).split('/')[0]
+
+        if message_from != owner:
             logging.warn("Received a message from someone that isn't authorized.")
-            logging.warn("Message was sent from JID " + message['from'] + ".")
+            logging.warn("Message was sent from JID " + str(message['from']) + ".")
             return
 
         # Potential message types: normal, chat, error, headline, groupchat
@@ -242,8 +246,8 @@ if __name__ == '__main__':
     xmppbot.register_plugin("xep_0199")
 
     # Connect to the XMPP server and commence operation.  SleekXMPP's state
-    # engine will run inside its own thread because we need to contact other
-    # services.
+    # engine will run inside its own thread because we have other concerns
+    # also.
     if xmppbot.connect():
         xmppbot.process(block=False)
     else:
@@ -252,6 +256,7 @@ if __name__ == '__main__':
 
     # Allocate and start the Simple HTTP Server instance.
     api_server = HTTPServer(("localhost", 8003), RESTRequestHandler)
+    logging.debug("REST API server now listening on localhost, port 8003/tcp.")
     api_server.serve_forever()
 
 # Fin.
