@@ -30,7 +30,6 @@ import logging
 from optparse import OptionParser
 import sleekxmpp
 import sys
-import time
 
 # Globals.
 # This hashtable's keys are the names of agents, the associated values are
@@ -84,8 +83,8 @@ class XMPPBot(sleekxmpp.ClientXMPP):
 
             # Split off the part of the sentence before the first comma or the
             # first space.  That's where the name of the agent can be found.
-            # Bad agent names wind up in spurious message queues, and will
-            # eventually time out and be deleted by the MQTT broker.
+            # Bad agent names wind up in spurious message queues, which will
+            # need to be handled.
             if ',' in message_body:
                 agent = message_body.split(',')[0]
             else:
@@ -129,17 +128,13 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             json.dump({agent: "not found"}, self.wfile)
             return
 
-        # Get the current time since the epoch because we need a key to attach
-        # the command to.
-        current_time = time.time()
-
-        # If the message queue is empty, return an empty JSON document.
+        # If the message queue is empty, return an error JSON document.
         if not len(message_queue[agent]):
             logging.debug("Message queue for agent " + agent + " is empty.")
             self.send_response(200)
             self.send_header("Content-type:", "application/json")
             self.wfile.write('\n')
-            json.dump({current_time: "no commands"}, self.wfile)
+            json.dump({"command": "no commands"}, self.wfile)
             return
 
         # Extract the earliest command from the agent's message queue.
@@ -152,7 +147,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-type:", "application/json")
         self.wfile.write('\n')
-        json.dump({current_time: command}, self.wfile)
+        json.dump({"command": command}, self.wfile)
         return
 
 # Figure out what to set the logging level to.  There isn't a straightforward
