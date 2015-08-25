@@ -16,6 +16,8 @@
 #   (whether it's the default one or specified on the command line).
 # - Consider adding a SQLite database to serialize the message queues to in
 #   the event the microservice ABENDs or gets shut down.
+# - Handle messages going into spurious message queues.  One misspelling could
+#   wreak havoc.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
