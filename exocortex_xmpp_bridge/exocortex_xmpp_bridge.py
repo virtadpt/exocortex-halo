@@ -33,6 +33,7 @@ import ConfigParser
 import json
 import logging
 from optparse import OptionParser
+import os
 import sleekxmpp
 import sys
 
@@ -174,13 +175,8 @@ def process_loglevel(loglevel):
     if loglevel == "notset":
         return 0
 
-# Core code...
-if __name__ == '__main__':
-    # If we're running in a Python environment earlier than v3.0, set the
-    # default text encoding to UTF-8 because XMPP requires it.
-    if sys.version_info < (3, 0):
-        reload(sys)
-        sys.setdefaultencoding('utf-8')
+# get_options: Parses command line arguments passed to this daemon.
+def get_options():
 
     # Instantiate a command line options parser.
     optionparser = OptionParser()
@@ -199,16 +195,36 @@ if __name__ == '__main__':
     # Parse the command line args.
     (options, args) = optionparser.parse_args()
 
+    # Return the parsed options.
+    return options
+
+# Core code...
+if __name__ == '__main__':
+    # If we're running in a Python environment earlier than v3.0, set the
+    # default text encoding to UTF-8 because XMPP requires it.
+    if sys.version_info < (3, 0):
+        reload(sys)
+        sys.setdefaultencoding('utf-8')
+
+    # Parse the command line args.
+    options = get_options()
+
     # Read the configuration file.  There is a command line argument for
     # specifying a configuration file, but it defaults to taking the name
     # of the bot and appending '.conf' to it.  Then load it into a config file
     # parser object.
     config = ConfigParser.ConfigParser()
     if options.configfile:
-        # MOOF MOOF MOOF - test to see if the config file exists.
+        # Try to open the config file passed as a command line argument.
+        if not os.path.exists(options.configfile):
+            logging.error("Unable to find configuration file " + str(options.configfile) + ".")
+            sys.exit(1)
         config.read(options.configfile)
     else:
-        # MOOF MOOF MOOF - test to see if the config file exists.
+        # Try to open the default config file.
+        if not os.path.exists("exocortex_xmpp_bridge.conf"):
+            logging.error("Unable to find configuration file exocortex_xmpp_bridge.conf.")
+            sys.exit(1)
         config.read("exocortex_xmpp_bridge.conf")
     conf = config.sections()[0]
 
