@@ -22,14 +22,22 @@
 # TO-DO:
 
 # Load modules.
-from optparse import OptionParser
+import argparse
 import ConfigParser
-import os
+import httplib
 import logging
+import os
+import sys
 
 # Constants.
 
 # Global variables.
+# Path to and name of the configuration file.
+config_file = ""
+
+# Loglevel for the bot.
+loglevel = logging.INFO
+
 # URL to the message queue to take marching orders from.
 message_queue = ""
 
@@ -46,52 +54,59 @@ api_key = ""
 # URL of the webhook service to send search results to.
 webhook = ""
 
+# How often to poll the message queues for orders.
+polling_time = 0
+
 # If this is a class or module, say what it is and what it does.
 
 # Classes.
 
 # Functions.
-# get_command_line_arguments(): Sets up and parses the argument vector for
-#   this bot.  Takes no arguments.  Returns a populated instance of
-#   optparse.OptionParser.
-def get_command_line_arguments():
-
-    # Instantiate an argument vector parser.
-    optionparser = OptionParser()
-
-    # Lay out the command line switches the bot can accept.
-    # Specify an arbitrary configuration file.
-    optionparser.add_option("-c", "--conf", dest="config_file", action="store",
-        type="string", help="Specify a path to a configuration file.  Defaults to ./web_search_bot.conf.")
-
-    # Specify the default loglevel, overriding the configuration file setting.
-    optionparser.add_option("-l", "--loglevel", dest="loglevel", action="store",
-        help="Specify the default verbosity.  Valid options are CRITICAL, ERROR, WARNING, INFO, DEBUG, NOTSET.  Defaults to INFO.")
-
-    # Parse the command line arguments.
-    (options, args) = optionparser.parse_args()
-
-    # Return the parsed options.
-    return options
+# set_loglevel(): Turn a string into a numerical value which Python's logging
+#   module can use because.  Takes a string, returns a loglevel.
+def set_loglevel(loglevel):
+    if loglevel == "critical":
+        return 50
+    if loglevel == "error":
+        return 40
+    if loglevel == "warning":
+        return 30
+    if loglevel == "info":
+        return 20
+    if loglevel == "debug":
+        return 10
+    if loglevel == "notset":
+        return 0
 
 # Core code...
-# Get and parse command line arguments.
-options = get_command_line_arguments()
+# Set up the command line argument parser.
+argparser = argparse.ArgumentParser(description='A bot that polls one or more message queues for commands, parses them, runs web searches in response, and sends the results to a destination.')
 
-# Read and parse the contents of the configuration file.
+# Set the default config file and the option to set a new one.
+argparser.add_argument('--config', action='store', 
+    default='./web_search_bot.conf')
+
+# Loglevels: critical, error, warning, info, debug, notset.
+argparser.add_argument('--loglevel', action='store',
+    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
+
+# Time (in seconds) between polling the message queues.
+argparser.add_argument('--polling', action='store', default=60,
+    help='Default: 60 seconds')
+args = argparser.parse_args()
+
+# Parse the command line arguments.
+if args.config:
+    config_file = args.config
+
+# Read the options in the configuration file before processing overrides on the
+# command line.
 config = ConfigParser.ConfigParser()
-if options.config_file:
-    # Try to open the configuration file passed in the argument vector.
-    if not os.path.exists(options.config_file):
-        logging.error("Unable to find or open configuration file " + str(options.config_file) + ".")
-        sys.exit(1)
-    config.read(options.config_file)
-else:
-    # Try to open the default configuration file.
-    if not os.path.exists('web_search_bot.conf'):
-        logging.error("Unable to find or open default configuration file web_search_bot.conf.")
-        sys.exit(1)
-    config.read('web_search_bot.conf')
+if not os.path.exists(config_file):
+    logging.error("Unable to find or open configuration file " +
+        config_file + ".")
+    sys.exit(1)
+config.read(config_file)
 
 # Get the message queue to contact.
 message_queue = config.get("DEFAULT", "queue")
@@ -110,4 +125,30 @@ api_key = config.get("DEFAULT", "api_key")
 # Get the URL of the webhook to report to.
 webhook = config.get("DEFAULT", "webhook")
 
+# Get the default loglevel of the bot.
+config_log = config.get("DEFAULT", "loglevel").lower()
+if config_log:
+    loglevel = set_loglevel(config_log)
+
+# Set the number of seconds to wait in between polling runs on the message
+# queues.
+try:
+    polling_time = config.get("DEFAULT", "polling_time")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
+# Set the loglevel from the override on the command line.
+if args.loglevel:
+    loglevel = set_loglevel(args.loglevel.lower())
+
+# Configure the logger.
+logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
+
+# Set the message queue polling time from override on the command line.
+if args.polling:
+    polling_time = args.polling
+
 # Fin.
+sys.exit(0)
+
