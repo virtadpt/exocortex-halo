@@ -40,6 +40,7 @@ from bs4 import SoupStrainer
 
 import argparse
 import ConfigParser
+import json
 import logging
 import os
 import requests
@@ -223,8 +224,9 @@ def get_search_results(search_term):
                     reject_link = True
                     break
 
-            # Keep the links we do want.
+            # Clean up and keep the links we do want.
             if not reject_link:
+                hyperlink = hyperlink.strip()
                 hyperlinks.append(hyperlink)
 
             # Add the results from this search engine to the master list
@@ -299,6 +301,9 @@ api_key = config.get("DEFAULT", "api_key")
 
 # Get the URL of the webhook to report to.
 webhook = config.get("DEFAULT", "webhook")
+
+# Build the webhook URL to hit.
+webhook = webhook + api_key
 
 # Get the default loglevel of the bot.
 config_log = config.get("DEFAULT", "loglevel").lower()
@@ -381,7 +386,6 @@ while True:
             # Deduplicate search results in the master list.
             logger.debug("Deduplicating and sorting the master list of search results.")
             search_results = list(set(search_results))
-            search_results.sort()
             logger.debug("Master list of search results: " + str(search_results))
 
             # Truncate the master list of search results down to the number of
@@ -389,7 +393,19 @@ while True:
             if len(search_results) > number_of_results:
                 search_results = search_results[:(number_of_results - 1)]
             logger.debug("Returning " + str(len(search_results)) + " search results.")
-            logger.debug("Final list of search results: " + str(search_results))
+            logger.debug("Final list of search results: " + str(json.dumps(search_results)))
+
+            # Post the results to the webhook agent.
+            results = {'results': search_results}
+            request = requests.post(webhook, data=json.dumps(results))
+
+            # Figure out what happened with the HTTP request.
+            if request.status_code == 200:
+                logger.info("Successfully POSTed search results to webhook.")
+            if request.status_code == 400:
+                logger.info("HTTP error 400 - bad request made with webhook.")
+            if request.status_code == 404:
+                logger.info("HTTP error 404 - webhook not found.")
 
             # This code path exists solely for the purposes of debugging, so
             # there is no sense in keeping the bot running.
@@ -414,7 +430,6 @@ while True:
             # Deduplicate search results in the master list.
             logger.debug("Deduplicating and sorting the master list of search results.")
             search_results = list(set(search_results))
-            search_results.sort()
             logger.debug("Master list of search results: " + str(search_results))
 
             # Truncate the master list of search results down to the number of
@@ -422,14 +437,19 @@ while True:
             if len(search_results) > number_of_results:
                 search_results = search_results[:(number_of_results - 1)]
             logger.debug("Returning " + str(len(search_results)) + " search results.")
-            logger.debug("Final list of search results: " + str(search_results))
+            logger.debug("Final list of search results: " + str(json.dumps(search_results)))
 
-            # MOOF MOOF MOOF - Hit the webhook and send the search results to
-            # Huginn.
+            # Post the results to the webhook agent.
+            results = {'results': search_results}
+            request = requests.post(webhook, data=json.dumps(results))
 
-        # Bad HTTP request.
-        if request.status_code == 400:
-            logger.info("HTTP error 400 - bad request made.")
+            # Figure out what happened with the HTTP request.
+            if request.status_code == 200:
+                logger.info("Successfully POSTed search results to webhook.")
+            if request.status_code == 400:
+                logger.info("HTTP error 400 - bad request made.")
+            if request.status_code == 404:
+                logger.info("HTTP error 404 - webhook not found.")
 
         # Message queue not found.
         if request.status_code == 404:
