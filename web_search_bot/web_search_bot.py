@@ -33,6 +33,7 @@
 #   the effect of "I don't know what you just said."
 # - Move hyperlinks_we_dont_want[] into the config file, and read it in on
 #   startup.  This'll make it easier to manage.
+# - Handle the edge case of no search results at the end of the process.
 
 # Load modules.
 from bs4 import BeautifulSoup
@@ -46,6 +47,7 @@ import os
 import requests
 import sys
 import time
+import urllib
 
 # Constants.
 # Hash table that maps numbers-as-words ("ten") into numbers (10).
@@ -61,6 +63,10 @@ hyperlinks_we_dont_want = ["javascript:", "https://ixquick-proxy.com/do",
     "startpage.com", "startpagesearch", "#", "startmail.com", "ixquick",
     "yacy.net", "yacy.de", ".html", "yacysearch", "/solr/", "/gsa/",
     "github.com/yacy/yacy_search_server/", "opensearch.org", "www.google.com"]
+
+# When POSTing something to a service, the correct Content-Type value has to
+# be set in the request.
+custom_headers = {'Content-Type': 'application/json'}
 
 # Global variables.
 # Handle to a logging object.
@@ -174,7 +180,7 @@ def parse_search_request(search_request):
 
 # get_search_results(): Function that does the heavy lifting of contacting the
 #   search engines, getting the results, and parsing them.  Takes one argument,
-#   a string containing the search term.  Returns an array of search results.
+#   a string containing the search term.  Returns a list of search results.
 def get_search_results(search_term):
     # This list will hold all of the links to search results.
     search_results = []
@@ -227,6 +233,7 @@ def get_search_results(search_term):
             # Clean up and keep the links we do want.
             if not reject_link:
                 hyperlink = hyperlink.strip()
+                hyperlink = urllib.quote(hyperlink)
                 hyperlinks.append(hyperlink)
 
             # Add the results from this search engine to the master list
@@ -396,8 +403,10 @@ while True:
             logger.debug("Final list of search results: " + str(json.dumps(search_results)))
 
             # Post the results to the webhook agent.
-            results = {'results': search_results}
-            request = requests.post(webhook, data=json.dumps(results))
+            results = { "results": search_results }
+            logger.debug("POST body sent to webhook: " + str(json.dumps(results)))
+            request = requests.post(webhook, data=json.dumps(results),
+                headers=custom_headers)
 
             # Figure out what happened with the HTTP request.
             if request.status_code == 200:
@@ -441,7 +450,8 @@ while True:
 
             # Post the results to the webhook agent.
             results = {'results': search_results}
-            request = requests.post(webhook, data=json.dumps(results))
+            request = requests.post(webhook, data=json.dumps(results),
+                headers=custom_headers)
 
             # Figure out what happened with the HTTP request.
             if request.status_code == 200:
