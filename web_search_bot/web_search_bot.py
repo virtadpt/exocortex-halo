@@ -95,7 +95,7 @@ api_key = ""
 webhook = ""
 
 # How often to poll the message queues for orders.
-polling_time = 0
+polling_time = 60
 
 # This variable will hold a manually supplied search request.  It's here for
 # the purposes of debugging, in case you don't have a message queue handy.
@@ -126,6 +126,7 @@ def set_loglevel(loglevel):
 #   hits for foo" or "search Tor for bar".  Returns a set of URLs for search
 #   engines and search terms.
 def parse_search_request(search_request):
+    logger.debug("Entered function parse_search_request().")
     number_of_search_results = 0
     search_term = ""
 
@@ -136,6 +137,12 @@ def parse_search_request(search_request):
     search_request = search_request.strip("'")
     search_request = search_request.lower()
     logger.debug("Cleaned up search request: " + search_request)
+
+    # If the search request is empty (i.e., nothing in the queue, return 0 and
+    # "".
+    if "no commands" in search_request:
+        logger.debug("Got empty search request.")
+        return (number_of_search_results, search_term)
 
     # Tokenize the search request.
     words = search_request.split()
@@ -182,6 +189,8 @@ def parse_search_request(search_request):
 #   search engines, getting the results, and parsing them.  Takes one argument,
 #   a string containing the search term.  Returns a list of search results.
 def get_search_results(search_term):
+    logger.debug("Entered function get_search_results().")
+
     # This list will hold all of the links to search results.
     search_results = []
 
@@ -419,19 +428,35 @@ while True:
             # This code path exists solely for the purposes of debugging, so
             # there is no sense in keeping the bot running.
             sys.exit(2)
+            # End of manually passed search request processing.
 
         # Check the message queue for search requests.
+        logger.debug("Contacting message queue: " + str(message_queue + name))
         request = requests.get(message_queue + name)
+        logger.debug("Response from server: " + request.text)
 
         # Test the HTTP response code.
         # Success.
         if request.status_code == 200:
             logger.debug("Message queue " + name + " found.")
 
+            # Extract the search request.
+            search_request = json.loads(request.text)
+            logger.debug("Value of search_request: " + str(search_request))
+            search_request = search_request['command']
+
             # Parse the search request.
             (number_of_results, search) = parse_search_request(search_request)
             logger.debug("Number of search results: " + str(number_of_results))
             logger.debug("Search request: " + search)
+
+            # If the number of search results is zero, there was no search
+            # request in the message queue, in which case we do nothing and
+            # loop again later.
+            if number_of_results == 0:
+                logger.debug("Got empty search request.  Going back to sleep.")
+                time.sleep(float(polling_time))
+                continue
 
             # Run the required web searches and get the results.
             search_results = get_search_results(search)
