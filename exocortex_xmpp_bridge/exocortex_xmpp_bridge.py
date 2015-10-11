@@ -89,7 +89,7 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         # Note: This can time out under bad conditions.  Consider putting it
         # inside a try/except to retry or error out.
         self.get_roster()
-        logger.debug("I've successfully connected to the XMPP server.")
+        logger.info("I've successfully connected to the XMPP server.")
 
     # Method that fires as an event handler when an XMPP message is received
     # from someone
@@ -264,7 +264,7 @@ xmppbot.register_plugin("xep_0199")
 # will run inside its own thread because we have other concerns also.
 # also.
 if xmppbot.connect():
-    xmppbot.process(block=True)
+    xmppbot.process(block=False)
 else:
     logger.fatal("Uh-oh - unable to connect to JID " + username + ".")
     sys.exit(1)
