@@ -136,9 +136,8 @@ def parse_search_request(search_request):
     search_request = search_request.strip(".")
     search_request = search_request.strip("'")
     search_request = search_request.lower()
-    logger.debug("Cleaned up search request: " + search_request)
 
-    # If the search request is empty (i.e., nothing in the queue, return 0 and
+    # If the search request is empty (i.e., nothing in the queue) return 0 and
     # "".
     if "no commands" in search_request:
         logger.debug("Got empty search request.")
@@ -209,7 +208,6 @@ def get_search_results(search_term):
         # Place the search request.
         search_URL = search_engine + search
         logger.debug("Search request: " + search_URL)
-        logger.debug("Value of search_URL: " + search_URL)
         request = requests.get(search_URL)
         html_page = request.content
 
@@ -380,55 +378,12 @@ link_extractor = SoupStrainer('a')
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
+logger.debug("Entering main loop to handle requests.")
 while True:
     for name in (clearnet_name, darknet_name):
-        # Process a manually passed search term first.
-        if search_request:
-            # The number of search results and search term from the user.
-            number_of_results = 0
-            search = ""
-
-            # This list will hold all of the links to search results.
-            search_results = []
-
-            # Parse the search request.
-            (number_of_results, search) = parse_search_request(search_request)
-            logger.debug("Number of search results: " + str(number_of_results))
-            logger.debug("Search request: " + search)
-
-            # Run the required web searches and get the results.
-            search_results = get_search_results(search)
-
-            # Deduplicate search results in the master list.
-            logger.debug("Deduplicating and sorting the master list of search results.")
-            search_results = list(set(search_results))
-            logger.debug("Master list of search results: " + str(search_results))
-
-            # Truncate the master list of search results down to the number of
-            # hits the user requested.
-            if len(search_results) > number_of_results:
-                search_results = search_results[:(number_of_results - 1)]
-            logger.debug("Returning " + str(len(search_results)) + " search results.")
-            logger.debug("Final list of search results: " + str(json.dumps(search_results)))
-
-            # Post the results to the webhook agent.
-            results = { "results": search_results }
-            logger.debug("POST body sent to webhook: " + str(json.dumps(results)))
-            request = requests.post(webhook, data=json.dumps(results),
-                headers=custom_headers)
-
-            # Figure out what happened with the HTTP request.
-            if request.status_code == 200:
-                logger.info("Successfully POSTed search results to webhook.")
-            if request.status_code == 400:
-                logger.info("HTTP error 400 - bad request made with webhook.")
-            if request.status_code == 404:
-                logger.info("HTTP error 404 - webhook not found.")
-
-            # This code path exists solely for the purposes of debugging, so
-            # there is no sense in keeping the bot running.
-            sys.exit(2)
-            # End of manually passed search request processing.
+        # If darknet searching is not enabled, skip the empty value.
+        if name == "":
+            break
 
         # Check the message queue for search requests.
         logger.debug("Contacting message queue: " + str(message_queue + name))
@@ -453,12 +408,13 @@ while True:
             # If the number of search results is zero, there was no search
             # request in the message queue, in which case we do nothing and
             # loop again later.
-            if number_of_results == 0:
+            if (number_of_results == 0) and (len(search) == 0):
+                search_request = ""
                 logger.debug("Got empty search request.  Going back to sleep.")
                 time.sleep(float(polling_time))
                 continue
 
-            # Run the required web searches and get the results.
+            # Run the web searches and get the results.
             search_results = get_search_results(search)
 
             # Deduplicate search results in the master list.
@@ -488,11 +444,10 @@ while True:
 
         # Message queue not found.
         if request.status_code == 404:
-            logger.info("Message queue " + name + " does not exist.  No requests have come in yet for this agent.")
+            logger.info("Message queue " + name + " does not exist.")
 
     # Sleep for the configured amount of time.
     time.sleep(float(polling_time))
 
 # Fin.
-sys.exit(0)
 
