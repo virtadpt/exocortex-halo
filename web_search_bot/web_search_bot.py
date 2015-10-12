@@ -47,7 +47,6 @@ import os
 import requests
 import sys
 import time
-import urllib
 
 # Constants.
 # Hash table that maps numbers-as-words ("ten") into numbers (10).
@@ -240,7 +239,6 @@ def get_search_results(search_term):
             # Clean up and keep the links we do want.
             if not reject_link:
                 hyperlink = hyperlink.strip()
-                hyperlink = urllib.quote(hyperlink)
                 hyperlinks.append(hyperlink)
 
             # Add the results from this search engine to the master list
