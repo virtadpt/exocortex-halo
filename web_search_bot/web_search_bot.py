@@ -417,18 +417,6 @@ while True:
             # loop again later.
             if (number_of_results == 0) and (len(search) == 0):
                 search_request = ""
-                logger.debug("Got empty search request.")
-                results = {'results': ["No search results found."]}
-                request = requests.post(webhook, data=json.dumps(results),
-                    headers=custom_headers)
-
-                # Figure out what happened with the HTTP request.
-                if request.status_code == 200:
-                    logger.info("Successfully POSTed search results to webhook.")
-                if request.status_code == 400:
-                    logger.info("HTTP error 400 - bad request made.")
-                if request.status_code == 404:
-                    logger.info("HTTP error 404 - webhook not found.")
                 time.sleep(float(polling_time))
                 continue
 
@@ -446,6 +434,11 @@ while True:
                 search_results = search_results[:(number_of_results - 1)]
             logger.debug("Returning " + str(len(search_results)) + " search results.")
             logger.debug("Final list of search results: " + str(json.dumps(search_results)))
+
+            # If no search results were returned, send that to the webhook
+            # agent.
+            if len(search_results) == 0:
+                search_results = ["No search results found."]
 
             # Post the results to the webhook agent.
             results = {'results': search_results}
