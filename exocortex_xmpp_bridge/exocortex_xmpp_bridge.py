@@ -24,6 +24,8 @@
 #      - Setting SleekXMPP to "block=True" makes it easier to kill from the
 #        command line.
 #      - Set the default loglevel to INFO.
+#      - Added a bit that acknowledges when a request has been received over
+#        XMPP.
 # v1.0 - Initial release.
 
 # TODO:
@@ -126,6 +128,10 @@ class XMPPBot(sleekxmpp.ClientXMPP):
             # Push the command into the agent's message queue.
             message_queue[agent].append(command)
             logger.debug("The message queue for " + agent + " now contains: " + str(message_queue[agent]))
+
+            # Acknowledge reception of the message.
+            self.send_message(mto=owner,
+                mbody="Request received and acknowledged.")
 
 # RESTRequestHandler: Subclass that implements a REST API service.  The main
 #   rails are the names of agent networks that will poll message queues for
