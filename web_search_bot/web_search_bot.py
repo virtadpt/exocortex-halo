@@ -17,6 +17,9 @@
 
 # License: GPLv3
 
+# v1.1 - Added a "no search results found" handler.
+#      - Added an error handler for the case where contacting the message queue
+#        either times out or fails outright.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -33,7 +36,7 @@
 #   the effect of "I don't know what you just said."
 # - Move hyperlinks_we_dont_want[] into the config file, and read it in on
 #   startup.  This'll make it easier to manage.
-# - Handle the edge case of no search results at the end of the process.
+# - Break out the "handle HTTP result code" handler into a function.
 
 # Load modules.
 from bs4 import BeautifulSoup
@@ -198,6 +201,7 @@ def get_search_results(search_term):
 
     # Make the search request using each of the search engines in the
     # configuration file.
+    logger.info("Got request to search for " + search_term + ".  Starting search now.")
     for search_engine in search_engines:
         logger.debug("Placing search request to: " + search_engine)
         html_page = ""
@@ -384,9 +388,14 @@ while True:
             break
 
         # Check the message queue for search requests.
-        logger.debug("Contacting message queue: " + str(message_queue + name))
-        request = requests.get(message_queue + name)
-        logger.debug("Response from server: " + request.text)
+        try:
+            logger.debug("Contacting message queue: " + str(message_queue + name))
+            request = requests.get(message_queue + name)
+            logger.debug("Response from server: " + request.text)
+        except:
+            logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+            time.sleep(float(polling_time))
+            continue
 
         # Test the HTTP response code.
         # Success.
@@ -408,7 +417,18 @@ while True:
             # loop again later.
             if (number_of_results == 0) and (len(search) == 0):
                 search_request = ""
-                logger.debug("Got empty search request.  Going back to sleep.")
+                logger.debug("Got empty search request.")
+                results = {'results': ["No search results found."]}
+                request = requests.post(webhook, data=json.dumps(results),
+                    headers=custom_headers)
+
+                # Figure out what happened with the HTTP request.
+                if request.status_code == 200:
+                    logger.info("Successfully POSTed search results to webhook.")
+                if request.status_code == 400:
+                    logger.info("HTTP error 400 - bad request made.")
+                if request.status_code == 404:
+                    logger.info("HTTP error 404 - webhook not found.")
                 time.sleep(float(polling_time))
                 continue
 
