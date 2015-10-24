@@ -182,9 +182,9 @@ def parse_search_request(search_request):
         else:
             logger.warn("The e-mail address " + words[1] + " didn't match the general format of an SMTP address.  Aborting.")
             return (number_of_search_results, search_term, email_address)
-    words.remove('send')
-    logger.info("The e-mail address to send search results to: " +
-        email_address)
+        words.remove('send')
+        logger.info("The e-mail address to send search results to: " +
+            email_address)
 
     # Start parsing the the search request to see what kind it is.  After
     # making the determination, remove the words we've sussed out to make the
@@ -464,7 +464,7 @@ while True:
             (number_of_results, search, destination_email_address) = parse_search_request(search_request)
             logger.debug("Number of search results: " + str(number_of_results))
             logger.debug("Search request: " + search)
-            if destination_email_address:
+            if destination_email_address != "":
                 logger.debug("E-mail address to send search results to: " +
                     destination_email_address)
 
