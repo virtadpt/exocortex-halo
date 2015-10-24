@@ -20,6 +20,8 @@
 # v1.1 - Added a "no search results found" handler.
 #      - Added an error handler for the case where contacting the message queue
 #        either times out or fails outright.
+#      - Added functionality which makes it possible to e-mail search results
+#        to arbitrary addresses.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -27,11 +29,6 @@
 #   functions to neaten up the core code.
 # - Holy crap my command parser is bobbins.  I don't need a full NLP toolkit
 #   just yet, though.
-# - Add the "send <e-mail address> top <number> hits for <foo>" bit.
-# - Add a function where the bot can semi-permanently remember an alias for an
-#   e-mail address ("remember <e-mail address> as <name>").  Forget them, too.
-#   For that matter, internally substitute <e-mail address> for <name> before
-#   e-mailing the results.
 # - Add an error handler to parse_search_requests() that returns something to
 #   the effect of "I don't know what you just said."
 # - Move hyperlinks_we_dont_want[] into the config file, and read it in on
@@ -41,13 +38,16 @@
 # Load modules.
 from bs4 import BeautifulSoup
 from bs4 import SoupStrainer
+from email.mime.text import MIMEText
 
 import argparse
 import ConfigParser
 import json
 import logging
 import os
+import re
 import requests
+import smtplib
 import sys
 import time
 
@@ -56,7 +56,10 @@ import time
 numbers = {"zero":0, "one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
     "seven":7, "eight":8, "nine":9, "ten":10, "eleven":11, "twelve":12,
     "thirteen":13, "fourteen":14, "fifteen":15, "sixteen":16, "seventeen":17,
-    "eighteen":18, "nineteen":19, "twenty":20}
+    "eighteen":18, "nineteen":19, "twenty":20, "twenty-one":21, "twenty-two":22,
+    "twenty-two":22, "twenty-three":23, "twenty-four":24, "twenty-five":25,
+    "twenty-six":26, "twenty-seven":27, "twenty-eight":28, "twenty-nine":29,
+    "thirty":30}
 
 # Every HTML page returned from a search engine will have two kinds of links:
 # Links to search results, and links to other stuff we don't care about.  This
@@ -69,6 +72,10 @@ hyperlinks_we_dont_want = ["javascript:", "https://ixquick-proxy.com/do",
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
 custom_headers = {'Content-Type': 'application/json'}
+
+# The precompiled regular expression for detecting e-mail addresses.
+email_regex = "[^@]+@[^@]+\.[^@]+"
+email_matcher = re.compile(email_regex)
 
 # Global variables.
 # Handle to a logging object.
@@ -106,6 +113,19 @@ search_request = ""
 # The list of search engines to run search requests against.
 search_engines = []
 
+# The e-mail address to send search results to (if applicable).
+destination_email_address = ""
+
+# SMTP server to transmit mail through.  Defaults to localhost.
+smtp_server = "localhost"
+
+# The e-mail address that search results are sent from.  There is no default
+# for this so it has to be set in the config file.
+origin_email_address = ""
+
+# E-mail message containing search results.
+message = ""
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -131,6 +151,7 @@ def parse_search_request(search_request):
     logger.debug("Entered function parse_search_request().")
     number_of_search_results = 0
     search_term = ""
+    email_address = ""
 
     # Clean up the search request.
     search_request = search_request.strip()
@@ -143,13 +164,27 @@ def parse_search_request(search_request):
     # "".
     if "no commands" in search_request:
         logger.debug("Got empty search request.")
-        return (number_of_search_results, search_term)
+        return (number_of_search_results, search_term, email_address)
 
     # Tokenize the search request.
     words = search_request.split()
     logger.debug("Tokenized search request: " + str(words))
 
-    # MOOF MOOF MOOF - "Send <foo> top <number> hits for <search request...>"
+    # "Send <foo> top <number> hits for <search request...>"
+    if words[0] == "send":
+        logger.info("Got a token suggesting that search results should be e-mailed to someone.")
+        # See if the next token fits the general pattern of an e-mail address.
+        # It doesn't need to be perfect, it just needs to vaguely fit the
+        # pattern.
+        if email_matcher.match(words[1]):
+            email_address = words[1]
+            del words[1]
+        else:
+            logger.warn("The e-mail address " + words[1] + " didn't match the general format of an SMTP address.  Aborting.")
+            return (number_of_search_results, search_term, email_address)
+    words.remove('send')
+    logger.info("The e-mail address to send search results to: " +
+        email_address)
 
     # Start parsing the the search request to see what kind it is.  After
     # making the determination, remove the words we've sussed out to make the
@@ -178,13 +213,13 @@ def parse_search_request(search_request):
     # If the search term is empty, return an error.
     if not len(words):
         logger.error("The search term appears to be empty: " + str(words))
-        return (None, None)
+        return (number_of_search_results, search_term, email_address)
 
     # Convert the remainder of the list into a URI-encoded string.
     search_term = " ".join(str(word) for word in words)
     search_term = search_term.replace(' ', '+')
     logger.debug("Search term: " + search_term)
-    return (number_of_search_results, search_term)
+    return (number_of_search_results, search_term, email_address)
 
 # get_search_results(): Function that does the heavy lifting of contacting the
 #   search engines, getting the results, and parsing them.  Takes one argument,
@@ -334,6 +369,17 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
+# Get the SMTP server to send search results through from the config file if
+# it's been set.
+try:
+    smtp_server = config.get("DEFAULT", "smtp_server")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
+# Get the e-mail address that search results will be sent from.
+origin_email_address = config.get("DEFAULT", "origin_email_address")
+
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
@@ -371,6 +417,9 @@ logger.debug("API key to use with the webhook: " + api_key)
 logger.debug("URL of the webhook: " + webhook)
 logger.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
+logger.debug("SMTP server to send search results through: " + smtp_server)
+logger.debug("E-mail address that search results are sent from: " +
+    origin_email_address)
 logger.debug("Search term manually passed to the bot: " + search_request)
 logging.debug("Search engines that will be queried: " + str(search_engines))
 
@@ -386,6 +435,10 @@ while True:
         # If darknet searching is not enabled, skip the empty value.
         if name == "":
             break
+
+        # Reset the destination e-mail address and the outbound message.
+        destination_email_address = ""
+        message = ""
 
         # Check the message queue for search requests.
         try:
@@ -408,9 +461,12 @@ while True:
             search_request = search_request['command']
 
             # Parse the search request.
-            (number_of_results, search) = parse_search_request(search_request)
+            (number_of_results, search, destination_email_address) = parse_search_request(search_request)
             logger.debug("Number of search results: " + str(number_of_results))
             logger.debug("Search request: " + search)
+            if destination_email_address:
+                logger.debug("E-mail address to send search results to: " +
+                    destination_email_address)
 
             # If the number of search results is zero, there was no search
             # request in the message queue, in which case we do nothing and
@@ -435,10 +491,40 @@ while True:
             logger.debug("Returning " + str(len(search_results)) + " search results.")
             logger.debug("Final list of search results: " + str(json.dumps(search_results)))
 
-            # If no search results were returned, send that to the webhook
-            # agent.
+            # If no search results were returned, put that message into the
+            # (empty) list of search results.
             if len(search_results) == 0:
                 search_results = ["No search results found."]
+
+            # If the search results are to be e-mailed, transmit them and then
+            # bounce to the next iteration of the loop.
+            if destination_email_address:
+                # Construct the message containing the search results.
+                message = "Here are your search results:\n"
+                message = message + "\n"
+                for url in search_results:
+                    message = message + url + "\n"
+                message = message + "\nEnd of search results"
+                message = MIMEText(message)
+                message['Subject'] = "Incoming search results!"
+                message['From'] = origin_email_address
+                message['To'] = destination_email_address
+                logger.debug("Created outbound e-mail message with search results.")
+                logger.debug(str(message))
+
+                # Set up the SMTP connection and transmit the message.
+                logger.info("E-mailing search results to " +
+                    destination_email_address)
+                smtp = smtplib.SMTP(smtp_server)
+                smtp.sendmail(origin_email_address, destination_email_address,
+                    message.as_string())
+                smtp.quit()
+                logger.info("Search results transmitted.  Deallocating SMTP server object.")
+                smtp = ""
+
+                # Go back to sleep and then loop again.
+                time.sleep(float(polling_time))
+                break
 
             # Post the results to the webhook agent.
             results = {'results': search_results}
