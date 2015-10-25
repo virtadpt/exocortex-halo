@@ -26,6 +26,9 @@
 #      - Set the default loglevel to INFO.
 #      - Added a bit that acknowledges when a request has been received over
 #        XMPP.
+#      - Added some code that listens for the command 'status' in an incoming
+#        message stanza, and returns some basic status information to the
+#        bot's owner via XMPP.
 # v1.0 - Initial release.
 
 # TODO:
@@ -108,6 +111,25 @@ class XMPPBot(sleekxmpp.ClientXMPP):
         if message['type'] in ('normal', 'chat'):
             # Extract the XMPP message body for processing.
             message_body = message['body']
+
+            # If the command issued by the user is a status request, send one
+            # and then exit this method.
+            if 'status' in message_body:
+                logger.info("Got request for status report.")
+
+                # Send the status report as a series of stanzas.
+                self.send_message(mto=owner,
+                    mbody="Status report for " + sys.argv[0] + ":")
+                self.send_message(mto=owner,
+                    mbody="Config file used by bot: " + config_file)
+                self.send_message(mto=owner,
+                    mbody="Configured message queues: " + str(message_queue))
+                self.send_message(mto=owner,
+                    mbody="Contents of message queues:")
+                for queue in message_queue.keys():
+                    self.send_message(mto=owner,
+                        mbody="Message queue '" + queue + "': " + str(message_queue[queue]))
+                return
 
             # Split off the part of the sentence before the first comma or the
             # first space.  That's where the name of the agent can be found.
