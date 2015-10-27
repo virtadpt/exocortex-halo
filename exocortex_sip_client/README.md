@@ -1,6 +1,8 @@
 How to install PJSIP (http://www.pjsip.org/) into a virtualenv on a fairly recent Ubuntu Linux (virtual) machine:
 
 * sudo apt-get install python2.7-dev
+* mkdir exocortex_sip_client
+* cd exocortex_sip_client
 * virtualenv2 env
 * source env/bin/activate
 * mkdir src
