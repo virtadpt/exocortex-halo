@@ -22,6 +22,11 @@
 #        either times out or fails outright.
 #      - Added functionality which makes it possible to e-mail search results
 #        to arbitrary addresses.
+#      - Moved the list of links to filter out of the returned HTML into the
+#        configuration file and added some code to read them in and clean them
+#        up.  It'll be much easier to maintain that way.
+#      - Got rid of the command line option where you can manually pass a
+#        search request to the bot for testing.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -31,8 +36,6 @@
 #   just yet, though.
 # - Add an error handler to parse_search_requests() that returns something to
 #   the effect of "I don't know what you just said."
-# - Move hyperlinks_we_dont_want[] into the config file, and read it in on
-#   startup.  This'll make it easier to manage.
 # - Break out the "handle HTTP result code" handler into a function.
 
 # Load modules.
@@ -63,11 +66,8 @@ numbers = {"zero":0, "one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
 
 # Every HTML page returned from a search engine will have two kinds of links:
 # Links to search results, and links to other stuff we don't care about.  This
-# is the stuff we don't care about.
-hyperlinks_we_dont_want = ["javascript:", "https://ixquick-proxy.com/do",
-    "startpage.com", "startpagesearch", "#", "startmail.com", "ixquick",
-    "yacy.net", "yacy.de", ".html", "yacysearch", "/solr/", "/gsa/",
-    "github.com/yacy/yacy_search_server/", "opensearch.org", "www.google.com"]
+# is a list of the stuff we don't care about.
+hyperlinks_we_dont_want = []
 
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
@@ -317,11 +317,6 @@ argparser.add_argument('--loglevel', action='store',
 argparser.add_argument('--polling', action='store', default=60,
     help='Default: 60 seconds')
 
-# Add a debugging option which lets you manually inject a search request into
-# the bot.
-argparser.add_argument('--search', action='store', dest='search_request',
-    help="An optional command line argument which allows you to pass a search request to the bot of the form 'top ten hits for foo'.")
-
 # Parse the command line arguments.
 args = argparser.parse_args()
 if args.config:
@@ -338,6 +333,15 @@ config.read(config_file)
 
 # Get the message queue to contact.
 message_queue = config.get("DEFAULT", "queue")
+
+# Read in the list of hyperlinks to ignore when parsing HTML from the search
+# engine results.
+# This is a string.
+hyperlinks_to_strip = config.get("DEFAULT", "hyperlinks_we_dont_want")
+for hyperlink in hyperlinks_to_strip.split(','):
+    hyperlink = hyperlink.strip()
+    hyperlink = hyperlink.strip('"')
+    hyperlinks_we_dont_want.append(hyperlink)
 
 # Get the names of the message queues to report to.
 clearnet_name = config.get("DEFAULT", "clearnet_name")
@@ -398,15 +402,13 @@ for config_option, option in engines:
     if 'engine' in config_option:
         search_engines.append(option)
 
-# Pull the manual search request from the argument vector if it exists.
-if args.search_request:
-    search_request = args.search_request
-
 # Debugging output, if required.
 logger.info("Everything is set up now.")
 logger.debug("Values of configuration variables as of right now:")
 logger.debug("Configuration file: " + config_file)
 logger.debug("Message queue to report to: " + message_queue)
+logger.debug("Hyperlinks to filter out of returned HTML: " + 
+    str(hyperlinks_we_dont_want))
 logger.debug("Bot name to respond to clearnet requests with: " + clearnet_name)
 if darknet_name:
     logger.debug("Bot name to respond to Tor network requests with: " +
