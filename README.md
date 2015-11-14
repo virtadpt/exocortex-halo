@@ -15,6 +15,13 @@ exocortex_xmpp_bridge/
 
 A daemon that logs into an arbitrary XMPP server on one side and implements a dynamic message queue internally.  The idea is that you should be able to send chat messages to the XMPP address the daemon logs into (it checks to see if they are from the bot's registered owner) and puts them into its internal message queues.  The other side is a REST API service that other agents and bots can poll for commands.  I've tried to make the REST endpoints as self-documenting as possible (wget and curl are enough to poke at it) and as extensible as possible (as long as you know what kind of JSON docs you want to get out of it, you should be able to do whatever you want).
 
+irc_bot/
+A bot that logs into an arbitrary IRC server and joins one or more channels (or it will, anyway), and listens to what gets posted.  The bot will have a Markov engine (and eventually a Dissociated Press engine) for occasionally responding to things that are said in the channel.  The bot will also have a keyword detector that picks up on certain things and will report them to the user when they're said.  Eventually, this bot will log into an XMPP server using a unique account and report that way; in addition the user will be able to "speak through" the bot into the channel to respond.
+
+I used this as the basis for the bot: http://wiki.shellium.org/w/Writing_an_IRC_bot_in_Python
+
+This bot is still in the experimental stage, I only threw it in here when I did so that someone else could easily look at the code.  It's really undeveloped so don't expect anything from it just yet.  It'll probably be rewritten using a real IRC protocol implementation of some kind.
+
 web_search_bot/
 A bot that periodically polls a REST API service implementing its message queue (in this case, exocortex_xmpp_bridge/) looking for commands and search requests.  It carries out those web search requests (configured in web_search_bot.conf), extracts and packages the URLs, and either sends them to a Huginn webhook (by default) or e-mails them to an arbitrary e-mail address.
 
