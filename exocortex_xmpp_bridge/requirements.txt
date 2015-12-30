@@ -1,3 +1,2 @@
-sleekxmpp
 pyasn1
 pyasn1_modules
