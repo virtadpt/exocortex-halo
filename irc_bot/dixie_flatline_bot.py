@@ -21,7 +21,8 @@ from megahal import *
 
 import argparse
 import ConfigParser
-import irc
+import irc.bot
+import irc.strings
 import logging
 import os
 import random
@@ -33,7 +34,7 @@ import time
 
 # Global variables.
 # Path to the configuration file and handle to a ConfigParser instance.
-config_file = ""
+config_file = "dixie_flatline_bot.conf"
 config = ""
 
 # The IRC server, port, nick, and channel to default to.
@@ -70,6 +71,32 @@ training_file = ""
 loglevel = ""
 
 # Classes.
+# This is an instance of irc.bot which connects to an IRC server and channel
+#   and shadows its owner.
+class DixieBot(irc.bot.SingleServerIRCBot):
+    channel = ""
+
+    def __init__(self, channel, nickname, server, port):
+        # Initialize an instance of this class by running the parent class'
+        # Default initializer method.
+        # [(server, port)] can be a list of one or more (server, port) tuples
+        # because it can connect to more than one at once.
+        # The other two arguments are the bot's nickname and realname.
+        irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nickname,
+            nickname)
+        self.channel = channel
+
+    # This method fires if the configured nickname is already in use.  If that
+    # happens, change the bot's nick slightly.
+    # Note that the name of this method is specifically what the irc module
+    # looks for.
+    def on_nicknameinuse(self, connection, exception):
+        connection.nick(connection.get_nickname() + "_")
+
+    # This method fires when the server accepts the bot's connection.  It joins
+    # the configured channel.
+    def on_welcome(self, connection, exception):
+        connection.join(self.channel)
 
 # Functions.
 # Figure out what to set the logging level to.  There isn't a straightforward
@@ -100,7 +127,7 @@ argparser = argparse.ArgumentParser(description="My first attempt at writing an 
 # Set the default configuration file and command line option to specify a
 # different one.
 argparser.add_argument('--config', action='store',
-    default='dixie_flatline_bot.py', help="Path to a configuration file for this bot.")
+    default='dixie_flatline_bot.conf', help="Path to a configuration file for this bot.")
 
 # Set the IRC server.
 argparser.add_argument('--server', action='store',
@@ -111,12 +138,12 @@ argparser.add_argument('--port', action='store', default=6667,
     help="The port on the IRC server to connect to.  Defaults to 6667/tcp.")
 
 # Set the nickname the bot will log in with.
-argparser.add_argument('--nick', action='store', default='MyBot',
+argparser.add_argument('--nick', action='store', default='McCoyPauley',
     help="The IRC nick to log in with.  Defaults to MyBot.  You really should change this.")
 
 # Set the channel the bot will attempt to join.
 argparser.add_argument('--channel', action='store',
-    help="The IRC channel to join.  No default.  Specify this without the \# because the shell will interpret it as a command and mess with you.")
+    help="The IRC channel to join.  No default.  Specify this with a backslash (\#) because the shell will interpret it as a comment and mess with you otherwise.")
 
 # Set the nick of the bot's owner, which it will learn from preferentially.
 argparser.add_argument('--owner', action='store',
@@ -148,19 +175,18 @@ args = argparser.parse_args()
 config = ConfigParser.ConfigParser()
 if args.config:
     config_file = args.config
-if not os.path.exists(config_file):
+    config.read(config_file)
+if os.path.exists(config_file):
+    # Get configuration options from the config file.
+    irc_server = config.get("DEFAULT", "server")
+    irc_port = config.get("DEFAULT", "port")
+    nick = config.get("DEFAULT", "nick")
+    channel = config.get("DEFAULT", "channel")
+    owner = config.get("DEFAULT", "owner")
+    brain = config.get("DEFAULT", "brain")
+    loglevel = config.get("DEFAULT", "loglevel").lower()
+else:
     logging.error("Unable to open configuration file " + config_file + ".")
-    sys.exit(1)
-config.read(config_file)
-
-# Get configuration options from the config file.
-server = config.get("DEFAULT", "server")
-port = config.get("DEFAULT", "port")
-nick = config.get("DEFAULT", "nick")
-channel = config.get("DEFAULT", "channel")
-owner = config.get("DEFAULT", "owner")
-brain = config.get("DEFAULT", "brain")
-loglevel = config.get("DEFAULT", "loglevel").lower()
 
 # IRC server to connect to.
 if not args.server:
@@ -235,6 +261,8 @@ logger = logging.getLogger(__name__)
 # Prime the RNG.
 random.seed()
 
+# Instantiate a copy of the bot class.
+bot = DixieBot(channel, nickname, irc_server, irc_port)
 
 # MOOF MOOF MOOF - I know this is broken!
 # Roll 1d10.  On a 1, post a response to the channel.  On a 2, post a reply
