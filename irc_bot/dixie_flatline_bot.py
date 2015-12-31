@@ -22,6 +22,7 @@ from megahal import *
 import argparse
 import ConfigParser
 import irc
+import logging
 import os
 import random
 import socket
@@ -52,7 +53,7 @@ order = 3
 # - Three or more words
 # - No lone numbers
 min_letters_per_word = 4
-min words_per_line = 3
+min_words_per_line = 3
 
 # The location of the database the Markov model data is kept in.  This defaults
 # to ./.pymegahal-brain, per the MegaHAL python module's default.
@@ -65,9 +66,30 @@ brain = ""
 # this will be a full path to a training file.
 training_file = ""
 
+# The log level for the bot.  This is used to configure the instance of logger.
+loglevel = ""
+
 # Classes.
 
 # Functions.
+# Figure out what to set the logging level to.  There isn't a straightforward
+# way of doing this because Python uses constants that are actually integers
+# under the hood, and I'd really like to be able to do something like
+# loglevel = 'logging.' + loglevel
+# I can't have a pony, either.  Takes a string, returns a Python loglevel.
+def process_loglevel(loglevel):
+    if loglevel == "critical":
+        return 50
+    if loglevel == "error":
+        return 40
+    if loglevel == "warning":
+        return 30
+    if loglevel == "info":
+        return 20
+    if loglevel == "debug":
+        return 10
+    if loglevel == "notset":
+        return 0
 
 # Core code...
 # Set up a command line argument parser, because that'll make it easier to play
@@ -115,6 +137,10 @@ argparser.add_argument('--brain', action='store',
 argparser.add_argument('--trainingfile', action='store',
     help="Path to a file to train the Markov brain with if you haven't done so already.  It can be any text file so long as it's plain text and there is one entry per line.  If a brain already exists, training more is probably bad.  If you only want the bot to learn from you, chances are you don't want this.")
 
+# Loglevels: critical, error, warning, info, debug, notset.
+argparser.add_argument('--loglevel', action='store', default='logging.INFO',
+    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
+
 # Parse the command line arguments.
 args = argparser.parse_args()
 
@@ -123,9 +149,18 @@ config = ConfigParser.ConfigParser()
 if args.config:
     config_file = args.config
 if not os.path.exists(config_file):
-    print "Unable to open configuration file " + config_file + "."
+    logging.error("Unable to open configuration file " + config_file + ".")
     sys.exit(1)
 config.read(config_file)
+
+# Get configuration options from the config file.
+server = config.get("DEFAULT", "server")
+port = config.get("DEFAULT", "port")
+nick = config.get("DEFAULT", "nick")
+channel = config.get("DEFAULT", "channel")
+owner = config.get("DEFAULT", "owner")
+brain = config.get("DEFAULT", "brain")
+loglevel = config.get("DEFAULT", "loglevel").lower()
 
 # IRC server to connect to.
 if not args.server:
@@ -186,18 +221,28 @@ if training_file:
     brain.train(training_file)
     print "Done!"
 
+# Figure out how to configure the logger.  Start by reading from the config
+# file, then try the argument vector.
+if loglevel:
+    loglevel = process_loglevel(loglevel)
+if args.loglevel:
+    loglevel = process_loglevel(args.loglevel.lower())
+
+# Configure the logger.
+logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
+
 # Prime the RNG.
 random.seed()
 
 
-
+# MOOF MOOF MOOF - I know this is broken!
 # Roll 1d10.  On a 1, post a response to the channel.  On a 2, post a reply
 # and learn from it.
 roll = random.randint(1, 10)
 if roll == 1:
     print "Responding to text without adding to the Markov brain."
     sendmsg(ircsock, channel, brain.get_reply_nolearn(ircmsg))
-    continue
 if roll == 2:
     print "Responding to the text."
     sendmsg(ircsock, channel, brain.get_reply(ircmsg))
