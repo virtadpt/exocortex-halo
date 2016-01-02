@@ -16,6 +16,7 @@
 
 # TO-DO:
 # - SSL/TLS support.
+# - Make DixieBot.long_word_ratio configurable?
 
 # Load modules.
 # Needed because we're doing floating point division in a few places.
@@ -78,6 +79,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # - No lone numbers
     min_words_per_line = 3
     min_letters_per_word = 4
+
+    # The percentage of long words in a line's words.
+    long_word_ratio = 0.55
 
     # Class-level variables which form attributes.
     channel = ""
@@ -176,7 +180,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # If the ratio of long words to short words in the line is less than
         # 3/5, skip it.
-        if (long_words / words_in_line) < 0.6:
+        if (long_words / words_in_line) < self.long_word_ratio:
             logger.debug("Line wasn't long enough to learn from.")
             return
 
