@@ -120,16 +120,40 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def on_welcome(self, connection, event):
         connection.join(self.channel)
 
-    # This method would fire when the bot receives a private message.  I don't
-    # have anything for this yet so it's a no-op.
-    def on_privmsg(self, connection, event):
+    # This method fires when the server disconnects the bot for some reason.
+    # Ideally, the bot should try to connect again after a random number of
+    # seconds.
+    def on_disconnect(self, connection, event):
+        pause = random.randint(1, 10)
+        time.sleep(pause)
+        irc.bot.SingleServerIRCBot.connect(self, [(server, port)], nick, nick)
         pass
+
+    # This method would fire when the bot receives a private message.  For the
+    # moment, if it's the bot's owner always learn from the text because this
+    # is an ideal way to get more interesting stuff into the bot's brain.
+    # It'll make a good place to look for and respond to specific commands,
+    # too.
+    def on_privmsg(self, connection, line):
+
+        # IRC nick that sent a line to the bot in private chat.
+        sending_nick = line.source.split("!~")[0]
+
+        # Line of text sent from the channel.
+        irc_text = line.arguments[0]
+
+        # If it was the bot's owner, always learn from the text.
+        if sending_nick == self.owner:
+            logger.debug("The bot's owner messaged the construct directly.  This is a special corner case - learning from the text.")
+            self.brain.learn(irc_text)
+            return
+        else:
+            logger.debug("Somebody messaged me.  The content of the message was: " + irc_text)
 
     # This method fires every time a public message is posted to an IRC
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
     # this module figured out...
     def on_pubmsg(self, connection, line):
-        print "Value of line.arguments: " + line.arguments[0]
 
         # IRC nick that sent a line to the channel.
         sending_nick = line.source.split("!~")[0]
@@ -340,7 +364,5 @@ bot = DixieBot(channel, nick, irc_server, irc_port, nick, owner, brain)
 bot.start()
 
 # Fin.
-brain.sync()
-brain.close()
 sys.exit(0)
 
