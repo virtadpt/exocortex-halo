@@ -16,13 +16,12 @@
 
 # TO-DO:
 # - SSL/TLS support.
-# - Make DixieBot.long_word_ratio configurable?
 
 # Load modules.
 # Needed because we're doing floating point division in a few places.
 from __future__ import division
 
-from megahal import *
+from cobe.brain import Brain
 
 import argparse
 import ConfigParser
@@ -51,14 +50,11 @@ channel = ""
 # The nick of the bot's owner.
 owner = ""
 
-# How many backward chain links to run text through.  Defaults to three.
-order = 3
-
 # The location of the database the Markov model data is kept in.  This defaults
-# to ./.pymegahal-brain, per the MegaHAL python module's default.
-brainfile = "./.pymegahal-brain"
+# to ./cobe.brain, per the Cobe Python module's default.
+brainfile = "./cobe.brain"
 
-# Handle for a MegaHAL brain object.
+# Handle for a Cobe brain object.
 brain = ""
 
 # In case the user wants to train from a corpus to initialize the Markov brain,
@@ -72,16 +68,6 @@ loglevel = ""
 # This is an instance of irc.bot which connects to an IRC server and channel
 #   and shadows its owner.
 class DixieBot(irc.bot.SingleServerIRCBot):
-    # Class-level constants which form static attributes.
-    # Criteria for which the bot will learn from its owner:
-    # - Four or more letters
-    # - Three or more words
-    # - No lone numbers
-    min_words_per_line = 3
-    min_letters_per_word = 4
-
-    # The percentage of long words in a line's words.
-    long_word_ratio = 0.55
 
     # Class-level variables which form attributes.
     channel = ""
@@ -143,57 +129,38 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
     # this module figured out...
     def on_pubmsg(self, connection, line):
+        print "Value of line.arguments: " + line.arguments[0]
 
         # IRC nick that sent a line to the channel.
         sending_nick = line.source.split("!~")[0]
 
-        # See if the line fits the criteria for whether or not to learn from
-        # the line.  Start with whether or not there are enough words per
-        # line.
-        line = line.arguments[0]
-        words_in_line = 0
-        if line.split(':')[0] == self.nick:
-            words_in_line = len(line.split(' ')) - 1
-            words_in_line -= 1
-        else:
-            words_in_line = len(line.split(' '))
-        logger.debug("Words in line: " + str(words_in_line))
-
-        # If the line doesn't have enough words, skip it.
-        if words_in_line < self.min_words_per_line:
-            logger.debug("Line isn't long enough.")
-            return
-
-        # Count the number of letters in each word of the sentence.  If at
-        # least 75% are longer than four letters, learn from the sentence.
-        long_words = 0
-        for word in line.split(' '):
-            # Pre-emptively clean up the word a little.
-            word = word.strip(',')
-            word = word.strip('.')
-            word = word.strip(';')
-            word = word.strip()
-
-            if len(word) >= self.min_letters_per_word:
-                long_words += 1
-        logger.debug("Number of long words found in line: " + str(long_words))
-
-        # If the ratio of long words to short words in the line is less than
-        # 3/5, skip it.
-        if (long_words / words_in_line) < self.long_word_ratio:
-            logger.debug("Line wasn't long enough to learn from.")
-            return
+        # Line of text sent from the channel.
+        irc_text = line.arguments[0]
 
         # If the line is from the bot's owner, learn from it and then decide
         # whether to respond or not.
         if sending_nick == self.owner:
+
+            # If the bot's owner addressed it directly, always respond.  Just
+            # make sure to remove the bot's nick from the text to minimize
+            # spurious entries in the bot's brain.
+            asked_directly = irc_text.split(':')[0].strip()
+            if asked_directly == self.nick:
+                logger.debug("The bot's owner addressed the construct directly.  This is a special corner case.")
+                self.brain.learn(irc_text.split(':')[1].strip())
+                reply = self.brain.reply(irc_text)
+                connection.privmsg(self.channel, reply)
+                return
+
+            # Otherwise, just learn from the bot's owner.
             logger.debug("Learning from text from the bot's owner.")
-            self.brain.learn(line)
-            self.brain.sync()
+            self.brain.learn(irc_text)
+
+            # Decide if the bot is going to respond or not.
             roll = random.randint(1, 10)
             if roll == 1:
                 logger.debug("Posting a response to the channel.")
-                reply = self.brain.get_reply_nolearn(line)
+                reply = self.brain.reply(irc_text)
 
                 # connection.privmsg() can be used to send text to either a
                 # channel or a user.
@@ -205,13 +172,12 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         roll = random.randint(1, 10)
         if roll == 1:
             logger.debug("Learning from the last line seen in the channel.")
-            self.brain.learn(line)
-            self.brain.sync()
+            self.brain.learn(irc_text)
             return
         if roll == 2:
             logger.debug("Learning from the last line seen in the channel and responding to it.")
-            reply = self.brain.get_reply(line)
-            self.brain.sync()
+            self.brain.learn(irc_text)
+            reply = self.brain.reply(irc_text)
             connection.privmsg(channel, reply)
             return
 
@@ -266,18 +232,13 @@ argparser.add_argument('--channel', action='store',
 argparser.add_argument('--owner', action='store',
     help="This is the nick of the bot's owner, so that it knows who to take commands and who to train its Markov brain from.")
 
-# Set the number of backward links the Markov engine will look when generating
-# responses (defaults to 3).
-argparser.add_argument('--order', action='store', default=3,
-    help="The number of backward links the Markov engine will look when generating responses (defaults to 3).  Once the brain is built, this can no longer be changed.")
-
-# Path to the MegaHAL brain database.  If this file doesn't exist it'll be
+# Path to the Cobe brain database.  If this file doesn't exist it'll be
 # created, and unless a file to train the bot is supplied in another command
 # line argument it'll have to train itself very slowly.
 argparser.add_argument('--brain', action='store',
-    help="Path to the MegaHAL brainfile.  If this file doesn't exist it'll be created, and you'll have to supply an initial training file in another argument.")
+    help="Path to the construct's brain.  If this file doesn't exist it'll be created, and you'll have to supply an initial training file in another argument.")
 
-# Path to a training file for the MegaHAL brain.
+# Path to a training file for the Markov brain.
 argparser.add_argument('--trainingfile', action='store',
     help="Path to a file to train the Markov brain with if you haven't done so already.  It can be any text file so long as it's plain text and there is one entry per line.  If a brain already exists, training more is probably bad.  If you only want the bot to learn from you, chances are you don't want this.")
 
@@ -293,23 +254,32 @@ config = ConfigParser.ConfigParser()
 if args.config:
     config_file = args.config
     config.read(config_file)
+
+# Get configuration options from the config file.
 if os.path.exists(config_file):
-    # Get configuration options from the config file.
     irc_server = config.get("DEFAULT", "server")
     irc_port = config.get("DEFAULT", "port")
     nick = config.get("DEFAULT", "nick")
     channel = config.get("DEFAULT", "channel")
     owner = config.get("DEFAULT", "owner")
-    brain = config.get("DEFAULT", "brain")
+    brainfile = config.get("DEFAULT", "brain")
     loglevel = config.get("DEFAULT", "loglevel").lower()
 else:
-    logger.error("Unable to open configuration file " + config_file + ".")
+    print "Unable to open configuration file " + config_file + "."
+
+# Figure out how to configure the logger.  Start by reading from the config
+# file, then try the argument vector.
+if loglevel:
+    loglevel = process_loglevel(loglevel)
+if args.loglevel:
+    loglevel = process_loglevel(args.loglevel.lower())
+
+# Configure the logger.
+logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 # IRC server to connect to.
-if not args.server:
-    logger.fatal("ERROR: You must specify the hostname or IP of an IRC server at a minimum.")
-    sys.exit(1)
-else:
+if args.server:
     irc_server = args.server
 
 # Port on the IRC server.
@@ -321,26 +291,18 @@ if args.nick:
     nick = args.nick
 
 # Channel to connect to.
-if not args.channel:
-    logger.fatal("ERROR: You must specify a channel to join.")
-    sys.exit(1)
-else:
+if args.channel:
     channel = args.channel
 
 # Nick of the bot's owner to follow around.
 if args.owner:
     owner = args.owner
-else:
-    logger.fatal("ERROR: You must specify the nick of the bot's owner.")
-    sys.exit(1)
-
-# Order of the Markov chains to construct.
-if args.order:
-    order = args.order
+logger.info("The bot's registered owner is " + owner + ".  Make sure this is correct.")
 
 # If a prebuilt brainfile is specified on the command line, try to load it.
 if args.brain:
     brainfile = args.brain
+    logger.info("The bot's personality construct file is " + brainfile + ".  Make sure this is correct.")
     if not os.path.exists(brainfile):
         logger.fatal("WARNING: The brainfile you've specified (" + brainfile + ") does not exist.")
         sys.exit(1)
@@ -355,24 +317,20 @@ if args.brain and args.trainingfile:
     logger.fatal("WARNING: It's a bad idea to re-train an existing brainfile with a new corpus.  I'll figure out how to do that later.")
     sys.exit(1)
 
-# If an existing brain was specified, try to open it.  Else, create a new one
-# using the training corpus.
-brain = MegaHAL(order=order, brainfile=brainfile)
+# Instantiate a copy of the Cobe brain and try to load the database.  If the
+# brain file doesn't exist Cobe will create it.
+brain = Brain(brainfile)
 if training_file:
-    logger.info("Training the bot's Markov brain... this could take a while...")
-    brain.train(training_file)
-    print "Done!"
-
-# Figure out how to configure the logger.  Start by reading from the config
-# file, then try the argument vector.
-if loglevel:
-    loglevel = process_loglevel(loglevel)
-if args.loglevel:
-    loglevel = process_loglevel(args.loglevel.lower())
-
-# Configure the logger.
-logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
-logger = logging.getLogger(__name__)
+    if os.path.exists(training_file):
+        logger.info("Training the bot's Markov brain... this could take a while...")
+        brain.start_batch_learning()  
+        file = open(training_file)
+        for line in file.readlines():
+            brain.learn(line)
+        brain.stop_batch_learning()  
+        logger.info("Done!")
+    else:
+        logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the long way 'round.")
 
 # Prime the RNG.
 random.seed()
