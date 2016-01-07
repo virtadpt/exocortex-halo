@@ -238,7 +238,7 @@ class XMPPClient(threading.Thread):
 
         # Extract the message body for parsing.
         message_body = message.getBody()
-        logger.debug("Value of XMPPClient.process_message().message_body is: " + message_body)
+        logger.debug("Value of XMPPClient.process_message().message_body is: " + str(message_body))
 
         # Respond to a command for a status report.
         if message_body == "Robots, report.":
