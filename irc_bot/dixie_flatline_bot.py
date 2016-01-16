@@ -31,6 +31,7 @@ import logging
 import os
 import random
 import socket
+import ssl
 import sys
 import time
 
@@ -43,16 +44,16 @@ config = ""
 
 # The IRC server, port, nick, and channel to default to.
 irc_server = ""
-irc_port = 6667
-nick = "McCoyPauley"
+irc_port = 0
+nick = ""
 channel = ""
 
 # The nick of the bot's owner.
 owner = ""
 
-# The location of the database the Markov model data is kept in.  This defaults
-# to ./cobe.brain, per the Cobe Python module's default.
-brainfile = "./cobe.brain"
+# The location of the database the Markov model data is kept in.  The module
+# defaults to ./cobe.brain but we specify another one later in the code.
+brainfile = ""
 
 # Handle for a Cobe brain object.
 brain = ""
@@ -64,6 +65,9 @@ training_file = ""
 # The log level for the bot.  This is used to configure the instance of logger.
 loglevel = ""
 
+# Whether or not to use SSL/TLS to connect to the IRC server.
+usessl = False
+
 # Classes.
 # This is an instance of irc.bot which connects to an IRC server and channel
 #   and shadows its owner.
@@ -74,7 +78,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     nick = ""
     owner = ""
 
-    # Reference to the Markov brain.
+    # Handle to the Markov brain.
     brain = ""
 
     # Methods on the connection object to investigate:
@@ -94,36 +98,55 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # stats() - 
     # time() - 
 
-    def __init__(self, channel, nickname, server, port, nick, owner, brain):
+    def __init__(self, channel, nickname, server, port, nick, owner, brain,
+        usessl):
         # Initialize the class' attributes.
         self.channel = channel
         self.nick = nick
         self.owner = owner
         self.brain = brain
 
+        # Connection factory object handle.
+        factory = ""
+
+        # If SSL/TLS support is requested, pass the ssl.wrap_socket() method
+        # as a keyword argument.
+        if usessl:
+            logger.debug("Constructing SSL/TLS server connector.")
+            factory = irc.connection.Factory(wrapper=ssl.wrap_socket)
+        else:
+            logger.debug("Constructing plaintext server connector.")
+            factory = irc.connection.Factory()
+ 
         # Initialize an instance of this class by running the parent class'
         # Default initializer method.
+        #
         # [(server, port)] can be a list of one or more (server, port) tuples
         # because it can connect to more than one at once.
         # The other two arguments are the bot's nickname and realname.
-        irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nick, nick)
+        logger.debug("Instantiating SingleServerIRCBot superclass.")
+        irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nick, nick,
+            connect_factory=factory)
 
     # This method fires if the configured nickname is already in use.  If that
     # happens, change the bot's nick slightly.
     # Note that the name of this method is specifically what the irc module
     # looks for.
     def on_nicknameinuse(self, connection, event):
+        logger.info("Bot nickname " + self.nick + " is already taken.  Falling back to bot nickname " + self.nick + "_.")
         connection.nick(connection.get_nickname() + "_")
 
     # This method fires when the server accepts the bot's connection.  It joins
     # the configured channel.
     def on_welcome(self, connection, event):
+        logger.info("Successfully joined channel " + self.channel + ".")
         connection.join(self.channel)
 
     # This method fires when the server disconnects the bot for some reason.
     # Ideally, the bot should try to connect again after a random number of
     # seconds.
     def on_disconnect(self, connection, event):
+        logger.warn("Got bounced from channel " + self.channel + ".  Reconnecting.")
         pause = random.randint(1, 10)
         time.sleep(pause)
         irc.bot.SingleServerIRCBot.connect(self, [(server, port)], nick, nick)
@@ -144,6 +167,10 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # If it was the bot's owner, always learn from the text.
         if sending_nick == self.owner:
+            # See if the owner is asking the bot to self-terminate.
+            if irc_text == "!quit":
+                logger.info("The bot's owner has told it to shut down.")
+
             logger.debug("The bot's owner messaged the construct directly.  This is a special corner case - learning from the text.")
             self.brain.learn(irc_text)
             return
@@ -259,7 +286,7 @@ argparser.add_argument('--owner', action='store',
 # Path to the Cobe brain database.  If this file doesn't exist it'll be
 # created, and unless a file to train the bot is supplied in another command
 # line argument it'll have to train itself very slowly.
-argparser.add_argument('--brain', action='store',
+argparser.add_argument('--brain', action='store', default='./rom.construct',
     help="Path to the construct's brain.  If this file doesn't exist it'll be created, and you'll have to supply an initial training file in another argument.")
 
 # Path to a training file for the Markov brain.
@@ -269,6 +296,10 @@ argparser.add_argument('--trainingfile', action='store',
 # Loglevels: critical, error, warning, info, debug, notset.
 argparser.add_argument('--loglevel', action='store', default='logging.INFO',
     help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
+
+# Whether or not to use SSL or TLS to connect to the IRC server.
+argparser.add_argument('--ssl', action='store_true', default=False,
+    help='Whether or not to use SSL/TLS to connect to the IRC server.  Possible settings are True or False.  Defaults to False.  If set to True, the default IRC port will be set to 6697/tcp unless you specify otherwise.')
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -288,6 +319,7 @@ if os.path.exists(config_file):
     owner = config.get("DEFAULT", "owner")
     brainfile = config.get("DEFAULT", "brain")
     loglevel = config.get("DEFAULT", "loglevel").lower()
+    usessl = config.getboolean("DEFAULT", "usessl")
 else:
     print "Unable to open configuration file " + config_file + "."
 
@@ -301,6 +333,8 @@ if args.loglevel:
 # Configure the logger.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+
+logger.debug("Command line argument vector: " + str(args))
 
 # IRC server to connect to.
 if args.server:
@@ -328,7 +362,7 @@ if args.brain:
     brainfile = args.brain
     logger.info("The bot's personality construct file is " + brainfile + ".  Make sure this is correct.")
     if not os.path.exists(brainfile):
-        logger.fatal("WARNING: The brainfile you've specified (" + brainfile + ") does not exist.")
+        logger.fatal("WARNING: The personality construct file specified (" + brainfile + ") does not exist.")
         sys.exit(1)
 
 # If a training file is available, grab it.
@@ -352,15 +386,25 @@ if training_file:
         for line in file.readlines():
             brain.learn(line)
         brain.stop_batch_learning()  
+        file.close()
         logger.info("Done!")
     else:
         logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the long way 'round.")
 
+# Turn on SSL/TLS support.
+if args.ssl:
+    usessl = args.ssl
+
+# IRCS is port 6997/tcp by default.  If the port isn't changed on the command
+# line, silently reset the port the bot tries to log in on.
+if args.ssl:
+    irc_port = 6697
+
 # Prime the RNG.
 random.seed()
 
-# Instantiate a copy of the bot class.
-bot = DixieBot(channel, nick, irc_server, irc_port, nick, owner, brain)
+# Instantiate a copy of the bot class and activate it.
+bot = DixieBot(channel, nick, irc_server, irc_port, nick, owner, brain, usessl)
 bot.start()
 
 # Fin.
