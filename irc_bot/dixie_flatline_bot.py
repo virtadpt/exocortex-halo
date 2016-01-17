@@ -268,15 +268,6 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         # Line of text sent from the channel.
         irc_text = line.arguments[0]
 
-        # Detect if the bot's owner has left IRC, and if so de-authenticate
-        # them.
-        if self.authenticated and " QUIT :" in event.source:
-            logger.debug("The bot's owner has disconnected.  Deauthenticating them.")
-            self.authenticated = False
-            logger.debug("Value of self.authenticated is now " + str(self.authenticated) + ".")
-            connection.privmsg(self.channel, "Seeya, boss.")
-            return
-
         # If the line is from the bot's owner, learn from it and then decide
         # whether to respond or not.
         if sending_nick == self.owner and self.authenticated:
