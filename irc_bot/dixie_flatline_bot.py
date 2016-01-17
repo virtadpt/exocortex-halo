@@ -15,7 +15,6 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - SSL/TLS support.
 
 # Load modules.
 # Needed because we're doing floating point division in a few places.
@@ -68,6 +67,11 @@ loglevel = ""
 # Whether or not to use SSL/TLS to connect to the IRC server.
 usessl = False
 
+# The password the bot's owner will use to authenticate to the bot.  You can't
+# always be sure that the owner will be able to get their nick so as a backup
+# make it possible to authenticate to the bot.
+password = ""
+
 # Classes.
 # This is an instance of irc.bot which connects to an IRC server and channel
 #   and shadows its owner.
@@ -86,6 +90,15 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # Handle to the Markov brain.
     brain = ""
 
+    # The bot's owner's authentication password.
+    password = ""
+
+    # Is the bot's owner authenticated or not?
+    authenticated = ""
+
+    # Whether or not the connection is SSL/TLS encrypted or not.
+    usessl = ""
+
     # Methods on the connection object to investigate:
     # connect() - Connect to a server?
     # connected() - 
@@ -103,7 +116,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # stats() - 
     # time() - 
 
-    def __init__(self, channel, nickname, server, port, owner, brain, usessl):
+    def __init__(self, channel, nickname, server, port, owner, brain, usessl,
+        password):
         # Initialize the class' attributes.
         self.channel = channel
         self.nick = nick
@@ -111,13 +125,16 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         self.server = server
         self.port = port
         self.brain = brain
+        self.password = password
+        self.authenticated = False
+        self.usessl = usessl
 
         # Connection factory object handle.
         factory = ""
 
         # If SSL/TLS support is requested, pass the ssl.wrap_socket() method
         # as a keyword argument.
-        if usessl:
+        if self.usessl:
             logger.debug("Constructing SSL/TLS server connector.")
             factory = irc.connection.Factory(wrapper=ssl.wrap_socket)
         else:
@@ -145,8 +162,15 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # This method fires when the server accepts the bot's connection.  It joins
     # the configured channel.
     def on_welcome(self, connection, event):
-        logger.info("Successfully joined channel " + self.channel + ".")
         connection.join(self.channel)
+        logger.info("Successfully joined channel " + self.channel + ".")
+
+        # Just to be silly, roll 1d10.  On a 1, say hello to the channel.
+        roll = random.randint(1, 10)
+        if roll == 1:
+            pause = random.randint(1, 10)
+            time.sleep(pause)
+            connection.privmsg(self.channel, "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
 
     # This method fires when the server disconnects the bot for some reason.
     # Ideally, the bot should try to connect again after a random number of
@@ -169,20 +193,65 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         # IRC nick that sent a line to the bot in private chat.
         sending_nick = line.source.split("!~")[0]
 
-        # Line of text sent from the channel.
+        # Line of text sent from the channel or private message.
         irc_text = line.arguments[0]
 
-        # If it was the bot's owner, always learn from the text.
+        # See if the owner is authenticating to the bot.
+        if "!auth " in irc_text:
+            logger.debug("IRC user " + sending_nick + " is attempting to authenticate to the bot.")
+            if self.password in irc_text:
+                connection.privmsg(sending_nick, "Authentication confirmed.  Welcome back.")
+                self.owner = sending_nick
+                self.authenticated = True
+                return
+            else:
+                connection.privmsg(sending_nick, "Incorrect.")
+                return
+
+        # Handle messages from the bot's owner (if authenticated).
         if sending_nick == self.owner:
+            if not self.authenticated:
+                connection.privmsg(sending_nick, "You're not authenticated.")
+                return
+
+            # If the owner asks for online help, provide it.
+            if irc_text == "!help" or irc_text == "!commands":
+                connection.privmsg(sending_nick,
+                    "Here are the commands I support:")
+                connection.privmsg(sending_nick,
+                    "!help and !commands - You're reading them right now.")
+                connection.privmsg(sending_nick,
+                    "!quit - Shut me down.")
+                connection.privmsg(sending_nick,
+                    "!auth - Authenticate your current IRC nick as my admin.")
+                connection.privmsg(sending_nick, 
+                    "!config - Send my current configuration.")
+                return
+
             # See if the owner is asking the bot to self-terminate.
             if irc_text == "!quit":
                 logger.info("The bot's owner has told it to shut down.")
-                connection.privmsg(self.owner,
+                connection.privmsg(sending_nick,
                     "I get the hint.  Shuttin' down.")
                 sys.exit(0)
 
-            logger.debug("The bot's owner messaged the construct directly.  This is a special corner case - learning from the text.")
+            # See if the owner is asking for the bot's current configuration.
+            if irc_text == "!config":
+                connection.privmsg(sending_nick, "Here's my current runtime configuration.")
+                connection.privmsg(sending_nick, "Channel I'm connected to: " + self.channel)
+                connection.privmsg(sending_nick, "Current nick: " + self.nick)
+                connection.privmsg(sending_nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
+                if self.usessl:
+                    connection.privmsg(sending_nick, "The connection to the server is encrypted.")
+                else:
+                    connection.privmsg(sending_nick, "The connection to the server isn't encrypted.")
+                return
+
+            # Always learn from and respond to non-command private messages
+            # from the bot's owner.
             self.brain.learn(irc_text)
+            reply = self.brain.reply(irc_text)
+            connection.privmsg(sending_nick, reply)
             return
         else:
             logger.debug("Somebody messaged me.  The content of the message was: " + irc_text)
@@ -200,14 +269,14 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # If the line is from the bot's owner, learn from it and then decide
         # whether to respond or not.
-        if sending_nick == self.owner:
+        if sending_nick == self.owner and self.authenticated:
 
             # If the bot's owner addressed it directly, always respond.  Just
             # make sure to remove the bot's nick from the text to minimize
             # spurious entries in the bot's brain.
             asked_directly = irc_text.split(':')[0].strip()
             if asked_directly == self.nick:
-                logger.debug("The bot's owner addressed the construct directly.  This is a special corner case.")
+                logger.debug("The bot's owner addressed the construct directly.  This is a special corner case." and self.authenticated)
                 self.brain.learn(irc_text.split(':')[1].strip())
                 reply = self.brain.reply(irc_text)
                 connection.privmsg(self.channel, reply)
@@ -237,8 +306,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             return
         if roll == 2:
             logger.debug("Learning from the last line seen in the channel and responding to it.")
-            self.brain.learn(irc_text)
             reply = self.brain.reply(irc_text)
+            self.brain.learn(irc_text)
             connection.privmsg(channel, reply)
             return
 
@@ -311,6 +380,11 @@ argparser.add_argument('--loglevel', action='store', default='logging.INFO',
 argparser.add_argument('--ssl', action='store_true', default=False,
     help='Whether or not to use SSL/TLS to connect to the IRC server.  Possible settings are True or False.  Defaults to False.  If set to True, the default IRC port will be set to 6697/tcp unless you specify otherwise.')
 
+# The bot's owner can give the bot its authentication password on the command
+# line.
+argparser.add_argument('--password', action='store',
+    help="The password the bot's owner can use to authenticate to the bot and give it owners.  This will also change the bot's idea of what its owner's nick is in case that changes for whatever reason.")
+
 # Parse the command line arguments.
 args = argparser.parse_args()
 
@@ -330,6 +404,7 @@ if os.path.exists(config_file):
     brainfile = config.get("DEFAULT", "brain")
     loglevel = config.get("DEFAULT", "loglevel").lower()
     usessl = config.getboolean("DEFAULT", "usessl")
+    password = config.get("DEFAULT", "password")
 else:
     print "Unable to open configuration file " + config_file + "."
 
@@ -339,12 +414,8 @@ if loglevel:
     loglevel = process_loglevel(loglevel)
 if args.loglevel:
     loglevel = process_loglevel(args.loglevel.lower())
-
-# Configure the logger.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
-
-logger.debug("Command line argument vector: " + str(args))
 
 # IRC server to connect to.
 if args.server:
@@ -372,25 +443,18 @@ if args.brain:
     brainfile = args.brain
     logger.info("The bot's personality construct file is " + brainfile + ".  Make sure this is correct.")
     if not os.path.exists(brainfile):
-        logger.fatal("WARNING: The personality construct file specified (" + brainfile + ") does not exist.")
-        sys.exit(1)
+        logger.warn("The personality construct file specified (" + brainfile + ") does not exist.  A blank one will be constructed.")
 
 # If a training file is available, grab it.
 if args.trainingfile:
     training_file = args.trainingfile
-
-# Let's not let people re-train existing Markov brains.  Because I'm tired and
-# punchy.
-if args.brain and args.trainingfile:
-    logger.fatal("WARNING: It's a bad idea to re-train an existing brainfile with a new corpus.  I'll figure out how to do that later.")
-    sys.exit(1)
 
 # Instantiate a copy of the Cobe brain and try to load the database.  If the
 # brain file doesn't exist Cobe will create it.
 brain = Brain(brainfile)
 if training_file:
     if os.path.exists(training_file):
-        logger.info("Training the bot's Markov brain... this could take a while...")
+        logger.info("Initializing a new personality matrix... this could take a while...")
         brain.start_batch_learning()  
         file = open(training_file)
         for line in file.readlines():
@@ -399,7 +463,7 @@ if training_file:
         file.close()
         logger.info("Done!")
     else:
-        logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the long way 'round.")
+        logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the hard way.")
 
 # Turn on SSL/TLS support.
 if args.ssl:
@@ -410,11 +474,24 @@ if args.ssl:
 if args.ssl:
     irc_port = 6697
 
+# Read the bot's authentication password from the command line if it exists.
+if args.password:
+    password = args.password
+
+# If the bot doesn't have an authentication password set, don't let the bot
+# start up because somebody will eventually take it over and that'll be bad.
+if not password:
+    print "You don't have a password set on the bot.  This means that anybody cold take"
+    print "it over and do things with it.  That's no good.  Set a password in the config"
+    print "file or on the command line and try again."
+    sys.exit(1)
+
 # Prime the RNG.
 random.seed()
 
 # Instantiate a copy of the bot class and activate it.
-bot = DixieBot(channel, nick, irc_server, irc_port, owner, brain, usessl)
+bot = DixieBot(channel, nick, irc_server, irc_port, owner, brain, usessl,
+    password)
 bot.start()
 
 # Fin.
