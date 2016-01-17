@@ -15,6 +15,8 @@
 # v1.0 - Initial release.
 
 # TO-DO:
+# - Split some of the longer stuff in DixieBot.on_pubmsg() and
+#   DixieBot().on_privmsg() out into separate methods.
 
 # Load modules.
 # Needed because we're doing floating point division in a few places.
@@ -242,9 +244,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 connection.privmsg(sending_nick, "Current nick: " + self.nick)
                 connection.privmsg(sending_nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
                 if self.usessl:
-                    connection.privmsg(sending_nick, "The connection to the server is encrypted.")
+                    connection.privmsg(sending_nick, "My connection to the server is encrypted.")
                 else:
-                    connection.privmsg(sending_nick, "The connection to the server isn't encrypted.")
+                    connection.privmsg(sending_nick, "My connection to the server isn't encrypted.")
                 return
 
             # Always learn from and respond to non-command private messages
@@ -260,12 +262,20 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
     # this module figured out...
     def on_pubmsg(self, connection, line):
-
         # IRC nick that sent a line to the channel.
         sending_nick = line.source.split("!~")[0]
 
         # Line of text sent from the channel.
         irc_text = line.arguments[0]
+
+        # Detect if the bot's owner has left IRC, and if so de-authenticate
+        # them.
+        if self.authenticated and " QUIT :" in event.source:
+            logger.debug("The bot's owner has disconnected.  Deauthenticating them.")
+            self.authenticated = False
+            logger.debug("Value of self.authenticated is now " + str(self.authenticated) + ".")
+            connection.privmsg(self.channel, "Seeya, boss.")
+            return
 
         # If the line is from the bot's owner, learn from it and then decide
         # whether to respond or not.
@@ -309,6 +319,17 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             reply = self.brain.reply(irc_text)
             self.brain.learn(irc_text)
             connection.privmsg(channel, reply)
+            return
+
+    # This method should fire when a client in the current channel emits a QUIT
+    # event (relayed by the server.  It detects the bot's owner disconnecting
+    # and deauthenticates them.
+    def on_quit(self, connection, event):
+        sending_nick = event.source.split("!~")[0]
+        if event.type == "quit" and sending_nick == self.owner and self.authenticated:
+            logger.debug("The bot's owner has disconnected.  Deauthenticating.")
+            self.authenticated = False
+            connection.privmsg(self.channel, "Seeya, boss.")
             return
 
 # Functions.
