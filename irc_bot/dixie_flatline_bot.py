@@ -73,10 +73,15 @@ usessl = False
 #   and shadows its owner.
 class DixieBot(irc.bot.SingleServerIRCBot):
 
-    # Class-level variables which form attributes.
+    # Class-level variables which form attributes.  These all refer to aspects
+    # of the bot.
     channel = ""
     nick = ""
     owner = ""
+
+    # Connection information.
+    server = ""
+    port = 0
 
     # Handle to the Markov brain.
     brain = ""
@@ -98,12 +103,13 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # stats() - 
     # time() - 
 
-    def __init__(self, channel, nickname, server, port, nick, owner, brain,
-        usessl):
+    def __init__(self, channel, nickname, server, port, owner, brain, usessl):
         # Initialize the class' attributes.
         self.channel = channel
         self.nick = nick
         self.owner = owner
+        self.server = server
+        self.port = port
         self.brain = brain
 
         # Connection factory object handle.
@@ -125,8 +131,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         # because it can connect to more than one at once.
         # The other two arguments are the bot's nickname and realname.
         logger.debug("Instantiating SingleServerIRCBot superclass.")
-        irc.bot.SingleServerIRCBot.__init__(self, [(server, port)], nick, nick,
-            connect_factory=factory)
+        irc.bot.SingleServerIRCBot.__init__(self, [(self.server, self.port)],
+            self.nick, self.nick, connect_factory=factory)
 
     # This method fires if the configured nickname is already in use.  If that
     # happens, change the bot's nick slightly.
@@ -149,7 +155,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         logger.warn("Got bounced from channel " + self.channel + ".  Reconnecting.")
         pause = random.randint(1, 10)
         time.sleep(pause)
-        irc.bot.SingleServerIRCBot.connect(self, [(server, port)], nick, nick)
+        irc.bot.SingleServerIRCBot.connect(self, [(self.server, self.port)],
+            self.nick, self.nick)
         pass
 
     # This method would fire when the bot receives a private message.  For the
@@ -170,6 +177,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # See if the owner is asking the bot to self-terminate.
             if irc_text == "!quit":
                 logger.info("The bot's owner has told it to shut down.")
+                connection.privmsg(self.owner,
+                    "I get the hint.  Shuttin' down.")
+                sys.exit(0)
 
             logger.debug("The bot's owner messaged the construct directly.  This is a special corner case - learning from the text.")
             self.brain.learn(irc_text)
@@ -404,7 +414,7 @@ if args.ssl:
 random.seed()
 
 # Instantiate a copy of the bot class and activate it.
-bot = DixieBot(channel, nick, irc_server, irc_port, nick, owner, brain, usessl)
+bot = DixieBot(channel, nick, irc_server, irc_port, owner, brain, usessl)
 bot.start()
 
 # Fin.
