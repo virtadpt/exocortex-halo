@@ -445,7 +445,8 @@ xmpp_client_thread = XMPPClient(username, password)
 # Allocate and start the Simple HTTP Server instance.
 api_server = HTTPServer(("localhost", 8003), RESTRequestHandler)
 logger.debug("REST API server now listening on localhost, port 8003/tcp.")
-api_server.serve_forever()
+while True:
+    api_server.serve_forever()
 
 # Fin.
 xmpp_client_thread.join()
