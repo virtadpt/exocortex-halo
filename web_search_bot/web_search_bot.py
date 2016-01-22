@@ -198,7 +198,7 @@ def parse_search_request(search_request):
         else:
             # Return a default of 10 search results.
             number_of_search_results = 10
-    words.remove('top')
+        words.remove('top')
 
     # If the number of search results to return is zero, set it to ten.
     if number_of_search_results == 0:
