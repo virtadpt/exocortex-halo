@@ -17,6 +17,12 @@
 # TO-DO:
 # - Split some of the longer stuff in DixieBot.on_pubmsg() and
 #   DixieBot().on_privmsg() out into separate methods.
+# - Add 'ghost' support to the bot - once authenticated, the bot's owner can
+#   send text to the channel the bot is sitting in (@Some message here...) and
+#   get replies back via private messages.  !ghost on/off
+# - Add a memo function.  Someone can send a privmsg to the bot and it'll sit
+#   on the message until the bot's owner asks for it.  Tell the bot's owner how
+#   many messages are waiting when they authenticate.
 
 # Load modules.
 # Needed because we're doing floating point division in a few places.
@@ -183,7 +189,6 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         time.sleep(pause)
         irc.bot.SingleServerIRCBot.connect(self, [(self.server, self.port)],
             self.nick, self.nick)
-        pass
 
     # This method would fire when the bot receives a private message.  For the
     # moment, if it's the bot's owner always learn from the text because this
@@ -200,7 +205,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # See if the owner is authenticating to the bot.
         if "!auth " in irc_text:
-            logger.debug("IRC user " + sending_nick + " is attempting to authenticate to the bot.")
+            logger.warn("IRC user " + sending_nick + " is attempting to authenticate to the bot.")
             if self.password in irc_text:
                 connection.privmsg(sending_nick, "Authentication confirmed.  Welcome back.")
                 self.owner = sending_nick
@@ -277,7 +282,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # spurious entries in the bot's brain.
             asked_directly = irc_text.split(':')[0].strip()
             if asked_directly == self.nick:
-                logger.debug("The bot's owner addressed the construct directly.  This is a special corner case." and self.authenticated)
+                logger.debug("The bot's owner addressed the construct directly.  This is a special corner case.")
                 self.brain.learn(irc_text.split(':')[1].strip())
                 reply = self.brain.reply(irc_text)
                 connection.privmsg(self.channel, reply)
@@ -318,7 +323,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def on_quit(self, connection, event):
         sending_nick = event.source.split("!~")[0]
         if event.type == "quit" and sending_nick == self.owner and self.authenticated:
-            logger.debug("The bot's owner has disconnected.  Deauthenticating.")
+            logger.info("The bot's owner has disconnected.  Deauthenticating.")
             self.authenticated = False
             connection.privmsg(self.channel, "Seeya, boss.")
             return
