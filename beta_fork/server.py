@@ -13,8 +13,7 @@
 # v1.0 - Initial release.
 
 # TODO:
-# - Refactor RESTRequestHandler to break things out into other methods so they
-#   are easier to read.
+# - 
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -132,10 +131,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if self.headers['X-API-Key']:
                 client_api_key = self.headers['X-API-Key']
             else:
-                self.send_response(401)
-                self.send_header("Content-type:", "application/json")
-                self.end_headers()
-                json.dump({"response": "Missing API key."}, self.wfile)
+                self._send_http_response(401, '{"response": "Missing API key."}')
                 return
 
             # See if the client sent a bot name in the headers, and if so
@@ -143,10 +139,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if self.headers['X-Bot-Name']:
                 bot_name = self.headers['X-Bot-Name']
             else:
-                self.send_response(401)
-                self.send_header("Content-type:", "application/json")
-                self.end_headers()
-                json.dump({"response": "Missing bot name."}, self.wfile)
+                self._send_http_response(401, '{"response": "Missing bot name."}')
                 return
 
             # See if text to respond to is in the headers, and if so extract
@@ -154,20 +147,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if self.headers['X-Text-To-Respond-To']:
                 stimulus = self.headers['X-Text-To-Respond-To']
             else:
-                self.send_response(400)
-                self.send_header("Content-type:", "application/json")
-                self.end_headers()
-                json.dump({"response": "Missing text to respond to."}, self.wfile)
+                self._send_http_response(400, '{"response": "Missing text to respond to."}')
                 return
 
             # See if the bot is in the database.
             cursor.execute("SELECT name, apikey, respond FROM clients WHERE name=? AND apikey=?", (bot_name, client_api_key, ))
             row = cursor.fetchall()
             if not row:
-                self.send_response(404)
-                self.send_header("Content-type:", "application/json")
-                self.end_headers()
-                json.dump({"response": "Bot not found."}, self.wfile)
+                self._send_http_response(404, '{"response": "Bot not found."}')
                 return
 
             # Take apart the response.  This is a little messy but necessary
@@ -182,10 +169,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if respond == 'n':
                 respond = False
             if not respond:
-                self.send_response(401)
-                self.send_header("Content-type:", "application/json")
-                self.end_headers()
-                json.dump({"response": "Bot does not have permission to respond."}, self.wfile)
+                self._send_http_response(401, '{"response": "Bot does not have permission to respond."}')
                 return
 
             # Ask the Markov brain for a response and return it to the client.
@@ -194,6 +178,16 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             return
 
         # If we've fallen through to here, bounce.
+        return
+
+    # Send an HTTP response, consisting of the status code, headers and
+    # payload.  Takes two arguments, the HTTP status code and a JSON document
+    # containing an appropriate response.
+    def _send_http_response(self, code, response):
+        self.send_response(code)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(response)
         return
 
 # Figure out what to set the logging level to.  There isn't a straightforward
