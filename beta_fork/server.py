@@ -13,7 +13,11 @@
 # v1.0 - Initial release.
 
 # TODO:
-# - 
+# - Refactor common code into separate methods so it's easier to understand
+#   and maintain.  This should probably start with checking the additional
+#   headers on incoming HTTP requests...
+# - Don't reference text in X-Foo headers, just use application/json and the
+#   content of requests.  It's neater that way.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -131,7 +135,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if self.headers['X-API-Key']:
                 client_api_key = self.headers['X-API-Key']
             else:
-                self._send_http_response(401, '{"response": "Missing API key."}')
+                self._send_http_response(401, '{"response": "Missing API key.", "id": 401}')
                 return
 
             # See if the client sent a bot name in the headers, and if so
@@ -139,7 +143,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if self.headers['X-Bot-Name']:
                 bot_name = self.headers['X-Bot-Name']
             else:
-                self._send_http_response(401, '{"response": "Missing bot name."}')
+                self._send_http_response(401, '{"response": "Missing bot name.", "id": 401}')
                 return
 
             # See if text to respond to is in the headers, and if so extract
@@ -147,14 +151,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if self.headers['X-Text-To-Respond-To']:
                 stimulus = self.headers['X-Text-To-Respond-To']
             else:
-                self._send_http_response(400, '{"response": "Missing text to respond to."}')
+                self._send_http_response(400, '{"response": "Missing text to respond to.", "id": 400}')
                 return
 
             # See if the bot is in the database.
             cursor.execute("SELECT name, apikey, respond FROM clients WHERE name=? AND apikey=?", (bot_name, client_api_key, ))
             row = cursor.fetchall()
             if not row:
-                self._send_http_response(404, '{"response": "Bot not found."}')
+                self._send_http_response(404, '{"response": "Bot not found.", "id": 404}')
                 return
 
             # Take apart the response.  This is a little messy but necessary
@@ -169,12 +173,88 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if respond == 'n':
                 respond = False
             if not respond:
-                self._send_http_response(401, '{"response": "Bot does not have permission to respond."}')
+                self._send_http_response(401, '{"response": "Bot does not have permission to respond.", "id": 401}')
                 return
 
             # Ask the Markov brain for a response and return it to the client.
             response = brain.reply(stimulus)
-            json.dump({"response": response}, self.wfile)
+            json.dump('{200, "response": response, "id": 200}', self.wfile)
+            return
+
+        # If we've fallen through to here, bounce.
+        return
+
+    # Process HTTP/1.1 PUT requests.
+    def do_PUT(self):
+        client_api_key = ""
+        bot_name = ""
+        stimulus = ""
+        response = ""
+
+        # Variables that hold data from the database accesses.
+        name = ""
+        bots_api_key = ""
+        learn = ""
+
+        if self.path == "/learn":
+            logger.info("A client has contacted the /learn API rail.")
+
+            # See if the client sent an API key in the headers, and if so
+            # extract it.
+            if self.headers['X-API-Key']:
+                client_api_key = self.headers['X-API-Key']
+            else:
+                logger.info("Missing API key.")
+                self._send_http_response(401, '{"response": "Missing API key.", "id": 401}')
+                return
+
+            # See if the client sent a bot name in the headers, and if so
+            # extract it.
+            if self.headers['X-Bot-Name']:
+                bot_name = self.headers['X-Bot-Name']
+            else:
+                logger.info("Missing bot name.")
+                self._send_http_response(401, '{"response": "Missing bot name.", "id": 401}')
+                return
+
+            # See if text to learn from is in the headers, and if so extract
+            # it.  It's an easy mistake to make.
+            if self.headers['X-Text-To-Learn-From']:
+                stimulus = self.headers['X-Text-To-Learn-From']
+            else:
+                logger.info("No text to learn from.")
+                self._send_http_response(400, '{"response": "Missing text to learn from.", "id": 400}')
+                return
+
+            # See if the bot is in the database.
+            cursor.execute("SELECT name, apikey, learn FROM clients WHERE name=? AND apikey=?", (bot_name, client_api_key, ))
+            row = cursor.fetchall()
+            if not row:
+                logger.info("Bot not found in database.")
+                self._send_http_response(404, '{"response": "Bot not found.", "id": 404}')
+                return
+
+            # Take apart the response.  This is a little messy but necessary
+            # to get at the very end of the tuple.
+            (name, bots_api_key, learn) = row[0]
+
+            # If the bot does not have permission to teach the Markov brain,
+            # send back an error.  Again, this is a little messy but it's
+            # easier to get to a Bool to work with than it is playing with
+            # identifying single letters.  And I'm sick while I'm writing this.
+            learn = learn.lower()
+            if learn == 'n':
+                learn = False
+            if not learn :
+                logger.info("Bot does not have permission to update the Markov brain.")
+                self._send_http_response(401, '{"response": "Bot does not have permission to update the brain.", "id": 401}')
+                return
+
+            # Run the text through the Markov brain to update it and return a
+            # success message.
+            response = brain.learn(stimulus)
+            logger.info("Bot has updated the Markov brain.")
+            json.dump('{200, "response": "Markov brain updated.", "id": 200}', self.wfile)
             return
 
         # If we've fallen through to here, bounce.
