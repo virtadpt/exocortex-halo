@@ -13,7 +13,8 @@
 # v1.0 - Initial release.
 
 # TODO:
-# - 
+# - Refactor RESTRequestHandler to break things out into other methods so they
+#   are easier to read.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -22,6 +23,7 @@
 
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
+from cobe.brain import Brain
 
 import argparse
 import ConfigParser
@@ -58,16 +60,32 @@ cursor = ""
 host = ""
 port = 0
 
+# Full path to a Markov brain file and handle to the Markov brain object.
+brainfile = ""
+brain = ""
+
+# In case the user wants to train from a corpus to initialize the Markov brain,
+# this will be a full path to a training file.
+training_file = ""
+
 # RESTRequestHandler: Subclass that implements a REST API service.  The main
 #   rails are the names of agent networks that will poll message queues for
 #   commands.  Each time they poll, they get a JSON dump of all of the
 #   commands waiting for them.
 class RESTRequestHandler(BaseHTTPRequestHandler):
-    # API key extracted from headers of client request.
-    api_key = ""
 
     # Process HTTP/1.1 GET requests.
     def do_GET(self):
+        client_api_key = ""
+        bot_name = ""
+        stimulus = ""
+        response = ""
+        
+        # Variables that hold data from the database accesses.
+        name = ""
+        bots_api_key = ""
+        respond = ""
+
         # If someone requests /, return the current internal configuration of
         # this microservice to be helpful.
         if self.path == '/':
@@ -83,13 +101,13 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             self.wfile.write("<p>The following API rails may be accessed with GET requests:</p>")
             self.wfile.write("<ul>")
-            self.wfile.write('<li>/ping - Responds with <code>{ "response": "pong" }</code></li>')
-            self.wfile.write('<li>/response - Accepts a string of input from the HTTP header X-Text-To-Respond-To, returns application/json of the form <code>{ "response": "This is the response." }</code>.  Does not add text to the Markov brain.</li>')
+            self.wfile.write('<li>/ping - Responds with <code>"pong"</code></li>')
+            self.wfile.write('<li>/response - Accepts a string of input from the HTTP header X-Text-To-Respond-To and the name of the bot in the HTTP header X-Bot-Name, returns application/json of the form <code>{ "response": "This is the response." }</code>.  Does not add text to the Markov brain.</li>')
             self.wfile.write("</ul>")
 
             self.wfile.write("<p>The following API rails may be accessed with PUT requests:</p>")
             self.wfile.write("<ul>")
-            self.wfile.write('<li>/learn - Accepts a string of input from the HTTP header X-Text-To-Learn, returns application/json of the form <code>{ "response": "trained" }</code>.  Updates the Markov brain.</li>')
+            self.wfile.write('<li>/learn - Accepts a string of input from the HTTP header X-Text-To-Learn and the name of the bot in the HTTP header X-Bot-Name, returns application/json of the form <code>{ "response": "trained" }</code>.  Updates the Markov brain.</li>')
             self.wfile.write('<li>/register - Registers the API key of a new client with the server.  Requires the HTTP header X-API-Key, which is the management API key of the server.  Also requires a JSON document of the form <br><br><code>{ "name": "Name of new bot", "api-key": "New bot\'s API key", "respond": "Y/N", "learn": "Y/N" }</code><br><br>  This rail will return an application/json documnt of the form <code>{ "response": "success/failure" }</code></li>')
             self.wfile.write('<li>/deregister - Deregisters the API key of an existing client from the server, removing its access.  Requires the HTTP header X-API-Key, which is the management API key of the server.  Requires a JSON document of the form <br><br><code>{ "name": "Name of bot", "api-key": "Bot\'s API key" }</code><br><br>  This rail will return an application/json documnt of the form <code>{ "response": "success/failure" }</code></li>')
             self.wfile.write("</ul>")
@@ -101,13 +119,77 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # Respond to /ping requests.
         if self.path == '/ping':
             self.send_response(200)
-            self.send_header("Content-type:", "application/json")
+            self.send_header("Content-type:", "text/html")
             self.end_headers()
-            json.dump({"response": "pong"}, self.wfile)
+            self.wfile.write("pong")
             return
 
         # Respond to /response requests.
         if self.path == '/response':
+
+            # See if the client sent an API key in the headers, and if so
+            # extract it.
+            if self.headers['X-API-Key']:
+                client_api_key = self.headers['X-API-Key']
+            else:
+                self.send_response(401)
+                self.send_header("Content-type:", "application/json")
+                self.end_headers()
+                json.dump({"response": "Missing API key."}, self.wfile)
+                return
+
+            # See if the client sent a bot name in the headers, and if so
+            # extract it.
+            if self.headers['X-Bot-Name']:
+                bot_name = self.headers['X-Bot-Name']
+            else:
+                self.send_response(401)
+                self.send_header("Content-type:", "application/json")
+                self.end_headers()
+                json.dump({"response": "Missing bot name."}, self.wfile)
+                return
+
+            # See if text to respond to is in the headers, and if so extract
+            # it.  It's an easy mistake to make.
+            if self.headers['X-Text-To-Respond-To']:
+                stimulus = self.headers['X-Text-To-Respond-To']
+            else:
+                self.send_response(400)
+                self.send_header("Content-type:", "application/json")
+                self.end_headers()
+                json.dump({"response": "Missing text to respond to."}, self.wfile)
+                return
+
+            # See if the bot is in the database.
+            cursor.execute("SELECT name, apikey, respond FROM clients WHERE name=? AND apikey=?", (bot_name, client_api_key, ))
+            row = cursor.fetchall()
+            if not row:
+                self.send_response(404)
+                self.send_header("Content-type:", "application/json")
+                self.end_headers()
+                json.dump({"response": "Bot not found."}, self.wfile)
+                return
+
+            # Take apart the response.  This is a little messy but necessary
+            # to get at the very end of the tuple.
+            (name, bots_api_key, respond) = row[0]
+
+            # If the bot does not have permission to respond, send back an
+            # error.  Again, this is a little messy but it's easier to get to
+            # a Bool than it is playing with identifying single letters.  And
+            # I'm sick while I'm writing this.
+            respond = respond.lower()
+            if respond == 'n':
+                respond = False
+            if not respond:
+                self.send_response(401)
+                self.send_header("Content-type:", "application/json")
+                self.end_headers()
+                json.dump({"response": "Bot does not have permission to respond."}, self.wfile)
+                return
+
+            # Ask the Markov brain for a response and return it to the client.
+            response = brain.reply(stimulus)
             json.dump({"response": response}, self.wfile)
             return
 
@@ -158,6 +240,16 @@ argparser.add_argument('--host', action='store', default="0.0.0.0",
 argparser.add_argument('--port', action='store', default=8050,
     help='Port the server listens on.  Default 8050/tcp.')
 
+# Path to the Cobe brain database.  If this file doesn't exist it'll be
+# created, and unless a file to train the bot is supplied in another command
+# line argument it'll have to train itself very slowly.
+argparser.add_argument('--brain', action='store', default='./rom.construct',
+    help="Path to the construct's brain.  If this file doesn't exist it'll be created, and you'll have to supply an initial training file in another argument.")
+
+# Path to a training file for the Markov brain.
+argparser.add_argument('--trainingfile', action='store',
+    help="Path to a file to train the Markov brain with if you haven't done so already.  It can be any text file so long as it's plain text and there is one entry per line.  If a brain already exists, training more is probably bad.  If you only want the bot to learn from you, chances are you don't want this.")
+
 # Parse the command line args.
 args = argparser.parse_args()
 if args.config:
@@ -172,10 +264,11 @@ if not os.path.exists(config_file):
 config.read(config_file)
 
 # Get configuration options from the configuration file.
-apikey = config.get("DEFAULT", "apikey")
 dbpath = config.get("DEFAULT", "dbpath")
 host = config.get("DEFAULT", "host")
 port = config.get("DEFAULT", "port")
+apikey = config.get("DEFAULT", "apikey")
+brain = config.get("DEFAULT", "brain")
 
 # Figure out how to configure the logger.  Start by reading from the config
 # file.
@@ -200,9 +293,9 @@ if not os.path.exists(dbpath):
     logger.debug("Client database " + dbpath + " not found.  Creating it.")
     database = sqlite3.connect(dbpath)
     cursor = database.cursor()
-    cursor.execute("CREATE TABLE clients (id INTEGER PRIMARY KEY NOT NULL)")
-    cursor.execute("ALTER TABLE clients ADD COLUMN apikey TEXT")
+    cursor.execute("CREATE TABLE clients (id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL)")
     cursor.execute("ALTER TABLE clients ADD COLUMN name TEXT")
+    cursor.execute("ALTER TABLE clients ADD COLUMN apikey TEXT")
     cursor.execute("ALTER TABLE clients ADD COLUMN respond TEXT")
     cursor.execute("ALTER TABLE clients ADD COLUMN learn TEXT")
     database.commit()
@@ -216,6 +309,33 @@ if args.host:
     host= args.host
 if args.port:
     port = args.port
+
+# If a prebuilt brainfile is specified on the command line, try to load it.
+if args.brain:
+    brainfile = args.brain
+    logger.info("The bot's personality construct file is " + brainfile + ".  Make sure this is correct.")
+    if not os.path.exists(brainfile):
+        logger.warn("The personality construct file specified (" + brainfile + ") does not exist.  A blank one will be constructed.")
+
+# If a training file is available, grab it.
+if args.trainingfile:
+    training_file = args.trainingfile
+
+# Instantiate a copy of the Cobe brain and try to load the database.  If the
+# brain file doesn't exist Cobe will create it.
+brain = Brain(brainfile)
+if training_file:
+    if os.path.exists(training_file):
+        logger.info("Initializing the personality matrix... this could take a while...")
+        brain.start_batch_learning()  
+        file = open(training_file)
+        for line in file.readlines():
+            brain.learn(line)
+        brain.stop_batch_learning()  
+        file.close()
+        logger.info("Done!")
+    else:
+        logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the hard way.")
 
 # Allocate and start the Simple HTTP Server instance.
 api_server = HTTPServer((host, port), RESTRequestHandler)
