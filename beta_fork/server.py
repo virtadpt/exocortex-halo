@@ -80,7 +80,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         bot_name = ""
         stimulus = ""
         response = ""
-        
+
         # Variables that hold data from the database accesses.
         name = ""
         bots_api_key = ""
@@ -327,11 +327,11 @@ brain = Brain(brainfile)
 if training_file:
     if os.path.exists(training_file):
         logger.info("Initializing the personality matrix... this could take a while...")
-        brain.start_batch_learning()  
+        brain.start_batch_learning()
         file = open(training_file)
         for line in file.readlines():
             brain.learn(line)
-        brain.stop_batch_learning()  
+        brain.stop_batch_learning()
         file.close()
         logger.info("Done!")
     else:
