@@ -467,13 +467,13 @@ brain = Brain(brainfile)
 if training_file:
     if os.path.exists(training_file):
         logger.info("Initializing a new personality matrix... this could take a while...")
-        brain.start_batch_learning()  
+        brain.start_batch_learning()
         file = open(training_file)
         for line in file.readlines():
             brain.learn(line)
-        brain.stop_batch_learning()  
+        brain.stop_batch_learning()
         file.close()
-        logger.info("Done!")
+        logger.info("Done!"
     else:
         logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the hard way.")
 
