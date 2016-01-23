@@ -473,7 +473,7 @@ if training_file:
             brain.learn(line)
         brain.stop_batch_learning()
         file.close()
-        logger.info("Done!"
+        logger.info("Done!")
     else:
         logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the hard way.")
 
