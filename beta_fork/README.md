@@ -27,13 +27,13 @@ The REST API rails look like this:
 * / - Online documentation. (GET)
 * /ping - Ping the server to see if it's available.  Responds with { "response": "pong"} (GET)
 * /response - Given a string of input, run it through the chatbot brain and return a response.  Responses will take the form { "response": "Some response here..." }  (GET)  Requires the following HTTP headers:
-** api-key - The bot's unique API key to prevent abuse.
-** text - Text to run through the chatbot brain.  It would be ideal if the text was cleaned up (extraneous whitespace stripped out, only one sentence at a time) but just in case some cleanup will be done on the server side also.
+** X-API-Key - The bot's unique API key to prevent abuse.
+** X-Text-To-Respond-To - Text to run through the chatbot brain.  It would be ideal if the text was cleaned up (extraneous whitespace stripped out, only one sentence at a time) but just in case some cleanup will be done on the server side also.
 * /learn - Given a string of input, run it through the chatbot brain to train ita little more.  Does not return a response to the text, instead it responds with { "response": "trained" }  (PUT)  Requires the following HTTP headers:
-** api-key - The bot's unique API key to prevent abuse.
-** text - Text to run through the chatbot brain.  It would be ideal if the text was cleaned up (extraneous whitespace stripped out, only one sentence at a time) but just in case some cleanup will be done on the server side also.
+** X-API-Key - The bot's unique API key to prevent abuse.
+** X-Text-To-Learn - Text to run through the chatbot brain.  It would be ideal if the text was cleaned up (extraneous whitespace stripped out, only one sentence at a time) but just in case some cleanup will be done on the server side also.
 * /register - Registers the API key of a new client with the server.  This isn't meant to be used by the client, but on the server-side with a shell script to control what bots can and can't access the server (which keeps people from monkeying around with the chatbot brain).  An API key is required for this, also - it's kept in the server's .conf file.  (PUT)  Requires the following HTTP headers:
-** api-key - The server's API key, restricting access.
+** X-API-Key - The server's API key, restricting access.
 
 The /register API rail requires a JSON document of the following form:
 
