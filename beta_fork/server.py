@@ -33,6 +33,7 @@ import ConfigParser
 import json
 import logging
 import os
+import re
 import sqlite3
 import sys
 
@@ -190,6 +191,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         bot_name = ""
         stimulus = ""
         response = ""
+        sentences = []
 
         # Variables that hold data from the database accesses.
         name = ""
@@ -252,7 +254,15 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Run the text through the Markov brain to update it and return a
             # success message.
-            response = brain.learn(stimulus)
+            sentence_ends = re.compile('[.!?]')
+            sentences = sentence_ends.split(stimulus)
+
+            # Get rid of the spurious entry at the end of the array...
+            sentences.pop()
+            logger.debug("List of sentences to learn from: " + str(sentences))
+
+            for i in sentences:
+                response = brain.learn(i)
             logger.info("Bot has updated the Markov brain.")
             json.dump('{200, "response": "Markov brain updated.", "id": 200}', self.wfile)
             return
