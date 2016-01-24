@@ -178,7 +178,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Ask the Markov brain for a response and return it to the client.
             response = brain.reply(stimulus)
-            json.dump('{200, "response": response, "id": 200}', self.wfile)
+            json.dump({"response": response, "id": 200}, self.wfile)
             return
 
         # If we've fallen through to here, bounce.
