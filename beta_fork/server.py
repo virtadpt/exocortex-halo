@@ -148,13 +148,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # Read any content sent from the client.  If there is no
             # "Content-Length" header, something screwy is happening, in which
             # case we fire an error.
-            try:
-                content_length = int(self.headers['Content-Length'])
-                content = self.rfile.read(content_length)
-                logger.debug("Content sent by client: " + content)
-            except:
-                logger.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
-                self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+            content = self._read_content()
+            if not content:
+                logger.debug("Client sent zero-lenth content.")
                 return
 
             # Ensure that the client sent JSON and not something else.
@@ -244,13 +240,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # Read any content sent from the client.  If there is no
             # "Content-Length" header, something screwy is happening, in which
             # case we fire an error.
-            try:
-                content_length = int(self.headers['Content-Length'])
-                content = self.rfile.read(content_length)
-                logger.debug("Content sent by client: " + content)
-            except:
-                logger.debug('500, {"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
-                self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+            content = self._read_content()
+            if not content:
+                logger.debug("Client sent zero-lenth content.")
                 return
 
             # Ensure that the client sent JSON and not something else.
@@ -336,13 +328,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # Read any content sent from the client.  If there is no
             # "Content-Length" header, something screwy is happening, in which
             # case we fire an error.
-            try:
-                content_length = int(self.headers['Content-Length'])
-                content = self.rfile.read(content_length)
-                logger.debug("Content sent by client: " + content)
-            except:
-                logger.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
-                self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+            content = self._read_content()
+            if not content:
+                logger.debug("Client sent zero-lenth content.")
                 return
 
             # Ensure that the client sent JSON and not something else.
@@ -442,10 +430,21 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(response)
         return
 
-    # This method will do the work of reading the content from the client
-    # connection.
+    # Read content from the client connection and return it.
     def _read_content(self):
-        pass
+        logger.debug("Entered _read_content().")
+        content = ""
+        content_length = 0
+
+        try:
+            content_length = int(self.headers['Content-Length'])
+            content = self.rfile.read(content_length)
+            logger.debug("Content sent by client: " + content)
+        except:
+            logger.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+            self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+            return None
+        return content
 
     # This method will ensure that the content from the client is JSON.
     def _ensure_json(self):
