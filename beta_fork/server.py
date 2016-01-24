@@ -16,8 +16,6 @@
 # - Refactor common code into separate methods so it's easier to understand
 #   and maintain.  This should probably start with checking the additional
 #   headers on incoming HTTP requests...
-# - Don't reference text in X-Foo headers, just use application/json and the
-#   content of requests.  It's neater that way.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -77,12 +75,14 @@ training_file = ""
 #   commands.  Each time they poll, they get a JSON dump of all of the
 #   commands waiting for them.
 class RESTRequestHandler(BaseHTTPRequestHandler):
+    # Keys that MUST be present in all JSON documents sent from the client.
+    required_keys = ["botname", "apikey", "stimulus"]
 
     # Process HTTP/1.1 GET requests.
     def do_GET(self):
-        client_api_key = ""
-        bot_name = ""
-        stimulus = ""
+        content = ""
+        content_length = 0
+        arguments = {}
         response = ""
 
         # Variables that hold data from the database accesses.
@@ -96,26 +96,35 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type:", "text/html")
             self.end_headers()
+
+            # Top of the page.
             self.wfile.write("<html><head><title>Documentation for beta_fork() server</title></head>")
             self.wfile.write("<body>")
-            self.wfile.write("<p>All API calls save this one require API keys, which are passed in HTTP headers like so:</p>")
-            self.wfile.write("<code>")
-            self.wfile.write("X-API-Key: someAPIkeyHere")
-            self.wfile.write("</code>")
+            self.wfile.write("<p>All interaction with this service will take the form of JSON documents (Content-Type: application/json).  The following keys are required:</p>")
+            self.wfile.write('<p><code>{ "botname": "bot\'s name", "apikey": "bot\'s unique API key", "stimulus": "Text the client wants to send the server." }</code></p>')
 
+            # HTTP GET requests.
             self.wfile.write("<p>The following API rails may be accessed with GET requests:</p>")
             self.wfile.write("<ul>")
             self.wfile.write('<li>/ping - Responds with <code>"pong"</code></li>')
-            self.wfile.write('<li>/response - Accepts a string of input from the HTTP header X-Text-To-Respond-To and the name of the bot in the HTTP header X-Bot-Name, returns application/json of the form <code>{ "response": "This is the response." }</code>.  Does not add text to the Markov brain.</li>')
+            self.wfile.write('<li>/response - Accepts a string of input in the <code>content</code> key and returns a JSON document of the form <code>{ "response": "This is the response." }</code>.  Does not add text to the Markov brain.</li>')
             self.wfile.write("</ul>")
 
+            # HTTP PUT requests.
             self.wfile.write("<p>The following API rails may be accessed with PUT requests:</p>")
             self.wfile.write("<ul>")
-            self.wfile.write('<li>/learn - Accepts a string of input from the HTTP header X-Text-To-Learn and the name of the bot in the HTTP header X-Bot-Name, returns application/json of the form <code>{ "response": "trained" }</code>.  Updates the Markov brain.</li>')
+            self.wfile.write('<li>/learn - Accepts a string of input in the <code>content</code> key and returns a JSON document of the form <code>{ "response": "trained" }</code>.  Updates the Markov brain.</li>')
             self.wfile.write('<li>/register - Registers the API key of a new client with the server.  Requires the HTTP header X-API-Key, which is the management API key of the server.  Also requires a JSON document of the form <br><br><code>{ "name": "Name of new bot", "api-key": "New bot\'s API key", "respond": "Y/N", "learn": "Y/N" }</code><br><br>  This rail will return an application/json documnt of the form <code>{ "response": "success/failure" }</code></li>')
-            self.wfile.write('<li>/deregister - Deregisters the API key of an existing client from the server, removing its access.  Requires the HTTP header X-API-Key, which is the management API key of the server.  Requires a JSON document of the form <br><br><code>{ "name": "Name of bot", "api-key": "Bot\'s API key" }</code><br><br>  This rail will return an application/json documnt of the form <code>{ "response": "success/failure" }</code></li>')
+            self.wfile.write('<li>/deregister - Deregisters the API key of an existing client from the server, removing its access.  Requires the HTTP header X-API-Key, which is the management API key of the server.  Requires a JSON document of the form <br><br><code>{ "name": "Name of bot", "apikey": "Bot\'s API key" }</code><br><br>  This rail will return an application/json documnt of the form <code>{ "response": "success/failure" }</code></li>')
             self.wfile.write("</ul>")
 
+            # How to interact with the service with cURL.
+            self.wfile.write('<p>To better understand how to interact with the service, you can use <a href="http://curl.haxx.se/">cURL</a> utility.</p>')
+            self.wfile.write('<p>An HTTP GET request: <code>curl -X GET -H "Content-Type: application/json" -d \'{ "botname": "Alice", "apikey": "abcd", "stimulus": "This is some text I want to get a response to." }\' http://localhost:8050/response</code></p>')
+            self.wfile.write('An HTTP PUT request: <code>curl -X PUT -H "Content-Type: application/json" -d \'{ "botname": "Alice", "apikey": "abcd", "stimulus": "This is some text I want to train the Markov engine on.  I do not expect to get a response to the text at the same time." }\' http://localhost:8050/learn</code>')
+            self.wfile.write('<p></p>')
+
+            # Bottom of the page.
             self.wfile.write("</body>")
             self.wfile.write("</body></html>")
             return
@@ -130,33 +139,58 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
         # Respond to /response requests.
         if self.path == '/response':
+            # For debugging purposes, dump the headers the server gets from
+            # the client.
+            logging.debug("List of headers in the HTTP request:")
+            for key in self.headers:
+                logging.debug("    " + key + " - " + self.headers[key])
 
-            # See if the client sent an API key in the headers, and if so
-            # extract it.
-            if self.headers['X-API-Key']:
-                client_api_key = self.headers['X-API-Key']
-            else:
-                self._send_http_response(401, '{"response": "Missing API key.", "id": 401}')
+            # Read any content sent from the client.  If there is no
+            # "Content-Length" header, something screwy is happening, in which
+            # case we fire an error.
+            try:
+                content_length = int(self.headers['Content-Length'])
+                content = self.rfile.read(content_length)
+                logger.debug("Content sent by client: " + content)
+            except:
+                logger.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+                self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
                 return
 
-            # See if the client sent a bot name in the headers, and if so
-            # extract it.
-            if self.headers['X-Bot-Name']:
-                bot_name = self.headers['X-Bot-Name']
-            else:
-                self._send_http_response(401, '{"response": "Missing bot name.", "id": 401}')
+            # Ensure that the client sent JSON and not something else.
+            if "application/json" not in self.headers['Content-Type']:
+                logger.debug('{"result": null, "error": "You need to send JSON.", "id": 400}')
+                self._send_http_response(400, '{"result": null, "error": "You need to send JSON.", "id": 400}')
                 return
 
-            # See if text to respond to is in the headers, and if so extract
-            # it.  It's an easy mistake to make.
-            if self.headers['X-Text-To-Respond-To']:
-                stimulus = self.headers['X-Text-To-Respond-To']
-            else:
-                self._send_http_response(400, '{"response": "Missing text to respond to.", "id": 400}')
+            # Try to deserialize the JSON sent from the client.  If we can't,
+            # pitch a fit.
+            try:
+                arguments = json.loads(content)
+            except:
+                logger.debug('{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+                self._send_http_response(400, '{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+                return
+
+            # Normalize the keys in the JSON to lowercase.  This is kind of an
+            # ugly hack because it's a little wasteful of memory, but the hash
+            # table is so small that we can deal with it.
+            for key in arguments.keys():
+                arguments[key.lower()] = arguments[key]
+                logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
+
+            # Ensure that all of the required keys are in the JSON document.
+            all_keys_found = True
+            for key in self.required_keys:
+                if key not in arguments.keys():
+                    all_keys_found = False
+            if not all_keys_found:
+                logger.debug('{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+                self._send_http_response(400, '{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
                 return
 
             # See if the bot is in the database.
-            cursor.execute("SELECT name, apikey, respond FROM clients WHERE name=? AND apikey=?", (bot_name, client_api_key, ))
+            cursor.execute("SELECT name, apikey, respond FROM clients WHERE name=? AND apikey=?", (arguments['botname'], arguments['apikey'], ))
             row = cursor.fetchall()
             if not row:
                 self._send_http_response(404, '{"response": "Bot not found.", "id": 404}')
@@ -178,8 +212,13 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # Ask the Markov brain for a response and return it to the client.
-            response = brain.reply(stimulus)
+            response = brain.reply(arguments['stimulus'])
             json.dump({"response": response, "id": 200}, self.wfile)
+            return
+
+        # Respond to /register requests.
+        if self.path == '/register':
+
             return
 
         # If we've fallen through to here, bounce.
@@ -187,9 +226,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Process HTTP/1.1 PUT requests.
     def do_PUT(self):
-        client_api_key = ""
-        bot_name = ""
-        stimulus = ""
+        content = ""
+        content_length = 0
+        arguments = {}
         response = ""
         sentences = []
 
@@ -201,35 +240,59 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         if self.path == "/learn":
             logger.info("A client has contacted the /learn API rail.")
 
-            # See if the client sent an API key in the headers, and if so
-            # extract it.
-            if self.headers['X-API-Key']:
-                client_api_key = self.headers['X-API-Key']
-            else:
-                logger.info("Missing API key.")
-                self._send_http_response(401, '{"response": "Missing API key.", "id": 401}')
+            # For debugging purposes, dump the headers the server gets from
+            # the client.
+            logging.debug("List of headers in the HTTP request:")
+            for key in self.headers:
+                logging.debug("    " + key + " - " + self.headers[key])
+
+            # Read any content sent from the client.  If there is no
+            # "Content-Length" header, something screwy is happening, in which
+            # case we fire an error.
+            try:
+                content_length = int(self.headers['Content-Length'])
+                content = self.rfile.read(content_length)
+                logger.debug("Content sent by client: " + content)
+            except:
+                logger.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+                self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
                 return
 
-            # See if the client sent a bot name in the headers, and if so
-            # extract it.
-            if self.headers['X-Bot-Name']:
-                bot_name = self.headers['X-Bot-Name']
-            else:
-                logger.info("Missing bot name.")
-                self._send_http_response(401, '{"response": "Missing bot name.", "id": 401}')
+            # Ensure that the client sent JSON and not something else.
+            if "application/json" not in self.headers['Content-Type']:
+                logger.debug('{"result": null, "error": "You need to send JSON.", "id": 400}')
+                self._send_http_response(400, '{"result": null, "error": "You need to send JSON.", "id": 400}')
                 return
 
-            # See if text to learn from is in the headers, and if so extract
-            # it.  It's an easy mistake to make.
-            if self.headers['X-Text-To-Learn-From']:
-                stimulus = self.headers['X-Text-To-Learn-From']
-            else:
-                logger.info("No text to learn from.")
-                self._send_http_response(400, '{"response": "Missing text to learn from.", "id": 400}')
+
+            # Try to deserialize the JSON sent from the client.  If we can't,
+            # pitch a fit.
+            try:
+                arguments = json.loads(content)
+            except:
+                logger.debug('{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+                self._send_http_response(400, '{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+                return
+
+            # Normalize the keys in the JSON to lowercase.  This is kind of an
+            # ugly hack because it's a little wasteful of memory, but the hash
+            # table is so small that we can deal with it.
+            for key in arguments.keys():
+                arguments[key.lower()] = arguments[key]
+                logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
+
+            # Ensure that all of the required keys are in the JSON document.
+            all_keys_found = True
+            for key in self.required_keys:
+                if key not in arguments.keys():
+                    all_keys_found = False
+            if not all_keys_found:
+                logger.debug('{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+                self._send_http_response(400, '{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
                 return
 
             # See if the bot is in the database.
-            cursor.execute("SELECT name, apikey, learn FROM clients WHERE name=? AND apikey=?", (bot_name, client_api_key, ))
+            cursor.execute("SELECT name, apikey, learn FROM clients WHERE name=? AND apikey=?", (arguments['botname'], arguments['apikey'], ))
             row = cursor.fetchall()
             if not row:
                 logger.info("Bot not found in database.")
@@ -255,7 +318,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # Run the text through the Markov brain to update it and return a
             # success message.
             sentence_ends = re.compile('[.!?]')
-            sentences = sentence_ends.split(stimulus)
+            sentences = sentence_ends.split(arguments['stimulus'])
 
             # Get rid of the spurious entry at the end of the array...
             sentences.pop()
@@ -264,7 +327,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             for i in sentences:
                 response = brain.learn(i)
             logger.info("Bot has updated the Markov brain.")
-            json.dump('{200, "response": "Markov brain updated.", "id": 200}', self.wfile)
+            json.dump('{200, "response": "trained", "id": 200}', self.wfile)
             return
 
         # If we've fallen through to here, bounce.
