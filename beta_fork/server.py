@@ -154,9 +154,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # Ensure that the client sent JSON and not something else.
-            if "application/json" not in self.headers['Content-Type']:
-                logger.debug('{"result": null, "error": "You need to send JSON.", "id": 400}')
-                self._send_http_response(400, '{"result": null, "error": "You need to send JSON.", "id": 400}')
+            if not self._ensure_json():
                 return
 
             # Try to deserialize the JSON sent from the client.  If we can't,
@@ -246,9 +244,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # Ensure that the client sent JSON and not something else.
-            if "application/json" not in self.headers['Content-Type']:
-                logger.debug('400, {"result": null, "error": "You need to send JSON.", "id": 400}')
-                self._send_http_response(400, '{"result": null, "error": "You need to send JSON.", "id": 400}')
+            if not self._ensure_json():
                 return
 
             # Try to deserialize the JSON sent from the client.  If we can't,
@@ -334,10 +330,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # Ensure that the client sent JSON and not something else.
-            if "application/json" not in self.headers['Content-Type']:
-                logger.debug('{"result": null, "error": "You need to send JSON.", "id": 400}')
-                self._send_http_response(400, '{"result": null, "error": "You need to send JSON.", "id": 400}')
+            if not self._ensure_json():
                 return
+
             # Try to deserialize the JSON sent from the client.  If we can't,
             # pitch a fit.
             try:
@@ -448,7 +443,12 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # This method will ensure that the content from the client is JSON.
     def _ensure_json(self):
-        pass
+        if "application/json" not in self.headers['Content-Type']:
+            logger.debug('{"result": null, "error": "You need to send JSON.", "id": 400}')
+            self._send_http_response(400, '{"result": null, "error": "You need to send JSON.", "id": 400}')
+            return False
+        else:
+            return True
 
     # This method will normalize the keys in the hash table to all lowercase.
     def _normalize_keys(self):
