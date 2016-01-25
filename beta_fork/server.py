@@ -286,6 +286,11 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             sentences.pop()
             logger.debug("List of sentences to learn from: " + str(sentences))
 
+            # Run the sentences through the markov brain.
+            if not len(sentences):
+                logger.info("No sentences to update the Markov brain.")
+                json.dump('{400, "response": "failed", "id": 400}', self.wfile)
+                return
             for i in sentences:
                 response = brain.learn(i)
             logger.info("Bot has updated the Markov brain.")
@@ -377,16 +382,25 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # Add the bot to the database.
-            try:
-                cursor.execute("INSERT INTO clients (name, apikey, respond, learn) VALUES (?, ?, ?, ?)", (arguments['botname'], arguments['apikey'], arguments['respond'], arguments['learn'], ))
-            except:
-                logger.info("Unable to add bot " + arguments['botname'] + " to database.")
-                database.rollback()
+            if self._add_bot_to_database(arguments['botname'],
+                arguments['apikey'], arguments['respond'], arguments['learn']):
+                self._send_http_response(200, '{"response": "success", "id": 200}')
+            else:
                 self._send_http_response(400, '{"response": "failure", "id": 400}')
-                return
-            database.commit()
-            self._send_http_response(200, '{"response": "success", "id": 200}')
             return
+
+
+
+
+
+            #try:
+            #    cursor.execute("INSERT INTO clients (name, apikey, respond, learn) VALUES (?, ?, ?, ?)", (arguments['botname'], arguments['apikey'], arguments['respond'], arguments['learn'], ))
+            #except:
+            #    logger.info("Unable to add bot " + arguments['botname'] + " to database.")
+            #    database.rollback()
+            #    self._send_http_response(400, '{"response": "failure", "id": 400}')
+            #    return
+            #database.commit()
 
         # If we've fallen through to here, bounce.
         return
@@ -479,6 +493,20 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             return None
         else:
             return row
+
+    # Add the bot to the database.  Return True if it worked and False if it
+    # didnt'.
+    def _add_bot_to_database(self, name, apikey, respond, learn):
+        try:
+            cursor.execute("INSERT INTO clients (name, apikey, respond, learn) VALUES (?, ?, ?, ?)", (name, apikey, respond, learn, ))
+        except:
+            logger.info("Unable to add bot " + botname + " to database.")
+            database.rollback()
+            return False
+
+        # Success!  Commit the transaction and return True.
+        database.commit()
+        return True
 
 # Figure out what to set the logging level to.  There isn't a straightforward
 # way of doing this because Python uses constants that are actually integers
