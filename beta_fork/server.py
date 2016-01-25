@@ -164,9 +164,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if not arguments:
                 return
 
-            # Normalize the keys in the JSON to lowercase.  This is kind of an
-            # ugly hack because it's a little wasteful of memory, but the hash
-            # table is so small that we can deal with it.
+            # Normalize the keys in the JSON to lowercase.
             arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
@@ -245,9 +243,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             if not arguments:
                 return
 
-            # Normalize the keys in the JSON to lowercase.  This is kind of an
-            # ugly hack because it's a little wasteful of memory, but the hash
-            # table is so small that we can deal with it.
+            # Normalize the keys in the JSON to lowercase.
             arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
@@ -338,9 +334,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 self._send_http_response(401, '{"result": null, "error": "failure", "id": 401}')
                 return
 
-            # Normalize the keys in the JSON to lowercase.  This is kind of an
-            # ugly hack because it's a little wasteful of memory, but the hash
-            # table is so small that we can deal with it.
+            # Normalize the keys in the JSON to lowercase.
             arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
@@ -389,8 +383,79 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 self._send_http_response(400, '{"response": "failure", "id": 400}')
             return
 
+        if self.path == "/deregister":
+            logger.info("A client has contacted the /deregister API rail.  This makes things somewhat interesting.")
+
+            # For debugging purposes, dump the headers the server gets from
+            # the client.
+            logging.debug("List of headers in the HTTP request:")
+            for key in self.headers:
+                logging.debug("    " + key + " - " + self.headers[key])
+
+            # Read any content sent from the client.  If there is no
+            # "Content-Length" header, something screwy is happening, in which
+            # case we fire an error.
+            content = self._read_content()
+            if not content:
+                logger.debug("Client sent zero-lenth content.")
+                return
+
+            # Ensure that the client sent JSON and not something else.
+            if not self._ensure_json():
+                return
+
+            # Try to deserialize the JSON sent from the client.  If we can't,
+            # pitch a fit.
+            arguments = self._deserialize_content(content)
+            if not arguments:
+                return
+
+            # Ensure that the management API key was sent in an HTTP header.
+            # If it wasn't, abort.
+            if "x-api-key" not in self.headers.keys():
+                logger.info("User tried to /deregister a bot but didn't include the management API key.")
+                self._send_http_response(401, '{"result": null, "error": "failure", "id": 401}')
+                return
+
+            # Check the included management API key against the one in the
+            # server's config file.
+            if self.headers['x-api-key'] != apikey:
+                logger.info("User tried to /deregister a bot with an incorrect management API key.")
+                self._send_http_response(401, '{"result": null, "error": "failure", "id": 401}')
+                return
+
+            # Normalize the keys in the JSON to lowercase.
+            arguments = self._normalize_keys(arguments)
+
+            # Ensure that all of the required keys are in the JSON document.
+            if not self._ensure_all_keys(arguments):
+                logger.debug('{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+                self._send_http_response(400, '{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+                return
+
+            # See if the bot is not in the database.  Send back an error (404
+            # (Not Found) if it's not.
+            row = self._bot_in_database(arguments['botname'],
+                arguments['apikey'])
+            if not row:
+                logger.info("Bot does not exist in database.")
+                self._send_http_response(404, '{"response": "failure", "id": 404}')
+                return
+
+            # Delete the bot from the database.
+            if self._delete_bot_from_database(arguments['botname'],
+                arguments['apikey']):
+                self._send_http_response(200, '{"response": "success", "id": 200}')
+            else:
+                self._send_http_response(404, '{"response": "failure", "id": 404}')
+            return
+
         # If we've fallen through to here, bounce.
         return
+
+    #
+    # Helper methods start here.
+    #
 
     # Send an HTTP response, consisting of the status code, headers and
     # payload.  Takes two arguments, the HTTP status code and a JSON document
@@ -405,7 +470,6 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
     # Read content from the client connection and return it as a string.
     # Return None if there isn't any content.
     def _read_content(self):
-        logger.debug("Entered _read_content().")
         content = ""
         content_length = 0
 
@@ -482,12 +546,26 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             return row
 
     # Add the bot to the database.  Return True if it worked and False if it
-    # didnt'.
+    # didn't.
     def _add_bot_to_database(self, name, apikey, respond, learn):
         try:
             cursor.execute("INSERT INTO clients (name, apikey, respond, learn) VALUES (?, ?, ?, ?)", (name, apikey, respond, learn, ))
         except:
             logger.info("Unable to add bot " + botname + " to database.")
+            database.rollback()
+            return False
+
+        # Success!  Commit the transaction and return True.
+        database.commit()
+        return True
+
+    # Delete a bot from the database.  Return True if it worked and False if it
+    # didn't.
+    def _delete_bot_from_database(self, name, apikey):
+        try:
+            cursor.execute("DELETE FROM clients WHERE name=? AND apikey=?", (name, apikey, ))
+        except:
+            logger.info("Unable to delete bot " + botname + " from database.")
             database.rollback()
             return False
 
