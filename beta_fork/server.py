@@ -13,9 +13,8 @@
 # v1.0 - Initial release.
 
 # TODO:
-# - Refactor common code into separate methods so it's easier to understand
-#   and maintain.  There is a scary amount of repeated code in here, this will
-#   make it much more elegant.
+# - Figure out if refactoring the do_FOO() HTTP methods into separate methods
+#   to make them easier to read is worth doing.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
