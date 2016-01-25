@@ -86,6 +86,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         response = ""
 
         # Variables that hold data from the database accesses.
+        row = ""
         name = ""
         bots_api_key = ""
         respond = ""
@@ -169,18 +170,12 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
-            all_keys_found = True
-            for key in self.required_keys:
-                if key not in arguments.keys():
-                    all_keys_found = False
-            if not all_keys_found:
-                logger.debug('400, {"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
-                self._send_http_response(400, '{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+            if not self._ensure_all_keys(arguments):
                 return
 
             # See if the bot is in the database.
-            cursor.execute("SELECT name, apikey, respond FROM clients WHERE name=? AND apikey=?", (arguments['botname'], arguments['apikey'], ))
-            row = cursor.fetchall()
+            row = self._bot_in_database(arguments['botname'],
+                arguments['apikey'])
             if not row:
                 self._send_http_response(404, '{"response": "Bot not found.", "id": 404}')
                 return
@@ -215,8 +210,10 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         arguments = {}
         response = ""
         sentences = []
+        all_keys_found = True
 
         # Variables that hold data from the database accesses.
+        row = ""
         name = ""
         bots_api_key = ""
         learn = ""
@@ -254,20 +251,13 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
-            all_keys_found = True
-            for key in self.required_keys:
-                if key not in arguments.keys():
-                    all_keys_found = False
-            if not all_keys_found:
-                logger.debug('{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
-                self._send_http_response(400, '{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+            if not self._ensure_all_keys(arguments):
                 return
 
             # See if the bot is in the database.
-            cursor.execute("SELECT name, apikey, learn FROM clients WHERE name=? AND apikey=?", (arguments['botname'], arguments['apikey'], ))
-            row = cursor.fetchall()
+            row = self._bot_in_database(arguments['botname'],
+                arguments['apikey'])
             if not row:
-                logger.info("Bot not found in database.")
                 self._send_http_response(404, '{"response": "Bot not found.", "id": 404}')
                 return
 
@@ -349,10 +339,12 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
-            all_keys_found = True
-            for key in self.required_keys:
-                if key not in arguments.keys():
-                    all_keys_found = False
+            if not self._ensure_all_keys(arguments):
+                return
+
+            # There are additional JSON keys that have to be present for this
+            # API rail.  This can probably be split out into a separate helper
+            # method later.
             if "respond" not in arguments.keys():
                 all_keys_found = False
             if "learn" not in arguments.keys():
@@ -376,10 +368,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 return
 
             # See if the bot is in the database already.  Send back an error
-            # 409 (Conflict) if it does.
-            cursor.execute("SELECT name, apikey FROM clients WHERE name=? AND apikey=?", (arguments['botname'], arguments['apikey'], ))
-            row = cursor.fetchall()
-            logger.debug("Value of row: " + str(row))
+            # 409 (Conflict) if it is.
+            row = self._bot_in_database(arguments['botname'],
+                arguments['apikey'])
             if row:
                 logger.info("Bot already in database.")
                 self._send_http_response(409, '{"response": "failure", "id": 409}')
@@ -458,10 +449,36 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
         return arguments
 
-    # This method will ensure that all of the keys required for every client
-    # access are in the hash table.
-    def _ensure_all_keys(self):
-        pass
+    # Ensure that all of the keys required for every client access are in the
+    # hash table.
+    def _ensure_all_keys(self, arguments):
+        all_keys_found = True
+
+        for key in self.required_keys:
+            if key not in arguments.keys():
+                all_keys_found = False
+
+        if not all_keys_found:
+            logger.debug('400, {"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+            self._send_http_response(400, '{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+            return False
+        else:
+            return True
+
+    # Check to see if a bot is already in the database.  Return None if the
+    # bot is not in the database (because it'll be treated as False) or the
+    # row from the database (because it's non-False) The JSON response is
+    # highly dependent on where in the code this method is being called from,
+    # so the HTTP response is handled below the method call.
+    def _bot_in_database(self, botname, apikey):
+        row = ""
+
+        cursor.execute("SELECT name, apikey, respond FROM clients WHERE name=? AND apikey=?", (botname, apikey, ))
+        row = cursor.fetchall()
+        if not row:
+            return None
+        else:
+            return row
 
 # Figure out what to set the logging level to.  There isn't a straightforward
 # way of doing this because Python uses constants that are actually integers
