@@ -389,19 +389,6 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 self._send_http_response(400, '{"response": "failure", "id": 400}')
             return
 
-
-
-
-
-            #try:
-            #    cursor.execute("INSERT INTO clients (name, apikey, respond, learn) VALUES (?, ?, ?, ?)", (arguments['botname'], arguments['apikey'], arguments['respond'], arguments['learn'], ))
-            #except:
-            #    logger.info("Unable to add bot " + arguments['botname'] + " to database.")
-            #    database.rollback()
-            #    self._send_http_response(400, '{"response": "failure", "id": 400}')
-            #    return
-            #database.commit()
-
         # If we've fallen through to here, bounce.
         return
 
