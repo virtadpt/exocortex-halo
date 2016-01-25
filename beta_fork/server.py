@@ -159,19 +159,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Try to deserialize the JSON sent from the client.  If we can't,
             # pitch a fit.
-            try:
-                arguments = json.loads(content)
-            except:
-                logger.debug('400, {"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
-                self._send_http_response(400, '{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+            arguments = self._deserialize_content(content)
+            if not arguments:
                 return
 
             # Normalize the keys in the JSON to lowercase.  This is kind of an
             # ugly hack because it's a little wasteful of memory, but the hash
             # table is so small that we can deal with it.
-            for key in arguments.keys():
-                arguments[key.lower()] = arguments[key]
-                logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
+            arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
             all_keys_found = True
@@ -249,19 +244,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Try to deserialize the JSON sent from the client.  If we can't,
             # pitch a fit.
-            try:
-                arguments = json.loads(content)
-            except:
-                logger.debug('400, {"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
-                self._send_http_response(400, '{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+            arguments = self._deserialize_content(content)
+            if not arguments:
                 return
 
             # Normalize the keys in the JSON to lowercase.  This is kind of an
             # ugly hack because it's a little wasteful of memory, but the hash
             # table is so small that we can deal with it.
-            for key in arguments.keys():
-                arguments[key.lower()] = arguments[key]
-                logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
+            arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
             all_keys_found = True
@@ -335,11 +325,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Try to deserialize the JSON sent from the client.  If we can't,
             # pitch a fit.
-            try:
-                arguments = json.loads(content)
-            except:
-                logger.debug('{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
-                self._send_http_response(400, '{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+            arguments = self._deserialize_content(content)
+            if not arguments:
                 return
 
             # Ensure that the management API key was sent in an HTTP header.
@@ -359,9 +346,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # Normalize the keys in the JSON to lowercase.  This is kind of an
             # ugly hack because it's a little wasteful of memory, but the hash
             # table is so small that we can deal with it.
-            for key in arguments.keys():
-                arguments[key.lower()] = arguments[key]
-                logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
+            arguments = self._normalize_keys(arguments)
 
             # Ensure that all of the required keys are in the JSON document.
             all_keys_found = True
@@ -425,7 +410,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(response)
         return
 
-    # Read content from the client connection and return it.
+    # Read content from the client connection and return it as a string.
+    # Return None if there isn't any content.
     def _read_content(self):
         logger.debug("Entered _read_content().")
         content = ""
@@ -439,9 +425,10 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logger.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
             self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
             return None
+
         return content
 
-    # This method will ensure that the content from the client is JSON.
+    # Ensure that the content from the client is JSON.
     def _ensure_json(self):
         if "application/json" not in self.headers['Content-Type']:
             logger.debug('{"result": null, "error": "You need to send JSON.", "id": 400}')
@@ -450,9 +437,26 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         else:
             return True
 
-    # This method will normalize the keys in the hash table to all lowercase.
-    def _normalize_keys(self):
-        pass
+    # Try to deserialize content from the client.  Return the hash table
+    # containing the deserialized JSON if it exists.
+    def _deserialize_content(self, content):
+        arguments = {}
+
+        try:
+            arguments = json.loads(content)
+        except:
+            logger.debug('400, {"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+            self._send_http_response(400, '{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+            return None
+
+        return arguments
+
+    # Normalize the keys in the hash table to all lowercase.
+    def _normalize_keys(self, arguments):
+        for key in arguments.keys():
+            arguments[key.lower()] = arguments[key]
+            logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
+        return arguments
 
     # This method will ensure that all of the keys required for every client
     # access are in the hash table.
