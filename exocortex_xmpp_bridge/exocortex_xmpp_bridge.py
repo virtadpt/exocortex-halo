@@ -20,6 +20,8 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v2.1 - Working on the "goes into a coma and pegs the CPU problem" by adding
+#        XEP-0199 client-to-server pings to keep the server alive.
 # v2.0 - Rewrote using xmpppy (http://xmpppy.sourceforge.net/) because it's
 #        more lightweight than SleekXMPP and hopefully has fewer interactions.
 #        Also, if I need to, I should be able to drop nbXMPP
@@ -99,6 +101,7 @@ class XMPPClient(threading.Thread):
     nickname = ""
     JID = ""
     password = ""
+    server = ""
 
     # This is the bot's designated owner, which controls whether or not it
     # responds to any commands.
@@ -116,6 +119,7 @@ class XMPPClient(threading.Thread):
     connection_resource = False
     authentication_resource = False
     roster = ""
+    xmpp_ping = ""
 
     # Initialize new instances of the class.
     def __init__(self, username, password):
@@ -133,6 +137,9 @@ class XMPPClient(threading.Thread):
         # Generate a JID, because that seems to be a specific data structure
         # in xmpppy.
         self.JID = xmpp.JID(username)
+
+        # Build an XEP-0199 client-to-server ping stanza.
+        self.xmpp_ping = self.build_xmpp_ping()
 
         # Start the thread.
         logger.debug("Initiating the XMPPClient thread by calling self.start().")
@@ -188,12 +195,17 @@ class XMPPClient(threading.Thread):
             body=now_online_message)
         self.connection.send(now_online)
 
+        # Initiate the server XMPP ping thread.
+        logger.debug("Initiating the background XMPP server ping thread.")
+        self.send_xmpp_ping()
+
         # Go into the work loop.
         logger.debug("Entering XMPPClient.run() work loop.")
         while not self.shutdown:
             try:
                 # See if there is a stanza in the incoming connection stream.
-                self.connection.Process(1)
+                self.connection.Process(10)
+
             except KeyboardInterrupt:
                 logger.debug("Received KeyboardInterrupt.")
                 self.shutdown = True
@@ -311,6 +323,28 @@ class XMPPClient(threading.Thread):
             body=acknowledge_text)
         self.connection.send(acknowledge)
         return
+
+    # Constructs an XEP-0199 client-to-server ping Iq stanza, which will be
+    # re-used all the time.
+    def build_xmpp_ping(self):
+        xmpp_ping_stanza = ""
+        xmpp_ping = ""
+
+        xmpp_ping_stanza = "<iq from='" + self.username + "' "
+        xmpp_ping_stanza = xmpp_ping_stanza + "id='c2s1' type='get'>"
+        xmpp_ping_stanza = xmpp_ping_stanza + "\n"
+        xmpp_ping_stanza = xmpp_ping_stanza + "  <ping xmlns='urn:xmpp:ping'/>"
+        xmpp_ping_stanza = xmpp_ping_stanza + "\n"
+        xmpp_ping_stanza = xmpp_ping_stanza + "</iq>"
+        xmpp_ping = xmpp.Iq(node=xmpp_ping_stanza)
+
+        return xmpp_ping
+
+    # This is a self-contained method which sends an XEP-0199 ping to the
+    # server every 60 seconds to keep the client's connection alive.
+    def send_xmpp_ping(self):
+        self.connection.send(self.xmpp_ping)
+        threading.Timer(60, self.send_xmpp_ping).start()
 
 # RESTRequestHandler: Subclass that implements a REST API service.  The main
 #   rails are the names of agent networks that will poll message queues for
