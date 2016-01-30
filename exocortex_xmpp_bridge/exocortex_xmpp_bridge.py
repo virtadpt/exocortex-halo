@@ -58,6 +58,8 @@
 #   lowercase instead of proper capitalization, or proper capitalization
 #   instead of all caps) match when search requests are pushed into the
 #   message queue.  I think I can do this, I just need to play with it.
+# - Refactor command parser to break out commands and search requests into
+#   smaller methods.  It's pretty messy, and thus difficult to debug.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -274,6 +276,13 @@ class XMPPClient(threading.Thread):
             response_body = "To execute a search, send a message that looks like this:\n"
             response_body = response_body + "<bot name>, top <n> hits for <search term>.\n"
             response_body = response_body + "At present, at most 30 search results are supported.  The number of search results is spelled out (i.e., 'ten' and not 10).\n"
+            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
+                body=response_body)
+            self.connection.send(response)
+
+            response_body = "To e-mail search results to someone who isn't you, send a message that looks like this:\n"
+            response_body = response_body + "<bot name>, send/e-mail/email/mail <e-mail address> top <n> hits for <search term>.\n"
+            response_body = response_body + "Search results will be e-mailed to the address given."
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
             self.connection.send(response)

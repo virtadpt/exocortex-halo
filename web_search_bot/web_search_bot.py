@@ -56,7 +56,7 @@ import time
 
 # Constants.
 # Hash table that maps numbers-as-words ("ten") into numbers (10).
-numbers = {"zero":0, "one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
+numbers = {"one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
     "seven":7, "eight":8, "nine":9, "ten":10, "eleven":11, "twelve":12,
     "thirteen":13, "fourteen":14, "fifteen":15, "sixteen":16, "seventeen":17,
     "eighteen":18, "nineteen":19, "twenty":20, "twenty-one":21, "twenty-two":22,
@@ -152,6 +152,7 @@ def parse_search_request(search_request):
     number_of_search_results = 0
     search_term = ""
     email_address = ""
+    words = []
 
     # Clean up the search request.
     search_request = search_request.strip()
@@ -170,21 +171,24 @@ def parse_search_request(search_request):
     words = search_request.split()
     logger.debug("Tokenized search request: " + str(words))
 
-    # "Send <foo> top <number> hits for <search request...>"
-    if words[0] == "send":
+    # "Send/e-mail/email/mail <foo> top <number> hits for <search request...>"
+    if (words[0] == "send") or (words[0] == "e-mail") or \
+        (words[0] == "email") or (words[0] == "mail"):
+
         logger.info("Got a token suggesting that search results should be e-mailed to someone.")
+
         # See if the next token fits the general pattern of an e-mail address.
         # It doesn't need to be perfect, it just needs to vaguely fit the
         # pattern.
         if email_matcher.match(words[1]):
             email_address = words[1]
+            del words[0]
             del words[1]
+            logger.info("The e-mail address to send search results to: " +
+                email_address)
         else:
             logger.warn("The e-mail address " + words[1] + " didn't match the general format of an SMTP address.  Aborting.")
             return (number_of_search_results, search_term, email_address)
-        words.remove('send')
-        logger.info("The e-mail address to send search results to: " +
-            email_address)
 
     # Start parsing the the search request to see what kind it is.  After
     # making the determination, remove the words we've sussed out to make the
@@ -194,23 +198,17 @@ def parse_search_request(search_request):
     if words[0] == "top":
         if words[1] in numbers.keys():
             number_of_search_results = numbers[words[1]]
-            del words[1]
         else:
             # Return a default of 10 search results.
             number_of_search_results = 10
-        words.remove('top')
+    del words[0]
+    del words[1]
 
-    # If the number of search results to return is zero, set it to ten.
-    if number_of_search_results == 0:
-        number_of_search_results = 10
+    # Remove words that make commands a little easier to phrase - "hits for"
+    del words[0]
+    del words[0]
 
-    # Remove words that make commands a little easier to phrase.
-    if "hits" in words:
-        words.remove("hits")
-    if "for" in words:
-        words.remove("for")
-
-    # If the search term is empty, return an error.
+    # If the parsed search term is now empty, return an error.
     if not len(words):
         logger.error("The search term appears to be empty: " + str(words))
         return (number_of_search_results, search_term, email_address)
@@ -501,6 +499,7 @@ while True:
             # If the search results are to be e-mailed, transmit them and then
             # bounce to the next iteration of the loop.
             if destination_email_address:
+
                 # Construct the message containing the search results.
                 message = "Here are your search results:\n"
                 message = message + "\n"
@@ -522,13 +521,17 @@ while True:
                     message.as_string())
                 smtp.quit()
                 logger.info("Search results transmitted.  Deallocating SMTP server object.")
+
+                # Deallocate resources we don't need now that the message is
+                # en route.
                 smtp = ""
+                destination_email_address = ""
 
                 # Go back to sleep and then loop again.
                 time.sleep(float(polling_time))
                 break
 
-            # Post the results to the webhook agent.
+            # Otherwise post the results to the webhook agent.
             results = {'results': search_results}
             request = requests.post(webhook, data=json.dumps(results),
                 headers=custom_headers)
