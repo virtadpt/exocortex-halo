@@ -187,11 +187,20 @@ class XMPPClient(threading.Thread):
 
         # Send a message to the bot's owner that it is now online.
         logger.info("Now informing " + self.owner + " that the web search agents are now online.")
-        now_online_message = "The search bots "
+        if len(message_queue.keys()) == 1:
+            now_online_message = "The search bot "
+        else:
+            now_online_message = "The search bots "
+
         for key in message_queue.keys():
             now_online_message = now_online_message + key + ", "
         now_online_message = now_online_message.strip(", ")
-        now_online_message = now_online_message + " are now online."
+
+        if len(message_queue.keys()) == 1:
+            now_online_message = now_online_message + " is now online."
+        else:
+            now_online_message = now_online_message + " are now online."
+
         now_online = xmpp.protocol.Message(to=xmpp.JID(self.owner),
             body=now_online_message)
         self.connection.send(now_online)
