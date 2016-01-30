@@ -22,6 +22,7 @@
 
 # v2.1 - Working on the "goes into a coma and pegs the CPU problem" by adding
 #        XEP-0199 client-to-server pings to keep the server alive.
+#      - Added online help to the command parser.
 # v2.0 - Rewrote using xmpppy (http://xmpppy.sourceforge.net/) because it's
 #        more lightweight than SleekXMPP and hopefully has fewer interactions.
 #        Also, if I need to, I should be able to drop nbXMPP
@@ -251,6 +252,23 @@ class XMPPClient(threading.Thread):
         # Extract the message body for parsing.
         message_body = message.getBody()
         logger.debug("Value of XMPPClient.process_message().message_body is: " + str(message_body))
+
+        # If the user asks for help, display the list of acknowledged commands.
+        if message_body == "help":
+            logger.debug("User has requested online help.")
+            resonse_body = "Supported commands:\n- help - This online help."
+            response_body = response_body + "- Robots, report. - List all configured search bots.\n"
+            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
+                body=response_body)
+            self.connection.send(response)
+
+            response_body = "To execute a search, send a message that looks like this:\n"
+            response_body = response_body + "<bot name>, top <n> hits for <search term>.\n"
+            response_body = response_body + "At present, at most 30 search results are supported.  The number of search results is spelled out (i.e., 'ten' and not 10).\n"
+            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
+                body=response_body)
+            self.connection.send(response)
+            return
 
         # Respond to a command for a status report.
         if message_body == "Robots, report.":
