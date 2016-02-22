@@ -27,7 +27,7 @@
 #        up.  It'll be much easier to maintain that way.
 #      - Got rid of the command line option where you can manually pass a
 #        search request to the bot for testing.
-# v1.0 - Initial release.
+# v1.0 - Initial 
 
 # TO-DO:
 # - Pull the argument vector and config file parsing stuff into their own
@@ -500,10 +500,6 @@ while True:
         # Deallocate resources we don't need now that the message is en route.
         smtp = ""
         destination_email_address = ""
-
-        # Go back to sleep and then loop again.
-        time.sleep(float(polling_time))
-        break
 
     # Message queue not found.
     if request.status_code == 404:
