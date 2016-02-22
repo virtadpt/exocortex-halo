@@ -319,6 +319,10 @@ class XMPPClient(threading.Thread):
             self.connection.send(response)
             return
 
+        # Try to catch strange, empty message bodies.
+        if not message_body:
+            return
+
         # Try to split off the search bot's name from the message body.  If
         # the search agent's name isn't registered, bounce.
         if ',' in message_body:
