@@ -28,8 +28,8 @@ The dependent modules are in requirements.txt, and can be installed to the sandb
 The REST API rails look like this:
 
 * / - Online documentation. (GET)
-* /ping - Ping the server to see if it's available.  Responds with { "response": "pong"} (GET)
-* /response - Given a string of input, run it through the chatbot brain and return a response.  Responses will take the form { "response": "Some response here..." }  (GET)  Requires the following HTTP headers:
+* /ping - Ping the server to see if it's available.  Responds with "pong" (GET)
+* /response - Given some JSON as input ({ "botname": "name", "apikey": "some API key", "stimulus": "Some text to respond to." }), run it through the chatbot brain and return a response.  Responses will take the form { "response": "Some response here...", "id": <HTTP response code> }  (GET)
 ** X-API-Key - The bot's unique API key to prevent abuse.
 ** X-Text-To-Respond-To - Text to run through the chatbot brain.  It would be ideal if the text was cleaned up (extraneous whitespace stripped out, only one sentence at a time) but just in case some cleanup will be done on the server side also.
 * /learn - Given a string of input, run it through the chatbot brain to train ita little more.  Does not return a response to the text, instead it responds with { "response": "trained" }  (PUT)  Requires the following HTTP headers:

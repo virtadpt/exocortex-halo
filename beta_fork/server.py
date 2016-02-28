@@ -107,7 +107,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write("<p>The following API rails may be accessed with GET requests:</p>")
             self.wfile.write("<ul>")
             self.wfile.write('<li>/ping - Responds with <code>"pong"</code></li>')
-            self.wfile.write('<li>/response - Accepts a string of input in the <code>content</code> key and returns a JSON document of the form <code>{ "response": "This is the response.", "id": 200 }</code>, where "id" is the HTTP status code.  Does not add text to the Markov brain.</li>')
+            self.wfile.write('<li>/response - Accepts a string of input in the <code>({ "botname": "name", "apikey": "some API key", "stimulus": "Some text to respond to." })</code> key and returns a JSON document of the form <code>{ "response": "This is the response.", "id": 200 }</code>, where "id" is the HTTP status code.  Does not add text to the Markov brain.</li>')
             self.wfile.write("</ul>")
 
             # HTTP PUT requests.
