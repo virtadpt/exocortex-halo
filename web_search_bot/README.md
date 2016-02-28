@@ -6,5 +6,5 @@ web_search_bot.py is also capable of e-mailing search terms to an address specif
 
 Requires BeautifulSoup4 (http://www.crummy.com/software/BeautifulSoup/) to parse the HTML returned by the search engines.  Try installing it from your distro's default package repositories - Arch Linux and Ubuntu v14.04 have it already so you don't need to set it up yourself.
 
-web_search_bot.py currently only supports up to thirty (30) search results.  Specifying an invalid number causes it to default to ten (10).
+web_search_bot.py currently only supports up to forty (40) search results.  Specifying an invalid number causes it to default to ten (10).
 

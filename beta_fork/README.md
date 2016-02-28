@@ -12,9 +12,12 @@ An architecture like this also makes it possible to switch out the text recognit
 Modules that beta_fork relies upon:
 
 * Cobe - https://github.com/pteichman/cobe
-* IRC - https://pythonhosted.org/irc/
 * BaseHTTPServer (included in Python by default)
 * SQLite (included in Python by default)
+
+The proof-of-concept IRC bot relies upon:
+
+* IRC - https://pythonhosted.org/irc/
 
 This is not going to be a full reimplementation of anyone, anytime soon.  It's a toy that seems like it'll be fun to experiment with and scratch a particular itch I'm feeling.  Plus, it's silly.
 
