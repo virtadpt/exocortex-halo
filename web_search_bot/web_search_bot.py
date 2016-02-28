@@ -208,7 +208,7 @@ def parse_search_request(search_request):
         return (number_of_search_results, search_term, email_address)
 
     # Convert the remainder of the list into a URI-encoded string.
-    search_term = " ".join(str(word) for word in words)
+    search_term = " ".join(unicode(word) for word in words)
     search_term = search_term.replace(' ', '+')
     logger.debug("Search term: " + search_term)
     return (number_of_search_results, search_term, email_address)
