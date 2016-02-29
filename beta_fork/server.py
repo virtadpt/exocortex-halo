@@ -123,6 +123,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write('<p>An HTTP GET request: <code>curl -X GET -H "Content-Type: application/json" -d \'{ "botname": "Alice", "apikey": "abcd", "stimulus": "This is some text I want to get a response to." }\' http://localhost:8050/response</code></p>')
             self.wfile.write('An HTTP PUT request: <code>curl -X PUT -H "Content-Type: application/json" -d \'{ "botname": "Alice", "apikey": "abcd", "stimulus": "This is some text I want to train the Markov engine on.  I do not expect to get a response to the text at the same time." }\' http://localhost:8050/learn</code>')
             self.wfile.write('<p>An HTTP PUT request to register a new bot: <code>curl -X PUT -H "Content-Type: application/json" -H "X-API-Key: ManagementAPIKeyHere" -d \'{ "botname": "ChairmanKage", "apikey": "allezcuisine", "stimulus": "", "respond": "Y", "learn": "Y" }\' http://localhost:8050/register</code></p>')
+            self.wfile.write('<p>An HTTP PUT request to deregister an existing bot: <code>curl -X PUT -H "Content-Type: application/json" -H "X-API-Key: ManagementAPIKeyHere" -d \'{ "botname": "ChairmanKage", "apikey": "allezcuisine" }\' http://localhost:8050/deregister</code></p>')
 
             # Bottom of the page.
             self.wfile.write("</body>")

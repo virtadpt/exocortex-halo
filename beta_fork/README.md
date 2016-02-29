@@ -31,7 +31,7 @@ The REST API rails look like this:
 * /ping - Ping the server to see if it's available.  Responds with "pong" (GET)
 * /response - Given some JSON as input ({ "botname": "name", "apikey": "some API key", "stimulus": "Some text to respond to." }), run it through the chatbot brain and return a response.  Responses will take the form { "response": "Some response here...", "id": <HTTP response code> }  (GET)
 * /learn - Given some JSON as input ({ "botname": "Alice", "apikey": "abcd", "stimulus": "This is some text I want to train the Markov engine on. I do not expect to get a response to the text at the same time." }), run it through the chatbot brain to train it a little more.  Does not return a response to the text, instead it responds with { "response": "trained", "id": <HTTP response code> }  (PUT)
-* /register - Registers the API key of a new client with the server.  This isn't meant to be used by the client, but on the server-side with a shell script to control what bots can and can't access the server (which keeps people from monkeying around with the chatbot brain).  An API key is required for this, also - it's kept in the server's .conf file.  (PUT)  Requires the following HTTP headers:
+* /register - Registers the API key of a new client with the server.  This isn't meant to be used by the client, but on the server-side with a shell script or a manual command to control which bots can and can't access the server (which keeps people from monkeying around with the chatbot brain).  The server's administrative API key is required for this - it's kept in the server's .conf file.  (PUT)  Requires the following HTTP headers:
 ** X-API-Key - The server's API key, restricting access.
 
 The /register API rail requires a JSON document of the following form:
@@ -57,8 +57,7 @@ or
     { "response": "failure" }
 ```
 
-* /deregister - Deregisters the API key of an existing client from the server.  This isn't meant to be used by the client, but on the server-side with a shell script.  An API key is required for this, also - it's kept in the server's .conf file.  (PUT)  Requires the following HTTP headers:
-** api-key - The server's API key, restricting access.
+* /deregister - Deregisters the API key of an existing client from the server.  This isn't meant to be used by the client, but on the server-side with a shell script or manual command.  The server's administrative API key is required for this - it's value is kept in the server's .conf file.  (PUT)
 
 The /deregister API rail requires a JSON document of the following form:
 
