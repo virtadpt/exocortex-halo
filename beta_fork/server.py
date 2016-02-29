@@ -113,7 +113,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # HTTP PUT requests.
             self.wfile.write("<p>The following API rails may be accessed with PUT requests:</p>")
             self.wfile.write("<ul>")
-            self.wfile.write('<li>/learn - Accepts a string of input in the <code>content</code> key and returns a JSON document of the form <code>{ "response": "trained", "id": XXX }</code>, where "id" is the HTTP status code.  Updates the Markov brain.</li>')
+            self.wfile.write('<li>/learn - Accepts a string of input in the <code>content</code> key and returns a JSON document of the form <code>{ "response": "trained", "id": XXX }</code>, where "id" is the HTTP status code.  This rail updates the Markov brain.</li>')
             self.wfile.write('<li>/register - Registers the API key of a new client with the server.  Requires the HTTP header X-API-Key, which is the management API key of the server.  Also requires a JSON document of the form <br><br><code>{ "botname": "Name of new bot", "apikey": "New bot\'s API key", "stimulus": "", "respond": "Y/N", "learn": "Y/N" }</code><br><br>  This rail will return an application/json documnt of the form <code>{ "response": "success/failure", "id": XXX }</code>, where XXX is the HTTP status code.</li>')
             self.wfile.write('<li>/deregister - Deregisters the API key of an existing client from the server, removing its access.  Requires the HTTP header X-API-Key, which is the management API key of the server.  Requires a JSON document of the form <br><br><code>{ "botname": "Name of bot", "apikey": "Bot\'s API key", "stimulus": "" }</code><br><br>  This rail will return an application/json documnt of the form <code>{ "response": "success/failure" }</code></li>')
             self.wfile.write("</ul>")
@@ -284,12 +284,12 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # Run the sentences through the markov brain.
             if not len(sentences):
                 logger.info("No sentences to update the Markov brain.")
-                json.dump('{400, "response": "failed", "id": 400}', self.wfile)
+                json.dump('{"response": "failed", "id": 400}', self.wfile)
                 return
             for i in sentences:
                 response = brain.learn(i)
             logger.info("Bot has updated the Markov brain.")
-            json.dump('{200, "response": "trained", "id": 200}', self.wfile)
+            json.dump('{"response": "trained", "id": 200}', self.wfile)
             return
 
         if self.path == "/register":
