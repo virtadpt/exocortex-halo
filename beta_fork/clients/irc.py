@@ -24,6 +24,8 @@
 #   many messages are waiting when they authenticate.
 # - Make it possible for the bot to register itself with the server by passing
 #   the server's API key on the command line.
+# - Clean up how command line arguments are passed to the DixieBot constructor.
+#   I think I can do better, but I need to get it working first.
 
 # Load modules.
 # Needed because we're doing floating point division in a few places.
@@ -37,6 +39,7 @@ import json
 import logging
 import os
 import random
+import requests
 import socket
 import ssl
 import sys
@@ -103,8 +106,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     usessl = ""
 
     # Response engine's hostname and port.
-    engine_host = ""
-    engine_port = ""
+    engine = ""
 
     # Bot's API key to interface with the response engine.
     api_key = ""
@@ -137,8 +139,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         self.password = password
         self.authenticated = False
         self.usessl = usessl
-        self.engine_host = engine_host
-        self.engine_port = engine_port
+        self.engine = 'http://' + engine_host + ':' + engine_port + '/'
         self.api_key = api_key
 
         # Connection factory object handle.
@@ -184,6 +185,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             time.sleep(pause)
             connection.privmsg(self.channel, "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
 
+    # MOOF MOOF MOOF
+    # This method fires if the bot gets kick/banned from a channel.
+
     # This method fires when the server disconnects the bot for some reason.
     # Ideally, the bot should try to connect again after a random number of
     # seconds.
@@ -206,6 +210,14 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # Line of text sent from the channel or private message.
         irc_text = line.arguments[0]
+
+        # Handle to an HTTP request object.
+        http_connection = ""
+
+        # JSON documents that contain commands to and responses from the
+        # conversation engine.
+        json_request = ""
+        json_response = ""
 
         # See if the owner is authenticating to the bot.
         if "!auth " in irc_text:
@@ -237,6 +249,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                     "!auth - Authenticate your current IRC nick as my admin.")
                 connection.privmsg(sending_nick, 
                     "!config - Send my current configuration.")
+                connection.privmsg(sending_nick, 
+                    "!ping - Ping the conversation engine to make sure I can contact it.")
                 return
 
             # See if the owner is asking the bot to self-terminate.
@@ -256,6 +270,17 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                     connection.privmsg(sending_nick, "My connection to the server is encrypted.")
                 else:
                     connection.privmsg(sending_nick, "My connection to the server isn't encrypted.")
+                return
+
+            # See if the owner is asking the bot to ping the conversation
+            # engine's server.
+            if irc_text == "!ping":
+                connection.privmsg(sending_nick, "Pinging the conversation engine...")
+                http_connection = requests.get(self.engine + "/ping")
+                if http_connection.text == "pong":
+                    connection.privmsg(sending_nick, "I can hit the conversation engine.")
+                else:
+                    connection.privmsg(sending_nick, "I don't seem to be able to reach the conversation engine.")
                 return
 
             # Always learn from and respond to non-command private messages
