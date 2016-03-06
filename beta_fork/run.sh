@@ -9,10 +9,10 @@
 
 # Variables
 # Full path to where exocortex_sip_client.py is installed.
-BOT_DIR="/path/to/irc_bot"
+BETA_FORK_DIR="/path/to/beta_fork"
 
 # Core code.
-cd $BOT_DIR
+cd $BETA_FORK_DIR
 
 # Bring in the virtualenv.  Imagine whatever sci-fi sound effects you wish
 # as this happens.
@@ -23,8 +23,8 @@ source env/bin/activate
 sleep $1
 shift
 
-# Call the bot with the remaining command line args.
-./dixie_flatline_bot.py $@
+# Call the discussion engine bot with the remaining command line args.
+./server.py $@
 
 # Clean up.
 exit 0
