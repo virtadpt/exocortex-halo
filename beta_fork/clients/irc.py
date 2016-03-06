@@ -22,17 +22,18 @@
 # - Add a memo function.  Someone can send a privmsg to the bot and it'll sit
 #   on the message until the bot's owner asks for it.  Tell the bot's owner how
 #   many messages are waiting when they authenticate.
+# - Make it possible for the bot to register itself with the server by passing
+#   the server's API key on the command line.
 
 # Load modules.
 # Needed because we're doing floating point division in a few places.
 from __future__ import division
 
-from cobe.brain import Brain
-
 import argparse
 import ConfigParser
 import irc.bot
 import irc.strings
+import json
 import logging
 import os
 import random
@@ -56,17 +57,6 @@ channel = ""
 
 # The nick of the bot's owner.
 owner = ""
-
-# The location of the database the Markov model data is kept in.  The module
-# defaults to ./cobe.brain but we specify another one later in the code.
-brainfile = ""
-
-# Handle for a Cobe brain object.
-brain = ""
-
-# In case the user wants to train from a corpus to initialize the Markov brain,
-# this will be a full path to a training file.
-training_file = ""
 
 # The log level for the bot.  This is used to configure the instance of logger.
 loglevel = ""
@@ -103,9 +93,6 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     server = ""
     port = 0
 
-    # Handle to the Markov brain.
-    brain = ""
-
     # The bot's owner's authentication password.
     password = ""
 
@@ -114,6 +101,13 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     # Whether or not the connection is SSL/TLS encrypted or not.
     usessl = ""
+
+    # Response engine's hostname and port.
+    engine_host = ""
+    engine_port = ""
+
+    # Bot's API key to interface with the response engine.
+    api_key = ""
 
     # Methods on the connection object to investigate:
     # connect() - Connect to a server?
@@ -132,18 +126,20 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # stats() - 
     # time() - 
 
-    def __init__(self, channel, nickname, server, port, owner, brain, usessl,
-        password):
+    def __init__(self, channel, nickname, server, port, owner, usessl,
+        password, engine_host, engine_port, api_key):
         # Initialize the class' attributes.
         self.channel = channel
         self.nick = nick
         self.owner = owner
         self.server = server
         self.port = port
-        self.brain = brain
         self.password = password
         self.authenticated = False
         self.usessl = usessl
+        self.engine_host = engine_host
+        self.engine_port = engine_port
+        self.api_key = api_key
 
         # Connection factory object handle.
         factory = ""
@@ -360,12 +356,12 @@ def process_loglevel(loglevel):
 # Set up a command line argument parser, because that'll make it easier to play
 # around with this bot.  There's no sense in not doing this right at the very
 # beginning.
-argparser = argparse.ArgumentParser(description="My first attempt at writing an IRC bot.  I don't yet know what I'm going to make it do.  For starters, it has an integrated Markov brain so it can interact with other people in the channel (and occasionally learn from them).")
+argparser = argparse.ArgumentParser(description="My second attempt at writing an IRC bot.  I don't yet know what I'm going to make it do.  This bot connects back to a server running the conversation engine to get responses (and occasionally train it a little more).  Specifics for connecting to the server go in the configuration file.")
 
 # Set the default configuration file and command line option to specify a
 # different one.
 argparser.add_argument('--config', action='store',
-    default='dixie_flatline_bot.conf', help="Path to a configuration file for this bot.")
+    default='irc.conf', help="Path to a configuration file for this bot.")
 
 # Set the IRC server.
 argparser.add_argument('--server', action='store',
@@ -386,12 +382,6 @@ argparser.add_argument('--channel', action='store',
 # Set the nick of the bot's owner, which it will learn from preferentially.
 argparser.add_argument('--owner', action='store',
     help="This is the nick of the bot's owner, so that it knows who to take commands and who to train its Markov brain from.")
-
-# Path to the Cobe brain database.  If this file doesn't exist it'll be
-# created, and unless a file to train the bot is supplied in another command
-# line argument it'll have to train itself very slowly.
-argparser.add_argument('--brain', action='store', default='./rom.construct',
-    help="Path to the construct's brain.  If this file doesn't exist it'll be created, and you'll have to supply an initial training file in another argument.")
 
 # Path to a training file for the Markov brain.
 argparser.add_argument('--trainingfile', action='store',
@@ -426,7 +416,6 @@ if os.path.exists(config_file):
     nick = config.get("DEFAULT", "nick")
     channel = config.get("DEFAULT", "channel")
     owner = config.get("DEFAULT", "owner")
-    brainfile = config.get("DEFAULT", "brain")
     loglevel = config.get("DEFAULT", "loglevel").lower()
     usessl = config.getboolean("DEFAULT", "usessl")
     password = config.get("DEFAULT", "password")
@@ -466,33 +455,6 @@ if args.owner:
     owner = args.owner
 logger.info("The bot's registered owner is " + owner + ".  Make sure this is correct.")
 
-# If a prebuilt brainfile is specified on the command line, try to load it.
-if args.brain:
-    brainfile = args.brain
-    logger.info("The bot's personality construct file is " + brainfile + ".  Make sure this is correct.")
-    if not os.path.exists(brainfile):
-        logger.warn("The personality construct file specified (" + brainfile + ") does not exist.  A blank one will be constructed.")
-
-# If a training file is available, grab it.
-if args.trainingfile:
-    training_file = args.trainingfile
-
-# Instantiate a copy of the Cobe brain and try to load the database.  If the
-# brain file doesn't exist Cobe will create it.
-brain = Brain(brainfile)
-if training_file:
-    if os.path.exists(training_file):
-        logger.info("Initializing a new personality matrix... this could take a while...")
-        brain.start_batch_learning()
-        file = open(training_file)
-        for line in file.readlines():
-            brain.learn(line)
-        brain.stop_batch_learning()
-        file.close()
-        logger.info("Done!")
-    else:
-        logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the hard way.")
-
 # Turn on SSL/TLS support.
 if args.ssl:
     usessl = args.ssl
@@ -518,8 +480,8 @@ if not password:
 random.seed()
 
 # Instantiate a copy of the bot class and activate it.
-bot = DixieBot(channel, nick, irc_server, irc_port, owner, brain, usessl,
-    password)
+bot = DixieBot(channel, nick, irc_server, irc_port, owner, usessl, password,
+    engine_host, engine_port, api_key)
 bot.start()
 
 # Fin.
