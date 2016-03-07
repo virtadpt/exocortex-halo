@@ -24,7 +24,7 @@ sleep $1
 shift
 
 # Call the bot with the remaining command line args.
-./dixie_flatline_bot.py $@
+python ./dixie_flatline_bot.py $@
 
 # Clean up.
 exit 0

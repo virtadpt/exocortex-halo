@@ -24,7 +24,7 @@ sleep $1
 shift
 
 # Call the discussion engine bot with the remaining command line args.
-./server.py $@
+python ./server.py $@
 
 # Clean up.
 exit 0

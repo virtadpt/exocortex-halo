@@ -139,7 +139,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         self.password = password
         self.authenticated = False
         self.usessl = usessl
-        self.engine = 'http://' + engine_host + ':' + engine_port + '/'
+        self.engine = 'http://' + engine_host + ':' + engine_port
         self.api_key = api_key
 
         # Connection factory object handle.
@@ -214,10 +214,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         # Handle to an HTTP request object.
         http_connection = ""
 
-        # JSON documents that contain commands to and responses from the
-        # conversation engine.
-        json_request = ""
-        json_response = ""
+        # JSON document containing responses from the conversation engine.
+        json_response = {}
 
         # See if the owner is authenticating to the bot.
         if "!auth " in irc_text:
@@ -285,9 +283,17 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
             # Always learn from and respond to non-command private messages
             # from the bot's owner.
-            self.brain.learn(irc_text)
-            reply = self.brain.reply(irc_text)
-            connection.privmsg(sending_nick, reply)
+            json_response = self._teach_brain(irc_text)
+            if json_response['id'] != 200:
+                logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+
+            json_response = self._get_response(irc_text)
+            if json_response['id'] != 200:
+                logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                return
+
+            # Send the response text back to the bot's owner.
+            connection.privmsg(sending_nick, json_response['response'])
             return
         else:
             logger.debug("Somebody messaged me.  The content of the message was: " + irc_text)
@@ -296,6 +302,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
     # this module figured out...
     def on_pubmsg(self, connection, line):
+        # JSON document from the conversation engine.
+        json_response = {}
+
         # IRC nick that sent a line to the channel.
         sending_nick = line.source.split("!~")[0]
 
@@ -312,38 +321,67 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             asked_directly = irc_text.split(':')[0].strip()
             if asked_directly == self.nick:
                 logger.debug("The bot's owner addressed the construct directly.  This is a special corner case.")
-                self.brain.learn(irc_text.split(':')[1].strip())
-                reply = self.brain.reply(irc_text)
-                connection.privmsg(self.channel, reply)
+
+                # Extract the dialogue from the text in the IRC channel.
+                dialogue_text = irc_text.split(':')[1].strip()
+
+                # Send a request to train the conversation engine on the text.
+                logger.debug("Training engine on text: " + dialogue_text)
+                json_response = self._teach_brain(dialogue_text)
+                if json_response['id'] != 200:
+                    logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                    return
+
+                # Get a response to the text from the channel.
+                json_response = self._get_response(irc_text)
+                    if json_response['id'] != 200:
+                    logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                    return
+
+                # Send the reply to the channel.
+                connection.privmsg(self.channel, json_response['response'])
                 return
 
             # Otherwise, just learn from the bot's owner.
-            logger.debug("Learning from text from the bot's owner.")
-            self.brain.learn(irc_text)
+            json_response = self._teach_brain(irc_text)
+            if json_response['id'] != 200:
+                logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                return
 
             # Decide if the bot is going to respond or not.
             roll = random.randint(1, 10)
             if roll == 1:
-                logger.debug("Posting a response to the channel.")
-                reply = self.brain.reply(irc_text)
+                json_response = self._get_response(irc_text)
+                if json_response['id'] != 200:
+                    logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
 
                 # connection.privmsg() can be used to send text to either a
                 # channel or a user.
-                connection.privmsg(self.channel, reply)
+                connection.privmsg(self.channel, json_response['response'])
             return
 
         # If the line is not from the bot's owner, decide randomly if the bot
         # should learn from it, or learn from and respond to it.
+        json_request['stimulus'] = irc_text
         roll = random.randint(1, 10)
         if roll == 1:
             logger.debug("Learning from the last line seen in the channel.")
-            self.brain.learn(irc_text)
+            json_response = self._teach_brain(irc_text)
+            if json_response['id'] != 200:
+                logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
             return
+
         if roll == 2:
             logger.debug("Learning from the last line seen in the channel and responding to it.")
-            reply = self.brain.reply(irc_text)
-            self.brain.learn(irc_text)
-            connection.privmsg(channel, reply)
+            json_response = self._teach_brain(irc_text)
+            if json_response['id'] != 200:
+                logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+
+            json_response = self._get_response(irc_text)
+            if json_response['id'] != 200:
+                logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                return
+            connection.privmsg(channel, json_response['response'])
             return
 
     # This method should fire when a client in the current channel emits a QUIT
@@ -356,6 +394,49 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             self.authenticated = False
             connection.privmsg(self.channel, "Seeya, boss.")
             return
+
+    # Sends text to train the conversation engine on.
+    def _teach_brain(self, text):
+        # Custom headers required by the conversation engine.
+        headers = { "Content-Type": "application/json" }
+
+        # HTTP request object handle.
+        http_request = ""
+
+        # JSON documents sent to and received from the conversation engine.
+        json_request['botname'] = self.nick
+        json_request['apikey'] = self.api_key
+        json_request['stimulus'] = text
+        json_response = {}
+
+        # Make an HTTP request to the conversation engine.
+        http_request = requests.put(self.engine + "/learn", headers=headers,
+            data=json_request)
+        json_response = json.loads(http_request.text)
+        return json_response
+
+    # Gets a response from the conversation engine.  Return a response.
+    def _get_response(self, text):
+        # Custom headers required by the conversation engine.
+        headers = { "Content-Type": "application/json" }
+
+        # HTTP request object handle.
+        http_request = ""
+
+        # Response to send to the channel or user.
+        response = ""
+
+        # JSON documents sent to and received from the conversation engine.
+        json_request['botname'] = self.nick
+        json_request['apikey'] = self.api_key
+        json_request['stimulus'] = text
+        json_response = {}
+
+        # Contact the conversation engine to get a response.
+        http_request = requests.get(self.engine + "/response", headers=headers,
+            data=json_request)
+        json_response = json.loads(http_request.text)
+        return json_response
 
 # Functions.
 # Figure out what to set the logging level to.  There isn't a straightforward
