@@ -334,7 +334,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
                 # Get a response to the text from the channel.
                 json_response = self._get_response(irc_text)
-                    if json_response['id'] != 200:
+                if json_response['id'] != 200:
                     logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                     return
 
