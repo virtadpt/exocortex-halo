@@ -489,10 +489,6 @@ argparser.add_argument('--channel', action='store',
 argparser.add_argument('--owner', action='store',
     help="This is the nick of the bot's owner, so that it knows who to take commands and who to train its Markov brain from.")
 
-# Path to a training file for the Markov brain.
-argparser.add_argument('--trainingfile', action='store',
-    help="Path to a file to train the Markov brain with if you haven't done so already.  It can be any text file so long as it's plain text and there is one entry per line.  If a brain already exists, training more is probably bad.  If you only want the bot to learn from you, chances are you don't want this.")
-
 # Loglevels: critical, error, warning, info, debug, notset.
 argparser.add_argument('--loglevel', action='store', default='logging.INFO',
     help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
