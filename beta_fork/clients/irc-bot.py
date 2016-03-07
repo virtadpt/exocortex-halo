@@ -307,6 +307,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # IRC nick that sent a line to the channel.
         sending_nick = line.source.split("!~")[0]
+        logger.debug("Sending nick: " + sending_nick)
 
         # Line of text sent from the channel.
         irc_text = line.arguments[0]
@@ -362,7 +363,6 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # If the line is not from the bot's owner, decide randomly if the bot
         # should learn from it, or learn from and respond to it.
-        json_request['stimulus'] = irc_text
         roll = random.randint(1, 10)
         if roll == 1:
             logger.debug("Learning from the last line seen in the channel.")
@@ -397,6 +397,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     # Sends text to train the conversation engine on.
     def _teach_brain(self, text):
+        # Hash table of arguments to send to the conversation engine.
+        json_request = {}
+
         # Custom headers required by the conversation engine.
         headers = { "Content-Type": "application/json" }
 
@@ -417,6 +420,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     # Gets a response from the conversation engine.  Return a response.
     def _get_response(self, text):
+        # Hash table of arguments to send to the conversation engine.
+        json_request = {}
+
         # Custom headers required by the conversation engine.
         headers = { "Content-Type": "application/json" }
 
