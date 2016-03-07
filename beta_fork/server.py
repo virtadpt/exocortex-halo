@@ -714,6 +714,15 @@ if training_file:
     else:
         logger.warn("Unable to open specified training file " + training_file + ".  The construct's going to have to learn the hard way.")
 
+# In debug mode, print out all of the server's configuration info because
+# sometimes things go sideways and we need to figure out why.  Not that I know
+# this from experience or anything...
+logger.debug("Loaded config file: " + config_file)
+logger.debug("Conversation engine's management API key: " + apikey)
+logger.debug("Path to SQLite client database: " + dbpath)
+logger.debug("Listening on host and port: " + str(host) + ":" + str(port))
+logger.debug("Using conversation brain file: " + brainfile)
+
 # Allocate and start the Simple HTTP Server instance.
 api_server = HTTPServer((host, port), RESTRequestHandler)
 logger.debug("REST API server now listening on IP " + host + " and port " + str(port) + ".")
