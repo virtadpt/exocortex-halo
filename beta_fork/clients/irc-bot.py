@@ -330,15 +330,14 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
                 # Send a request to train the conversation engine on the text.
                 logger.debug("Training engine on text: " + dialogue_text)
-                json_response = self._teach_brain(dialogue_text)
-                print json_response
-                if json_response['id'] != 200:
+                json_response = json.loads(self._teach_brain(dialogue_text))
+                if json_response['id'] != int(200):
                     logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                     return
 
                 # Get a response to the text from the channel.
-                json_response = self._get_response(irc_text)
-                if json_response['id'] != 200:
+                json_response = json.loads(self._get_response(irc_text))
+                if json_response['id'] != int(200):
                     logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                     return
 
@@ -347,16 +346,16 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 return
 
             # Otherwise, just learn from the bot's owner.
-            json_response = self._teach_brain(irc_text)
-            if json_response['id'] != 200:
+            json_response = json.loads(self._teach_brain(irc_text))
+            if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                 return
 
             # Decide if the bot is going to respond or not.
             roll = random.randint(1, 10)
             if roll == 1:
-                json_response = self._get_response(irc_text)
-                if json_response['id'] != 200:
+                json_response = json.loads(self._get_response(irc_text))
+                if json_response['id'] != int(200):
                     logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
 
                 # connection.privmsg() can be used to send text to either a
@@ -369,19 +368,19 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         roll = random.randint(1, 10)
         if roll == 1:
             logger.debug("Learning from the last line seen in the channel.")
-            json_response = self._teach_brain(irc_text)
-            if json_response['id'] != 200:
+            json_response = json.loads(self._teach_brain(irc_text))
+            if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
             return
 
         if roll == 2:
             logger.debug("Learning from the last line seen in the channel and responding to it.")
-            json_response = self._teach_brain(irc_text)
-            if json_response['id'] != 200:
+            json_response = json.loads(self._teach_brain(irc_text))
+            if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
 
-            json_response = self._get_response(irc_text)
-            if json_response['id'] != 200:
+            json_response = json.loads(self._get_response(irc_text))
+            if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                 return
             connection.privmsg(channel, json_response['response'])
@@ -416,7 +415,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # Make an HTTP request to the conversation engine.
         http_request = requests.put(self.engine + "/learn", headers=headers,
-            json=json_request)
+            data=json_request)
         json_response = json.loads(http_request.text)
         return json_response
 
