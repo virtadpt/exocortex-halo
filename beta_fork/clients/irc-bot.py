@@ -313,7 +313,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         irc_text = line.arguments[0]
 
         # If the line is from the bot's owner, learn from it and then decide
-        # whether to respond or not.
+        # whether to respond or not.  Just in case somebody grabs the nick of
+        # the bot's owner, don't respond if they're not authenticated (because
+        # that could go real bad, real fast...)
         if sending_nick == self.owner and self.authenticated:
 
             # If the bot's owner addressed it directly, always respond.  Just
@@ -397,8 +399,6 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     # Sends text to train the conversation engine on.
     def _teach_brain(self, text):
-        # Hash table of arguments to send to the conversation engine.
-        json_request = {}
 
         # Custom headers required by the conversation engine.
         headers = { "Content-Type": "application/json" }
@@ -407,6 +407,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         http_request = ""
 
         # JSON documents sent to and received from the conversation engine.
+        json_request = {}
         json_request['botname'] = self.nick
         json_request['apikey'] = self.api_key
         json_request['stimulus'] = text
@@ -420,8 +421,6 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     # Gets a response from the conversation engine.  Return a response.
     def _get_response(self, text):
-        # Hash table of arguments to send to the conversation engine.
-        json_request = {}
 
         # Custom headers required by the conversation engine.
         headers = { "Content-Type": "application/json" }
@@ -433,6 +432,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         response = ""
 
         # JSON documents sent to and received from the conversation engine.
+        json_request = {}
         json_request['botname'] = self.nick
         json_request['apikey'] = self.api_key
         json_request['stimulus'] = text

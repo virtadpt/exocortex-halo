@@ -10,6 +10,13 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v1.1 - Went back through and tracked down all the places I forgot to use
+#        RESTRequestHandler._send_http_response() because it was causing the
+#        bots that rely on this service (and my test harnesses) to b0rk.
+#      - Working on making the JSON returned by the server have descriptive
+#        and helpful plain-text error messages.  I might have to rework a few
+#        more checks later, I'll need to reread the code to make sure I won't
+#        be breaking anything (else) by accident.
 # v1.0 - Initial release.
 
 # TODO:
@@ -195,7 +202,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Ask the Markov brain for a response and return it to the client.
             response = brain.reply(arguments['stimulus'])
-            json.dump({"response": response, "id": 200}, self.wfile)
+            self._send_http_response(200, '{"response": response, "id": 200}')
             return
 
         # If we've fallen through to here, bounce.
@@ -285,12 +292,12 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # Run the sentences through the markov brain.
             if not len(sentences):
                 logger.info("No sentences to update the Markov brain.")
-                json.dump('{"response": "failed", "id": 400}', self.wfile)
+                self._send_http_response(400, '{"response": "failed", "id": 400}')
                 return
             for i in sentences:
                 response = brain.learn(i)
             logger.info("Bot has updated the Markov brain.")
-            json.dump('{"response": "trained", "id": 200}', self.wfile)
+            self._send_http_response(200, '{"response": response, "id": 200}')
             return
 
         if self.path == "/register":
@@ -324,14 +331,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # If it wasn't, abort.
             if "x-api-key" not in self.headers.keys():
                 logger.info("User tried to /register a bot but didn't include the management API key.")
-                self._send_http_response(401, '{"result": null, "error": "failure", "id": 401}')
+                self._send_http_response(401, '{"result": null, "error": "Management API key not included.", "id": 401}')
                 return
 
             # Check the included management API key against the one in the
             # server's config file.
             if self.headers['x-api-key'] != apikey:
                 logger.info("User tried to /register a bot with an incorrect management API key.")
-                self._send_http_response(401, '{"result": null, "error": "failure", "id": 401}')
+                self._send_http_response(401, '{"result": null, "error": "Incorrect management API key.", "id": 401}')
                 return
 
             # Normalize the keys in the JSON to lowercase.
@@ -372,7 +379,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 arguments['apikey'])
             if row:
                 logger.info("Bot already in database.")
-                self._send_http_response(409, '{"response": "failure", "id": 409}')
+                self._send_http_response(409, '{"response": "Bot already in database.", "id": 409}')
                 return
 
             # Add the bot to the database.
@@ -414,14 +421,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # If it wasn't, abort.
             if "x-api-key" not in self.headers.keys():
                 logger.info("User tried to /deregister a bot but didn't include the management API key.")
-                self._send_http_response(401, '{"result": null, "error": "failure", "id": 401}')
+                self._send_http_response(401, '{"result": null, "error": "No management API key.", "id": 401}')
                 return
 
             # Check the included management API key against the one in the
             # server's config file.
             if self.headers['x-api-key'] != apikey:
                 logger.info("User tried to /deregister a bot with an incorrect management API key.")
-                self._send_http_response(401, '{"result": null, "error": "failure", "id": 401}')
+                self._send_http_response(401, '{"result": null, "error": "Incorrect management API key.", "id": 401}')
                 return
 
             # Normalize the keys in the JSON to lowercase.
@@ -462,9 +469,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
     # containing an appropriate response.
     def _send_http_response(self, code, response):
         self.send_response(code)
-        self.send_header("Content-type", "application/json")
+        self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(response)
+        self.wfile.write(json.dumps(response))
         return
 
     # Read content from the client connection and return it as a string.
