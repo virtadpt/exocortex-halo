@@ -202,7 +202,10 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Ask the Markov brain for a response and return it to the client.
             response = brain.reply(arguments['stimulus'])
-            self._send_http_response(200, '{"response": response, "id": 200}')
+            temp = {}
+            temp['response'] = response
+            temp['id'] = 200
+            self._send_http_response(200, json.dumps(temp))
             return
 
         # If we've fallen through to here, bounce.
