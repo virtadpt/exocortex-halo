@@ -331,6 +331,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 # Send a request to train the conversation engine on the text.
                 logger.debug("Training engine on text: " + dialogue_text)
                 json_response = self._teach_brain(dialogue_text)
+                print json_response
                 if json_response['id'] != 200:
                     logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                     return
