@@ -45,8 +45,6 @@ import ssl
 import sys
 import time
 
-# Constants.
-
 # Global variables.
 # Path to the configuration file and handle to a ConfigParser instance.
 config_file = "irc.conf"
@@ -130,6 +128,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     def __init__(self, channel, nickname, server, port, owner, usessl,
         password, engine_host, engine_port, api_key):
+
         # Initialize the class' attributes.
         self.channel = channel
         self.nick = nick
@@ -197,15 +196,22 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.join(self.channel)
         logger.info("Successfully re-joined channel " + self.channel + ".")
 
+    # This method fires if the bot gets kickbanned.
+    def on_bannedfromchan(self, connection, event):
+        logger.warn("Uh-oh - I got kickbanned from " + self.channel + ".  Shutting down.  I know when I'm not wanted.")
+        sys.exit(2)
+
     # This method fires when the server disconnects the bot for some reason.
     # Ideally, the bot should try to connect again after a random number of
     # seconds.
     def on_disconnect(self, connection, event):
-        logger.warn("Got bounced from channel " + self.channel + ".  Reconnecting.")
-        pause = random.randint(1, 10)
-        time.sleep(pause)
+        delay = random.randint(60, 180)
+        logger.warn("Connection dropped from server " + self.server + ".  Sleeping for " + str(delay) + " seconds.")
+        time.sleep(delay)
+        logger.warn("Reconnecting to server " + self.server + " on port " + str(self.port) + ".")
         irc.bot.SingleServerIRCBot.connect(self, [(self.server, self.port)],
             self.nick, self.nick)
+        logger.info("Successfully reconnected to server " + self.server + ".")
 
     # This method would fire when the bot receives a private message.  For the
     # moment, if it's the bot's owner always learn from the text because this
