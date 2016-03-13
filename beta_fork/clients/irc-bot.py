@@ -155,7 +155,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             factory = irc.connection.Factory()
  
         # Initialize an instance of this class by running the parent class'
-        # Default initializer method.
+        # default initializer method.
         #
         # [(server, port)] can be a list of one or more (server, port) tuples
         # because it can connect to more than one at once.
@@ -183,10 +183,19 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         if roll == 1:
             pause = random.randint(1, 10)
             time.sleep(pause)
+            logger.debug("Bot has randomly decided to announce itself.")
             connection.privmsg(self.channel, "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
 
-    # MOOF MOOF MOOF
-    # This method fires if the bot gets kick/banned from a channel.
+    # This method fires if the bot gets kicked from a channel.  The smart
+    # thing to do is sleep for a random period of time (between one and three
+    # minutes) before trying to join again.
+    def on_kick(self, connection, event):
+        delay = random.randint(60, 180)
+        logger.debug("Got kicked from " + self.channel + ".  Sleeping for " + str(delay) + " seconds.")
+        time.sleep(delay)
+        logger.debug("Rejoining channel " + self.channel + ".")
+        connection.join(self.channel)
+        logger.info("Successfully re-joined channel " + self.channel + ".")
 
     # This method fires when the server disconnects the bot for some reason.
     # Ideally, the bot should try to connect again after a random number of
