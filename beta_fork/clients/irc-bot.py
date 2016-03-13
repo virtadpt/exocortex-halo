@@ -415,8 +415,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # Make an HTTP request to the conversation engine.
         http_request = requests.put(self.engine + "/learn", headers=headers,
-            data=json_request)
-        json_response = json.loads(http_request.text)
+            data=json.dumps(json_request))
+        json_response = json.loads(http_request.content)
         return json_response
 
     # Gets a response from the conversation engine.  Return a response.
@@ -440,8 +440,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # Contact the conversation engine to get a response.
         http_request = requests.get(self.engine + "/response", headers=headers,
-            data=json_request)
-        json_response = json.loads(http_request.text)
+            data=json.dumps(json_request))
+        json_response = json.loads(http_request.content)
         return json_response
 
 # Functions.
