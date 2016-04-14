@@ -24,7 +24,9 @@ import argparse
 import ConfigParser
 import logging
 import os
+import requests
 import sys
+import time
 
 # Constants.
 
@@ -82,6 +84,9 @@ body = ""
 
 # String which holds the message to the user when the job is done.
 message = ""
+
+# Handle to a requests object.
+request = None
 
 # Classes.
 
@@ -209,6 +214,26 @@ logger.debug("URL of the Etherpad-Lite instance: " + etherpad_url)
 logger.debug("API key for the Etherpad-Lite instance: " + etherpad_api_key)
 logging.debug("User agents that will be spoofed: " + str(user_agents))
 
+# Go into a loop in which the bot polls the configured message queue to see
+# if it has any HTTP requests waiting for it.
+logger.debug("Entering main loop to handle requests.")
+while True:
+
+    # Reset the variables that control the archived page and outbound e-mail.
+    head = ""
+    title = ""
+    body = ""
+    message = ""
+
+    # Check the message queue for search requests.
+    try:
+        logger.debug("Contacting message queue: " + message_queue)
+        request = requests.get(message_queue)
+        logger.debug("Response from server: " + request.text)
+    except:
+        logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        time.sleep(float(polling_time))
+        continue
 
 
 # Fin.
