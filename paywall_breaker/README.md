@@ -18,6 +18,7 @@ Requirements above and beyond what Python usually packages:
 
 * Requests
 * Beautiful Soup v4
+    * It is preferable that you install the version native to your distribution of Linux, but if need be you can install it with pip).
 * Python Etherpad-Lite (https://github.com/Changaco/python-etherpad_lite)
 * A running copy of Etherpad-Lite that it can securely contact.
 
