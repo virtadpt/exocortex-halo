@@ -20,6 +20,8 @@ Requirements above and beyond what Python usually packages:
 * Beautiful Soup v4
     * It is preferable that you install the version native to your distribution of Linux, but if need be you can install it with pip).
 * Python Etherpad-Lite (https://github.com/Changaco/python-etherpad_lite)
+* Validators (https://validators.readthedocs.org/en/latest/)
+    * Used to validate the correctness of URLs.
 * A running copy of Etherpad-Lite that it can securely contact.
 
 Commands from the user look like this:

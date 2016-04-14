@@ -20,13 +20,18 @@
 # TO-DO:
 
 # Load modules.
+from email.mime.text import MIMEText
+
 import argparse
 import ConfigParser
+import json
 import logging
 import os
 import requests
+import smtplib
 import sys
 import time
+import validators
 
 # Constants.
 
@@ -82,11 +87,18 @@ head = ""
 title = ""
 body = ""
 
+# String which holds the subject line of the message to the user when a job
+# is done.
+subject_line = ""
+
 # String which holds the message to the user when the job is done.
 message = ""
 
 # Handle to a requests object.
 request = None
+
+# URL of the page to grab.
+page_request = ""
 
 # Classes.
 
@@ -106,6 +118,68 @@ def set_loglevel(loglevel):
         return 10
     if loglevel == "notset":
         return 0
+
+# parse_get_request(): Takes a string and susses out the URL the user wants
+#   grabbed and archived.  Commands are of the form "Botname, get
+#   https://www.example.com/paywalled_page.html".  Returns the URL to download
+#   and parse or an error message.
+def parse_get_request(get_request):
+    logger.debug("Entered function parse_get_request().")
+    words = []
+
+    # Clean up the search request.
+    get_request = get_request.strip()
+
+    # If the search request is empty (i.e., nothing in the queue) return 0 and
+    # "".
+    if "no commands" in get_request:
+        logger.debug("Got empty get request.")
+        return
+
+    # Tokenize the search request.
+    words = get_request.split(', ')
+    logger.debug("Tokenized get request: " + str(words))
+
+    # "get <URL>"
+    if words[0].lower() == "get":
+        # Ditch the 'get' request.
+        del words[0]
+
+        # Try to validate that whatever's left in the list is an URL.
+        if not validators.url(words[0]):
+            return "ERROR: '" + str(words) + "' was not a valid URL."
+        else:
+            return words[0]
+
+# email_response(): Function that e-mails something to the bot's user.  Takes
+#   two arguments, strings containing a subject line and a message.  Uses the
+#   configured SMTP server to send the message.  Returns True (it worked) or
+#   False (it didn't go through).
+def email_response(subject_line, message):
+    smtp = None
+
+    # Due diligence.
+    if not subject_line:
+        return False
+    if not message:
+        return False
+
+    # Set up the outbound message.
+    message = MIMEText(message)
+    message['Subject'] = subject_line
+    message['From'] = origin_email_address
+    message['To'] = default_email
+    logger.debug("Created outbound e-mail with a message.")
+    logger.debug(str(message))
+
+    # Set up the SMTP connection and transmit the message.
+    logger.info("E-mail message to " + default_email)
+    smtp = smtplib.SMTP(smtp_server)
+    smtp.sendmail(origin_email_address, default_email, message.as_string())
+    smtp.quit()
+    logger.info("Message transmitted.  Deallocating SMTP server object.")
+    smtp = None
+    return True
 
 # Core code...
 # Set up the command line argument parser.
@@ -223,6 +297,7 @@ while True:
     head = ""
     title = ""
     body = ""
+    subject_line = ""
     message = ""
 
     # Check the message queue for search requests.
@@ -235,6 +310,32 @@ while True:
         time.sleep(float(polling_time))
         continue
 
+    # Test the HTTP response code.
+    # Success.
+    if request.status_code == 200:
+        logger.debug("Message queue " + bot_name + " found.")
+
+        # Extract the search request.
+        page_request = json.loads(request.text)
+        logger.debug("Command from user: " + str(page_request))
+        page_request = search_request['command']
+
+        # Parse the page request.
+        page_request = parse_get_request(page_request)
+        logger.debug("Parsed page get request: " + page_request)
+
+        # Test to see if a valid page request was received.  If not, send a
+        # failure message back to the user.
+        if "ERROR: " in page_request:
+            logger.debug("An invalid URL was received by the construct.")
+            subject_line = "I received an invalid URL."
+            message = "This is " + bot_name + ".  The URL " + page_request + " did not validate as a usable URL.  Please recheck what you sent and try again."
+            if not email_response(subject_line, message):
+                logger.warn("Unable to e-mail failure notice to the user.")
+                time.sleep(float(polling_time))
+                continue
+
+        # Try to download the HTML page the user is asking for.
 
 # Fin.
 sys.exit(0)
