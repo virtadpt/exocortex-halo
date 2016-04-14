@@ -62,6 +62,10 @@ smtp_server = "localhost"
 # Originating e-mail address the construct will use to identify itself.
 origin_email_address = ""
 
+# URL and API key of the Etherpad-Lite instance to use as an archive.
+etherpad_url = ""
+etherpad_api_key = ""
+
 # Handle to the configuration file section containing user agent strings.
 user_agent_strings = None
 
@@ -70,6 +74,14 @@ search_engine = ""
 
 # List of search engine user agents to spoof when making requests.
 user_agents = []
+
+# Important parts of the web page that we want to extract and save.
+head = ""
+title = ""
+body = ""
+
+# String which holds the message to the user when the job is done.
+message = ""
 
 # Classes.
 
@@ -123,8 +135,11 @@ config.read(config_file)
 # Get the URL of the message queue to contact.
 message_queue = config.get("DEFAULT", "queue")
 
-# Get the names of the message queues to report to.
+# Get the name of the message queue to report to.
 bot_name = config.get("DEFAULT", "bot_name")
+
+# Construct the full message queue name.
+message_queue = message_queue + bot_name
 
 # Get the default e-mail address.
 default_email = config.get("DEFAULT", "default_email")
@@ -165,15 +180,18 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
+# Get the URL of the Etherpad-Lite instance to contact.
+etherpad_url = config.get("DEFAULT", "etherpad_url")
+
+# Get the API key of the Etherpad-Lite instance.
+etherpad_api_key = config.get("DEFAULT", "etherpad_api_key")
+
 # Get the list of user agents from the configuration file and load them into
 # a list.
 user_agent_strings = config.items("user agents")
 for search_engine, user_agent in user_agent_strings:
     if "engine" in search_engine:
         user_agents.append(user_agent)
-
-# Construct the full message queue name.
-message_queue = message_queue + bot_name
 
 # Debugging output, if required.
 logger.info("Everything is configured.")
@@ -187,7 +205,11 @@ logger.debug("Time in seconds for polling the message queue: " +
 logger.debug("SMTP server to send search results through: " + smtp_server)
 logger.debug("E-mail address that search results are sent from: " +
     origin_email_address)
+logger.debug("URL of the Etherpad-Lite instance: " + etherpad_url)
+logger.debug("API key for the Etherpad-Lite instance: " + etherpad_api_key)
 logging.debug("User agents that will be spoofed: " + str(user_agents))
+
+
 
 # Fin.
 sys.exit(0)
