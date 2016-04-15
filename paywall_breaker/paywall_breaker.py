@@ -18,6 +18,9 @@
 # v1.0 - Initial release.
 
 # TO-DO:
+# - Find a way of using Beautiful Soup to strip out JavaScript.
+# - Clean up parsed HTML - strip out the skillions of \n's and \t's that tend
+#   to litter parsed HTML.
 
 # Load modules.
 from bs4 import BeautifulSoup
@@ -183,8 +186,7 @@ def email_response(subject_line, message):
     message['Subject'] = subject_line
     message['From'] = origin_email_address
     message['To'] = default_email
-    logger.debug("Created outbound e-mail with a message.")
-    logger.debug(str(message))
+    logger.debug("Created outbound e-mail.")
 
     # Set up the SMTP connection and transmit the message.
     logger.info("E-mail message to " + default_email)
