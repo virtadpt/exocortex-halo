@@ -22,6 +22,7 @@
 # Load modules.
 from bs4 import BeautifulSoup
 from email.mime.text import MIMEText
+from etherpad_lite import EtherpadLiteClient
 
 import argparse
 import ConfigParser
@@ -30,6 +31,7 @@ import logging
 import os
 import random
 import requests
+import sha
 import smtplib
 import sys
 import time
@@ -75,6 +77,9 @@ origin_email_address = ""
 etherpad_url = ""
 etherpad_api_key = ""
 
+# URL that the user will access pad pages through.
+archive_url = ""
+
 # Handle to the configuration file section containing user agent strings.
 user_agent_strings = None
 
@@ -100,6 +105,13 @@ request = None
 
 # URL of the page to grab.
 page_request = ""
+
+# Handle to an Etherpad-Lite page.
+etherpad = None
+
+# String that holds a pad ID which, in this case, will be a SHA-1 digest of the
+# body of the article.
+pad_id = ""
 
 # Classes.
 
@@ -214,15 +226,16 @@ def download_web_page(url):
     # Check to see if the request worked.
     if request.status_code != 200:
         logger.warn("Got HTTP status code " + str(request.status_code) + ".  Uh-oh.")
-        return (None, None, None)
-    logger.debug("Got URL " + url + ".  Now to parse it.")
+        return (None, None)
 
     # Parse the returned HTML.
+    logger.debug("Got URL " + url + ".  Now to parse it.")
     parsed_html = BeautifulSoup(request.text, 'html.parser')
 
-    # Extract the bits we want.
-    title = parsed_html.head.text
-    body = parsed_html.body.get_text()
+    # Extract the bits we want.  We need to explicitly change everything to
+    # UTF-8 so the rest of our code won't barf.
+    title = parsed_html.head.text.encode('utf-8')
+    body = parsed_html.body.get_text().encode('utf-8')
 
     # We're done here.
     return (title, body)
@@ -311,6 +324,9 @@ etherpad_url = config.get("DEFAULT", "etherpad_url")
 # Get the API key of the Etherpad-Lite instance.
 etherpad_api_key = config.get("DEFAULT", "etherpad_api_key")
 
+# Get the URL that the user will access pad pages through.
+archive_url = config.get("DEFAULT", "archive_url")
+
 # Get the list of user agents from the configuration file and load them into
 # a list.
 user_agent_strings = config.items("user agents")
@@ -332,6 +348,7 @@ logger.debug("E-mail address that search results are sent from: " +
     origin_email_address)
 logger.debug("URL of the Etherpad-Lite instance: " + etherpad_url)
 logger.debug("API key for the Etherpad-Lite instance: " + etherpad_api_key)
+logger.debug("URL of the Etherpad-Lite archive: " + archive_url)
 logging.debug("User agents that will be spoofed: " + str(user_agents))
 
 # Go into a loop in which the bot polls the configured message queue to see
@@ -339,11 +356,12 @@ logging.debug("User agents that will be spoofed: " + str(user_agents))
 logger.debug("Entering main loop to handle requests.")
 while True:
 
-    # Reset the variables that control the archived page and outbound e-mail.
+    # Reset variables that control the archived page and outbound e-mail.
     title = ""
     body = ""
     subject_line = ""
     message = ""
+    pad_id = ""
 
     # Check the message queue for search requests.
     try:
@@ -392,7 +410,42 @@ while True:
                 time.sleep(float(polling_time))
                 continue
 
-        # Try to contact Etherpad.
+        # Contact Etherpad and create a new pad with the contents of the page.
+        etherpad = EtherpadLiteClient(base_params={'apikey': etherpad_api_key})
+        pad_id=sha.sha(body).hexdigest()
+        result = etherpad.createPad(padID=pad_id,
+            text=title + "\n\n" + body + "\n")
+
+        # Test to see if creating the pad worked.
+        result = json.loads(result)
+        if result['code'] > 0:
+            subject_line = "Something weng wrong with Etherpad."
+            message = "This is " + bot_name + ".  I was unable to create a new pad to store the contents of the page you asked me to download.  The return code was " + str(result['code']) + ", which means "
+
+            # Figure out what the non-zero error code means.
+            if result['code'] == 1:
+                message = message + "that the wrong parameters were passed."
+            if result['code'] == 2:
+                message = message + "that there was an internal error."
+            if result['code'] == 3:
+                message = message + "that there is no such function, i.e., it's a bug in my code."
+            if result['code'] == 4:
+                message = message + "that the Etherpad-Lite API key is wrong."
+
+            if not email_response(subject_line, message):
+                logger.warn("Unable to e-mail failure notice to the user.")
+                time.sleep(float(polling_time))
+                continue
+
+        # E-mail a success message with a link to the archived page to the
+        # bot's user.
+        subject_line = "Successfully downloaded page '" + title + "'"
+        message = "I have successfully downloaded and parsed the text of the web page '" + title + "'.  You can read the page at the URL " + archive_url + pad_id
+
+        # Go back to sleep and wait for the next command.
+        logger.info("Done.  Going back to sleep until the next episode.")
+        time.sleep(float(polling_time))
+        continue
 
 # Fin.
 sys.exit(0)
