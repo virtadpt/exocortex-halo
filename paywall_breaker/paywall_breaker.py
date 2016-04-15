@@ -427,6 +427,8 @@ while True:
         # bot's user.
         subject_line = "Successfully downloaded page '" + title + "'"
         message = "I have successfully downloaded and parsed the text of the web page '" + title + "'.  You can read the page at the URL " + archive_url + pad_id
+        if not email_response(subject_line, message):
+            logger.warn("Unable to e-mail failure notice to the user.")
 
         # Go back to sleep and wait for the next command.
         logger.info("Done.  Going back to sleep until the next episode.")
