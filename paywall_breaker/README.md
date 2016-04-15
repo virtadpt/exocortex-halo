@@ -23,10 +23,12 @@ Requirements above and beyond what Python usually packages:
     * Used to validate the correctness of URLs.
 * A running copy of Etherpad-Lite that it can securely contact.  If it's running on the same host, so much the better.
 
+I recommend allocating a virtualenv to put everything in.  It's kind of annoying that pre-installed Python modules don't get pulled into virtualenvs when they're constructed, but you can't always have chocolate fudge/mint cookies, either.
+
 Commands from the user look like this:
 
 ```
 Paywall Breaker, get https://www.example.com/paywalled_article.html
 ```
 
-You can run multiple copies 
+You can run multiple copies of Paywall Breaker in the same exocortex so long as they all have different names.  Don't forget that they'll need separate message queues, also.

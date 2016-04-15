@@ -113,7 +113,8 @@ etherpad = None
 # body of the article.
 pad_id = ""
 
-# Classes.
+# String that holds the contents of the web page to send to Etherpad-Lite.
+page_text = ""
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -150,7 +151,7 @@ def parse_get_request(get_request):
         return
 
     # Tokenize the search request.
-    words = get_request.split(', ')
+    words = get_request.split(' ')
     logger.debug("Tokenized get request: " + str(words))
 
     # "get <URL>"
@@ -362,6 +363,7 @@ while True:
     subject_line = ""
     message = ""
     pad_id = ""
+    page_text = ""
 
     # Check the message queue for search requests.
     try:
@@ -418,29 +420,8 @@ while True:
         # Contact Etherpad and create a new pad with the contents of the page.
         etherpad = EtherpadLiteClient(base_params={'apikey': etherpad_api_key})
         pad_id=sha.sha(body).hexdigest()
-        result = etherpad.createPad(padID=pad_id,
-            text=title + "\n\n" + body + "\n")
-
-        # Test to see if creating the pad worked.
-        result = json.loads(result)
-        if result['code'] > 0:
-            subject_line = "Something weng wrong with Etherpad."
-            message = "This is " + bot_name + ".  I was unable to create a new pad to store the contents of the page you asked me to download.  The return code was " + str(result['code']) + ", which means "
-
-            # Figure out what the non-zero error code means.
-            if result['code'] == 1:
-                message = message + "that the wrong parameters were passed."
-            if result['code'] == 2:
-                message = message + "that there was an internal error."
-            if result['code'] == 3:
-                message = message + "that there is no such function, i.e., it's a bug in my code."
-            if result['code'] == 4:
-                message = message + "that the Etherpad-Lite API key is wrong."
-
-            if not email_response(subject_line, message):
-                logger.warn("Unable to e-mail failure notice to the user.")
-                time.sleep(float(polling_time))
-                continue
+        page_text = title + "\n\n" + body + "\n"
+        etherpad.createPad(padID=pad_id, text=page_text)
 
         # E-mail a success message with a link to the archived page to the
         # bot's user.
