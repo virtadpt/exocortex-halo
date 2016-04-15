@@ -8,7 +8,6 @@ This construct is part of the Exocortex Halo (https://github.com/virtadpt/exocor
 * The construct downloads the HTML page.
 * Beautiful Soup is used to parse the HTML and extract the
     * <title>
-    * <head>
     * <body>
 * The construct pings an instance of Etherpad-Lite and allocates a new pad.
 * The extracted text is copied into the new pad and saved.
@@ -22,7 +21,7 @@ Requirements above and beyond what Python usually packages:
 * Python Etherpad-Lite (https://github.com/Changaco/python-etherpad_lite)
 * Validators (https://validators.readthedocs.org/en/latest/)
     * Used to validate the correctness of URLs.
-* A running copy of Etherpad-Lite that it can securely contact.
+* A running copy of Etherpad-Lite that it can securely contact.  If it's running on the same host, so much the better.
 
 Commands from the user look like this:
 
@@ -30,4 +29,4 @@ Commands from the user look like this:
 Paywall Breaker, get https://www.example.com/paywalled_article.html
 ```
 
-
+You can run multiple copies 

@@ -20,6 +20,7 @@
 # TO-DO:
 
 # Load modules.
+from bs4 import BeautifulSoup
 from email.mime.text import MIMEText
 
 import argparse
@@ -27,6 +28,7 @@ import ConfigParser
 import json
 import logging
 import os
+import random
 import requests
 import smtplib
 import sys
@@ -83,7 +85,6 @@ search_engine = ""
 user_agents = []
 
 # Important parts of the web page that we want to extract and save.
-head = ""
 title = ""
 body = ""
 
@@ -180,6 +181,51 @@ def email_response(subject_line, message):
     logger.info("Message transmitted.  Deallocating SMTP server object.")
     smtp = None
     return True
+
+# download_web_page(): This function takes a URL from the bot's user and
+#   downloads it while spoofing the User-Agent field of the request in an
+#   attempt to evade paywalls.  It returns two essential pieces of the web
+#   page, the parsed contents of the <title>, and <body> segments of the page.
+#   In the event of problems it returns None, and None for all two values.
+def download_web_page(url):
+
+    # Essential values.
+    title = ""
+    body = ""
+
+    # Custom headers for the HTTP request.
+    custom_headers = {}
+
+    # Handle to a requests object (how's that for an awkward module name?).
+    request = None
+
+    # Handle to a BeautifulSoup parser object.
+    parsed_html = None
+
+    # Pick a random user agent.
+    user_agent = user_agents[random.randrange(0, stop=len(user_agents))]
+    logger.debug("Spoofing user agent '" + user_agent + "'.")
+    custom_headers['user-agent'] = user_agent
+
+    # Make the HTTP request.
+    logger.debug("Making HTTP request to " + url)
+    request = requests.get(url, headers=custom_headers)
+
+    # Check to see if the request worked.
+    if request.status_code != 200:
+        logger.warn("Got HTTP status code " + str(request.status_code) + ".  Uh-oh.")
+        return (None, None, None)
+    logger.debug("Got URL " + url + ".  Now to parse it.")
+
+    # Parse the returned HTML.
+    parsed_html = BeautifulSoup(request.text, 'html.parser')
+
+    # Extract the bits we want.
+    title = parsed_html.head.text
+    for paragraph in parsed_html.body.find_all('p'):
+        body = paragraph.text + "\n\n"
+
+    return (title, body)
 
 # Core code...
 # Set up the command line argument parser.
@@ -294,7 +340,6 @@ logger.debug("Entering main loop to handle requests.")
 while True:
 
     # Reset the variables that control the archived page and outbound e-mail.
-    head = ""
     title = ""
     body = ""
     subject_line = ""
@@ -336,6 +381,17 @@ while True:
                 continue
 
         # Try to download the HTML page the user is asking for.
+        (title, body) = download_web_page(page_request)
+
+        # Did it work?
+        if not title or not body:
+            subject_line = "I was unable to download the URL."
+            message = "This is " + bot_name + ".  I was unable to download the URL " + page_request + ".  I think I got caught; try it again?"
+            if not email_response(subject_line, message):
+                logger.warn("Unable to e-mail failure notice to the user.")
+                time.sleep(float(polling_time))
+                continue
+
 
 # Fin.
 sys.exit(0)
