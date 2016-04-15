@@ -381,11 +381,16 @@ while True:
         # Extract the search request.
         page_request = json.loads(request.text)
         logger.debug("Command from user: " + str(page_request))
-        page_request = search_request['command']
+        page_request = page_request['command']
 
         # Parse the page request.
         page_request = parse_get_request(page_request)
-        logger.debug("Parsed page get request: " + page_request)
+        logger.debug("Parsed page get request: " + str(page_request))
+
+        # If there was no page request, go back to sleep.
+        if not page_request:
+            time.sleep(float(polling_time))
+            continue
 
         # Test to see if a valid page request was received.  If not, send a
         # failure message back to the user.
