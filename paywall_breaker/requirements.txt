@@ -1,3 +1,4 @@
 requests
 validators
 etherpad_lite
+beautifulsoup4
