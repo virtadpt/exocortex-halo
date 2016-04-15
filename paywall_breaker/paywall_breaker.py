@@ -222,9 +222,9 @@ def download_web_page(url):
 
     # Extract the bits we want.
     title = parsed_html.head.text
-    for paragraph in parsed_html.body.find_all('p'):
-        body = paragraph.text + "\n\n"
+    body = parsed_html.body.get_text()
 
+    # We're done here.
     return (title, body)
 
 # Core code...
@@ -392,6 +392,7 @@ while True:
                 time.sleep(float(polling_time))
                 continue
 
+        # Try to contact Etherpad.
 
 # Fin.
 sys.exit(0)
