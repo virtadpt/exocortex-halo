@@ -27,7 +27,7 @@
 #        up.  It'll be much easier to maintain that way.
 #      - Got rid of the command line option where you can manually pass a
 #        search request to the bot for testing.
-# v1.0 - Initial 
+# v1.0 - Initial release.
 
 # TO-DO:
 # - Pull the argument vector and config file parsing stuff into their own
@@ -246,7 +246,7 @@ def get_search_results(search_term):
         logger.debug("Parsing the HTML page returned from the search engine.")
         if html_page:
             results = BeautifulSoup(html_page, 'html.parser',
-            parse_only=link_extractor)
+                parse_only=link_extractor)
         else:
             logger.warning("The search engine returned an error.")
 
