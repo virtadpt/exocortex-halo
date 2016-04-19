@@ -2,3 +2,6 @@ requests
 validators
 etherpad_lite
 beautifulsoup4
+pyopenssl
+ndg-httpsclient
+pyasn1

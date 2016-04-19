@@ -34,7 +34,6 @@ import logging
 import os
 import random
 import requests
-import sha
 import smtplib
 import sys
 import time
@@ -112,10 +111,6 @@ page_request = ""
 # Handle to an Etherpad-Lite page.
 etherpad = None
 
-# String that holds a pad ID which, in this case, will be a SHA-1 digest of the
-# body of the article.
-pad_id = ""
-
 # String that holds the contents of the web page to send to Etherpad-Lite.
 page_text = ""
 
@@ -147,8 +142,7 @@ def parse_get_request(get_request):
     # Clean up the search request.
     get_request = get_request.strip()
 
-    # If the search request is empty (i.e., nothing in the queue) return 0 and
-    # "".
+    # If the search request is empty (i.e., nothing in the queue), bounce.
     if "no commands" in get_request:
         logger.debug("Got empty get request.")
         return
@@ -234,6 +228,11 @@ def download_web_page(url):
     # Parse the returned HTML.
     logger.debug("Got URL " + url + ".  Now to parse it.")
     parsed_html = BeautifulSoup(request.text, 'html.parser')
+
+    # Silently rip out the CSS and JavaScript because, technically, those are
+    # part of the next.
+    for i in parsed_html(["script", "style"]):
+        foo = i.extract()
 
     # Extract the bits we want.  We need to explicitly change everything to
     # UTF-8 so the rest of our code won't barf.
@@ -364,7 +363,6 @@ while True:
     body = ""
     subject_line = ""
     message = ""
-    pad_id = ""
     page_text = ""
 
     # Check the message queue for search requests.
@@ -418,17 +416,17 @@ while True:
                 logger.warn("Unable to e-mail failure notice to the user.")
                 time.sleep(float(polling_time))
                 continue
+            continue
 
         # Contact Etherpad and create a new pad with the contents of the page.
         etherpad = EtherpadLiteClient(base_params={'apikey': etherpad_api_key})
-        pad_id=sha.sha(body).hexdigest()
-        page_text = title + "\n\n" + body + "\n"
-        etherpad.createPad(padID=pad_id, text=page_text)
+        page_text = str(title) + "\n\n" + str(body) + "\n"
+        etherpad.createPad(padID=title, text=page_text)
 
         # E-mail a success message with a link to the archived page to the
         # bot's user.
         subject_line = "Successfully downloaded page '" + title + "'"
-        message = "I have successfully downloaded and parsed the text of the web page '" + title + "'.  You can read the page at the URL " + archive_url + pad_id
+        message = "I have successfully downloaded and parsed the text of the web page '" + title + "'.  You can read the page at the URL " + archive_url + title 
         if not email_response(subject_line, message):
             logger.warn("Unable to e-mail failure notice to the user.")
 

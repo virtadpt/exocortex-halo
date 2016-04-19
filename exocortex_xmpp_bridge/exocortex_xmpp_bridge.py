@@ -348,7 +348,6 @@ class XMPPClient(threading.Thread):
             command = message_body.split(' ')[1]
         command = command.strip()
         command = command.strip('.')
-        command = command.lower()
         logger.debug("Received search request: " + command)
 
         # Push the search request into the appropriate message queue.
