@@ -274,14 +274,14 @@ class XMPPClient(threading.Thread):
             self.connection.send(response)
 
             response_body = "To execute a search, send a message that looks like this:\n"
-            response_body = response_body + "<bot name>, top <n> hits for <search term>.\n"
+            response_body = response_body + "[bot name], top [n] hits for [search term].\n"
             response_body = response_body + "At present, at most 30 search results are supported.  The number of search results is spelled out (i.e., 'ten' and not 10).\n"
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
             self.connection.send(response)
 
             response_body = "To e-mail search results to someone who isn't you, send a message that looks like this:\n"
-            response_body = response_body + "<bot name>, send/e-mail/email/mail <e-mail address> top <n> hits for <search term>.\n"
+            response_body = response_body + "[bot name], send/e-mail/email/mail [e-mail address] top [n] hits for [search term].\n"
             response_body = response_body + "Search results will be e-mailed to the address given."
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
