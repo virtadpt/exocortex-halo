@@ -261,7 +261,7 @@ class XMPPClient(threading.Thread):
             return
 
         # Extract the message body for parsing.
-        message_body = message.getBody()
+        message_body = str(message.getBody()).strip()
         logger.debug("Value of XMPPClient.process_message().message_body is: " + str(message_body))
 
         # If the user asks for help, display the list of acknowledged commands.
