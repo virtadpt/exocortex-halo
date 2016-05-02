@@ -15,10 +15,15 @@
 
 # License: GPLv3
 
+# v1.1 - Figured out how to strip out all CSS and JS to make pages easier to
+#        deal with in the pad.
+#      - Got tired of fighting with the padID argument in Etherpad-Lite's API
+#        and went back to using a SHA-1 hash of the page to uniquely identify
+#        in the database.  Coupled with the search function of Etherpad-Lite
+#        everything is now much more smooth.
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Find a way of using Beautiful Soup to strip out JavaScript.
 # - Clean up parsed HTML - strip out the skillions of \n's and \t's that tend
 #   to litter parsed HTML.
 
@@ -29,6 +34,7 @@ from etherpad_lite import EtherpadLiteClient
 
 import argparse
 import ConfigParser
+import hashlib
 import json
 import logging
 import os
@@ -113,6 +119,12 @@ etherpad = None
 
 # String that holds the contents of the web page to send to Etherpad-Lite.
 page_text = ""
+
+# padID for Etherpad-Lite.
+pad_id = ""
+
+# Handle to a SHA-1 hasher.
+hash = None
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -364,6 +376,8 @@ while True:
     subject_line = ""
     message = ""
     page_text = ""
+    pad_id = ""
+    hash = hashlib.sha1()
 
     # Check the message queue for search requests.
     try:
@@ -418,15 +432,24 @@ while True:
                 continue
             continue
 
+        # Clean up the title for later.
+        title = title.strip()
+
+        # Take a SHA-1 hash of the article because that seems to be the most
+        # reliable way of generating a valid padID for Etherpad-Lite.
+        hash.update(title)
+        hash.update(body)
+        pad_id = hash.hexdigest()
+
         # Contact Etherpad and create a new pad with the contents of the page.
         etherpad = EtherpadLiteClient(base_params={'apikey': etherpad_api_key})
         page_text = str(title) + "\n\n" + str(body) + "\n"
-        etherpad.createPad(padID=title, text=page_text)
+        etherpad.createPad(padID=pad_id, text=page_text)
 
         # E-mail a success message with a link to the archived page to the
         # bot's user.
         subject_line = "Successfully downloaded page '" + title + "'"
-        message = "I have successfully downloaded and parsed the text of the web page '" + title + "'.  You can read the page at the URL " + archive_url + title 
+        message = "I have successfully downloaded and parsed the text of the web page '" + title + "'.  You can read the page at the URL " + archive_url + pad_id 
         if not email_response(subject_line, message):
             logger.warn("Unable to e-mail failure notice to the user.")
 
