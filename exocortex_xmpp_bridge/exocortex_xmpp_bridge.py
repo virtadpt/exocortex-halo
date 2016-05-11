@@ -20,6 +20,8 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v2.1.1 - Started pulling 'search' out of text because this bot is used for
+#        much more than just web searches.
 # v2.1 - Working on the "goes into a coma and pegs the CPU problem" by adding
 #        XEP-0199 client-to-server pings to keep the server alive.
 #      - Added online help to the command parser.
@@ -97,7 +99,7 @@ loglevel = ""
 
 # XMPPClient: XMPP client class.  Implemented using threading.Thread because
 #   it'll spin out on its own to connect to the XMPP server, while the custom
-#   REST API server handles the distribution of search requests to other agents.
+#   REST API server handles the distribution of requests to other agents.
 class XMPPClient(threading.Thread):
     # Username information needed to log into the XMPP server.
     username = ""
@@ -188,11 +190,11 @@ class XMPPClient(threading.Thread):
         self.connection.RegisterHandler("message", self.process_message)
 
         # Send a message to the bot's owner that it is now online.
-        logger.info("Now informing " + self.owner + " that the web search agents are now online.")
+        logger.info("Now informing " + self.owner + " that the configured agents are now online.")
         if len(message_queue.keys()) == 1:
-            now_online_message = "The search bot "
+            now_online_message = "The bot "
         else:
-            now_online_message = "The search bots "
+            now_online_message = "The bots "
 
         for key in message_queue.keys():
             now_online_message = now_online_message + key + ", "
@@ -268,12 +270,12 @@ class XMPPClient(threading.Thread):
         if message_body == "help":
             logger.debug("User has requested online help.")
             resonse_body = "Supported commands:\n- help - This online help."
-            response_body = response_body + "- Robots, report. - List all configured search bots.\n"
+            response_body = response_body + "- Robots, report. - List all configured bots.\n"
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
             self.connection.send(response)
 
-            response_body = "To execute a search, send a message that looks like this:\n"
+            response_body = "To execute a command, send a message that looks like this:\n"
             response_body = response_body + "[bot name], top [n] hits for [search term].\n"
             response_body = response_body + "At present, at most 30 search results are supported.  The number of search results is spelled out (i.e., 'ten' and not 10).\n"
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
@@ -293,7 +295,7 @@ class XMPPClient(threading.Thread):
 
             # Configured message queues.
             logger.debug("FC interrupt!  Robots reporting locations!")
-            response_body = "FC interrupt!  The following search agents are registered: "
+            response_body = "FC interrupt!  The following agents are registered: "
             for key in message_queue.keys():
                 response_body = response_body + key + " "
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
@@ -307,7 +309,7 @@ class XMPPClient(threading.Thread):
             self.connection.send(response)
 
             for key in message_queue.keys():
-                response_body = "Search agent " + key + ": "
+                response_body = "Agent " + key + ": "
                 response_body = response_body + str(message_queue[key])
                 response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                     body=response_body)
@@ -323,19 +325,19 @@ class XMPPClient(threading.Thread):
         if not message_body:
             return
 
-        # Try to split off the search bot's name from the message body.  If
-        # the search agent's name isn't registered, bounce.
+        # Try to split off the bot's name from the message body.  If the
+        # agent's name isn't registered, bounce.
         if ',' in message_body:
             agent_name = message_body.split(',')[0]
         else:
             agent_name = message_body.split(' ')[0]
-        logger.debug("Search agent name: " + agent_name)
+        logger.debug("Agent name: " + agent_name)
         if agent_name not in message_queue.keys():
-            logger.debug("Command sent to search agent " + agent_name + ", which doesn't exist.")
+            logger.debug("Command sent to agent " + agent_name + ", which doesn't exist.")
 
             # Build a response message stanza to inform the user that the
-            # search agent they're trying to contact doesn't exist.
-            response_body = "Search request sent to agent " + agent_name + ", which doesn't exist.  Please check your spelling."
+            # agent they're trying to contact doesn't exist.
+            response_body = "Request sent to agent " + agent_name + ", which doesn't exist.  Please check your spelling."
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
             self.connection.send(response)
@@ -348,16 +350,16 @@ class XMPPClient(threading.Thread):
             command = message_body.split(' ')[1]
         command = command.strip()
         command = command.strip('.')
-        logger.debug("Received search request: " + command)
+        logger.debug("Received request: " + command)
 
-        # Push the search request into the appropriate message queue.
-        logger.debug("Added search request to " + agent_name + "'s message queue.")
+        # Push the request into the appropriate message queue.
+        logger.debug("Added request to " + agent_name + "'s message queue.")
         message_queue[agent_name].append(command)
 
-        # Tell the bot's owner that the search request has been added to the
-        # agent's message queue.
-        logger.debug("Sending acknowledgement of search request to " + self.owner + ".")
-        acknowledge_text = "Your search request has been added to " + agent_name + "'s request queue."
+        # Tell the bot's owner that the request has been added to the agent's
+        # message queue.
+        logger.debug("Sending acknowledgement of request to " + self.owner + ".")
+        acknowledge_text = "Your request has been added to " + agent_name + "'s request queue."
         acknowledge = xmpp.protocol.Message(to=xmpp.JID(self.owner),
             body=acknowledge_text)
         self.connection.send(acknowledge)
@@ -396,7 +398,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # If someone requests /, return the current internal configuration of
         # this microservice to be helpful.
         if self.path == '/':
-            logger.debug("User requested /.  Returning list of configured search agents.")
+            logger.debug("User requested /.  Returning list of configured agents.")
             self.send_response(200)
             self.send_header("Content-type:", "application/json")
             self.wfile.write('\n')
