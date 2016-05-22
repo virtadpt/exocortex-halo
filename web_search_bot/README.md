@@ -1,28 +1,10 @@
-This is a relatively simple bot that is part of the Exocortex Halo (https://github.com/virtadpt/exocortex-halo) project which operates in concert with other bots to implement fire-and-forget web search requests.  My use case is this: While out and about without a laptop, use an XMPP client running on my phone to send a command of the form "<agent>, top twenty hits for <some weird search term>."  These commands are picked up by exocortex_xmpp_bridge.py and stored in an internal message queue that is periodically polled (by default, once a minute) by web_search_bot.py.
+This is a relatively simple bot that is part of the Exocortex Halo (https://github.com/virtadpt/exocortex-halo) project which operates in concert with other bots to implement fire-and-forget web search requests.  The intended use case is this: While out and about without a laptop, use an XMPP client running on a phone to send a command of the form "<agent>, top twenty hits for <some weird search term>."  These commands are picked up by exocortex_xmpp_bridge.py and stored in an message queue that is periodically polled (by default, once a minute) by this bot.  web_search_bot.py extracts a message with the search request from its mssage queue, parses it, assembles the actual search request, and runs a search through an instance of Searx (https://github.com/asciimoo/searx) defined in web_search_bot.conf.
 
-web_search_bot.py parses the JSON document to determine what kind of search request to make, assembles the search strings, and runs a couple of searches against a list of search engines configured in web_search_bot.conf.  I like to use privacy-preserving search engines so the list of stuff to filter out of the returned HTML (currently hardcoded in web_search_bot.py's hyperlinks_we_dont_want[] list) is specific to them.  One of the things I need to do is split that out into a configuration file to make it easier to maintain.
+You're probably wondering why I stripped out the "define your own search engines and parsers in the config file" functionality, which earlier releases of this bot had.  That's because I got tired of maintaining lists of search engines and hyperlinks to strip out.  They change often enough that this got to be annoying and limiting.  Searx does much of this on its own, plus it returns search results with rankings as JSON, which simplifies working with the results immensely.  After some testing I find that it returns much more reliable and useful search results than my own code did.
+
+So, [go install Searx](https://asciimoo.github.io/searx/dev/install/installation.html) but don't bother with uwsgi or putting it behind a reverse proxy; just have it listen on 127.0.0.1 on some port you're not using (8888/tcp by default).
 
 web_search_bot.py is also capable of e-mailing search terms to an address specified in the command.  For example, "<agent>, send you@example.com top twenty hits for <some weird search term>"
 
-Requires BeautifulSoup4 (http://www.crummy.com/software/BeautifulSoup/) to parse the HTML returned by the search engines.  Try installing it from your distro's default package repositories - Arch Linux and Ubuntu v14.04 have it already so you don't need to set it up yourself.
-
-web_search_bot.py currently only supports up to forty (40) search results.  Specifying an invalid number causes it to default to ten (10).
-
-If you would like to add your own search engines to the list that web_search_bot draws from, the process is fairly simple: Get the URL with which you can specify a URL encoded search request (for example, https://startpage.com/do/search?q=).  Run a search against a search engine for something random (it doesn't need to be a specific search) to get a results page.  Extract all of the links from the returned HTML.  Sort through them to throw out all of the stuff that isn't a URL to a search result; for each thing you throw out, append it to the list *hyperlinks_we_dont_want* in the web_search_bot.conf file (or whatever you've named it if you're running multiple instances of the bot).  Here is some sample Python code (which I'll eventually turn into a utility to help with this process that I use to set up the example configuration file:
-
-```
-from bs4 import BeautifulSoup
-from bs4 import SoupStrainer
-import requests
-request = requests.get('https://www.example.com/?q=fooble')
-link_extractor = SoupStrainer('a')
-html = BeautifulSoup(request.content, 'html.parser', parse_only=link_extractor)
-links = html.find_all('a')
-for i in links:
-    hyperlink = i.get("href")
-    if not hyperlink:
-        continue
-    print hyperlink.strip()
-    print
-```
+web_search_bot.py currently only supports up to fifty (50) search results.  Specifying an invalid number causes it to default to ten (10).
 

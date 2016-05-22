@@ -4,10 +4,8 @@
 
 # web_search_bot.py - Bot written in Python that polls a RESTful message queue
 #   for search commands of the form "<botname>, get me <number of hits> hits
-#   for <search terms>", runs the searches on a number of search engines,
-#   collates them, and POSTs them to a Huginn
-#   (https://github.com/cantino/huginn) instances webhook so something can be
-#   done with them.
+#   for <search terms>", runs the searches on an instance of Searx, and e-mails
+#   them to the user (or a designated e-mail address).
 #
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
@@ -17,6 +15,16 @@
 
 # License: GPLv3
 
+# v2.0 - Rewrote much of this bot's functionality to use Searx
+#        (https://github.com/asciimoo/searx) rather than a user-supplied list
+#        of arbitrary search engines.  This means that it's possible to
+#        customize the general kinds of searches you can potentially run based
+#        upon which Searx instances you use (by standing up more than one copy
+#        of this bot) and each Searx instance can have a different combination
+#        of sites to search turned on (such as a personal and a public YaCy
+#        instance) or different custom Searx engines installed.
+#      - Now tops out at fifty (50) search results.
+#      - Made some of the code a little less awkward.
 # v1.1 - Added a "no search results found" handler.
 #      - Added an error handler for the case where contacting the message queue
 #        either times out or fails outright.
@@ -39,8 +47,8 @@
 # - Break out the "handle HTTP result code" handler into a function.
 
 # Load modules.
-from bs4 import BeautifulSoup
-from bs4 import SoupStrainer
+from email.message import Message
+from email.header import Header
 from email.mime.text import MIMEText
 
 import argparse
@@ -62,12 +70,12 @@ numbers = { "one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
     "eighteen":18, "nineteen":19, "twenty":20, "twenty-one":21, "twenty-two":22,
     "twenty-two":22, "twenty-three":23, "twenty-four":24, "twenty-five":25,
     "twenty-six":26, "twenty-seven":27, "twenty-eight":28, "twenty-nine":29,
-    "thirty":30 }
-
-# Every HTML page returned from a search engine will have two kinds of links:
-# Links to search results, and links to other stuff we don't care about.  This
-# is a list of the stuff we don't care about.
-hyperlinks_we_dont_want = []
+    "thirty":30 , "thirty-one":31, "thirty-two":32, "thirty-three":33,
+    "thirty-four":34, "thirty-five":35, "thirty-six":36, "thirty-seven":37,
+    "thirty-eight":38, "thirty-nine":39, "forty":50, "forty-one":41,
+    "forty-two":42, "forty-three":43, "forty-four":44, "forty-five":45,
+    "forty-six":46, "forty-seven":47, "forty-eight":48, "forty-nine":49,
+    "fifty":50 }
 
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
@@ -78,6 +86,9 @@ email_regex = "[^@]+@[^@]+\.[^@]+"
 email_matcher = re.compile(email_regex)
 
 # Global variables.
+# Base URL to a Searx instance.
+searx = ""
+
 # Handle to a logging object.
 logger = ""
 
@@ -99,13 +110,10 @@ default_email = ""
 bot_name = ""
 
 # How often to poll the message queues for orders.
-polling_time = 60
+polling_time = 0
 
 # Search request sent from the user.
 search_request = ""
-
-# The list of search engines to run search requests against.
-search_engines = []
 
 # The e-mail address to send search results to (if applicable).
 destination_email_address = ""
@@ -167,7 +175,7 @@ def parse_search_request(search_request):
 
     # "Send/e-mail/email/mail <foo> top <number> hits for <search request...>"
     if (words[0] == "send") or (words[0] == "e-mail") or \
-        (words[0] == "email") or (words[0] == "mail"):
+            (words[0] == "email") or (words[0] == "mail"):
 
         logger.info("Got a token suggesting that search results should be e-mailed to someone.")
 
@@ -190,6 +198,9 @@ def parse_search_request(search_request):
     # "top <foo> hits for <search request...>
     logger.debug("Starting to parse search request.")
     if words[0] == "top":
+        if isinstance(words[1], (int)):
+            number_of_search_results = words[1]
+
         if words[1] in numbers.keys():
             number_of_search_results = numbers[words[1]]
         else:
@@ -208,8 +219,7 @@ def parse_search_request(search_request):
         return (number_of_search_results, search_term, email_address)
 
     # Convert the remainder of the list into a URI-encoded string.
-    search_term = " ".join(unicode(word) for word in words)
-    search_term = search_term.replace(' ', '+')
+    search_term = "+".join(unicode(word) for word in words)
     logger.debug("Search term: " + search_term)
     return (number_of_search_results, search_term, email_address)
 
@@ -219,83 +229,46 @@ def parse_search_request(search_request):
 def get_search_results(search_term):
     logger.debug("Entered function get_search_results().")
 
-    # This list will hold all of the links to search results.
-    search_results = []
+    # URL which represents the search request.
+    url = ""
 
-    # Allocate a link extractor.  This optimizes both memory utilization and
-    # parsing speed of each page.
-    link_extractor = SoupStrainer('a')
+    # This will hold the search results returned by Searx.
+    search_results = {}
 
-    # Make the search request using each of the search engines in the
-    # configuration file.
-    logger.info("Got request to search for " + search_term + ".  Starting search now.")
-    for search_engine in search_engines:
-        logger.debug("Placing search request to: " + search_engine)
-        html_page = ""
-        results = ""
-        hyperlinks = []
+    # The array which holds the search result data we actually want.
+    results = []
 
-        # Place the search request.
-        search_URL = search_engine + search
-        logger.debug("Search request: " + search_URL)
-        request = requests.get(search_URL)
-        html_page = request.content
+    # Assemble the search request URL.
+    url = searx + search_term
+    logger.debug("Got a search request for " + str(url) + ".")
 
-        # Feed the appropriate document to the parser to extract all
-        # of the hyperlinks.
-        logger.debug("Parsing the HTML page returned from the search engine.")
-        if html_page:
-            results = BeautifulSoup(html_page, 'html.parser',
-                parse_only=link_extractor)
-        else:
-            logger.warning("The search engine returned an error.")
+    # Make the search request and extract the JSON of the results.
+    request = requests.get(url)
+    search_results = json.loads(request.content)
 
-        # Extract all of the hyperlinks from this page.
-        logger.debug("Extracting hyperlinks from search result page.")
-        for link in results.find_all('a'):
-            hyperlink = link.get('href')
-
-            # Sometimes hyperlinks are null.  Catch those.
-            if not hyperlink:
-                logger.debug("Found and skipping a Null hyperlink.")
-                continue
-
-            # Sift out the links we don't want.
-            reject_link = False
-            for do_not_want in hyperlinks_we_dont_want:
-                if do_not_want in hyperlink:
-                    reject_link = True
-                    break
-
-            # Clean up and keep the links we do want.
-            if not reject_link:
-                hyperlink = hyperlink.strip()
-                hyperlinks.append(hyperlink)
-
-            # Add the results from this search engine to the master list
-            # of search results.
-            search_results = search_results + hyperlinks
-
-    # Deduplicate search results in the master list.
-    logger.debug("Deduplicating and sorting the master list of search results.")
-    search_results = list(set(search_results))
-    search_results.sort()
-    logger.debug("Master list of search results: " + str(search_results))
+    # Extract only the stuff we want from the search results and pack it into
+    # a separate hash table.
+    for i in search_results['results']:
+        temp = {}
+        temp['title'] = i['title']
+        temp['url'] = i['url']
+        temp['score'] = i['score']
+        temp['content'] = i['content']
+        results.append(temp)
 
     # Truncate the master list of search results down to the number of
     # hits the user requested.
-    if len(search_results) > number_of_results:
-        search_results = search_results[:(number_of_results - 1)]
-    logger.debug("Returning " + str(len(search_results)) + " search results.")
-    logger.debug("Final list of search results: " + str(search_results))
+    if len(results) > number_of_results:
+        results = results[:(number_of_results - 1)]
+    logger.debug("Returning " + str(len(results)) + " search results.")
 
     # Return the list of search results.
-    return search_results
+    return results
 
 # Core code...
 
 # Set up the command line argument parser.
-argparser = argparse.ArgumentParser(description='A bot that polls one or more message queues for commands, parses them, runs web searches in response, and sends the results to a destination.')
+argparser = argparse.ArgumentParser(description='A bot that polls a message queue for search requests, parses them, runs them as web searches, and e-mails the results to a destination.')
 
 # Set the default config file and the option to set a new one.
 argparser.add_argument('--config', action='store', 
@@ -303,7 +276,7 @@ argparser.add_argument('--config', action='store',
 
 # Loglevels: critical, error, warning, info, debug, notset.
 argparser.add_argument('--loglevel', action='store',
-    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
+    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.')
 
 # Time (in seconds) between polling the message queues.
 argparser.add_argument('--polling', action='store', default=60,
@@ -323,17 +296,11 @@ if not os.path.exists(config_file):
     sys.exit(1)
 config.read(config_file)
 
+# Get the URL of the Searx instance to contact.
+searx = config.get("DEFAULT", "searx")
+
 # Get the message queue to contact.
 message_queue = config.get("DEFAULT", "queue")
-
-# Read in the list of hyperlinks to ignore when parsing HTML from the search
-# engine results.
-# This is a string.
-hyperlinks_to_strip = config.get("DEFAULT", "hyperlinks_we_dont_want")
-for hyperlink in hyperlinks_to_strip.split(','):
-    hyperlink = hyperlink.strip()
-    hyperlink = hyperlink.strip('"')
-    hyperlinks_we_dont_want.append(hyperlink)
 
 # Get the names of the message queues to report to.
 bot_name = config.get("DEFAULT", "bot_name")
@@ -377,22 +344,15 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
-# Get the search engines from the config file and load them into a list.
-engines = config.items("search engines")
-for config_option, option in engines:
-    if 'engine' in config_option:
-        search_engines.append(option)
-
 # Construct the full message queue name.
 message_queue = message_queue + bot_name
 
 # Debugging output, if required.
-logger.info("Everything is set up now.")
+logger.info("Everything is set up.")
 logger.debug("Values of configuration variables as of right now:")
 logger.debug("Configuration file: " + config_file)
+logger.debug("Searx instance: " + searx)
 logger.debug("Message queue to report to: " + message_queue)
-logger.debug("Hyperlinks to filter out of returned HTML: " + 
-    str(hyperlinks_we_dont_want))
 logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Default e-mail address to send results to: " + default_email)
 logger.debug("Time in seconds for polling the message queue: " +
@@ -400,11 +360,6 @@ logger.debug("Time in seconds for polling the message queue: " +
 logger.debug("SMTP server to send search results through: " + smtp_server)
 logger.debug("E-mail address that search results are sent from: " +
     origin_email_address)
-logging.debug("Search engines that will be queried: " + str(search_engines))
-
-# Allocate a link extractor.  This optimizes both memory utilization and
-# parsing speed of each page.
-link_extractor = SoupStrainer('a')
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -443,7 +398,7 @@ while True:
             logger.debug("E-mail address to send search results to: " +
                 destination_email_address)
 
-        # If the number of search results is zero, there was no search
+        # If the number of search results is zero there was no search
         # request in the message queue, in which case we do nothing and
         # loop again later.
         if (number_of_results == 0) and (len(search) == 0):
@@ -453,18 +408,6 @@ while True:
 
         # Run the web searches and get the results.
         search_results = get_search_results(search)
-
-        # Deduplicate search results in the master list.
-        logger.debug("Deduplicating and sorting the master list of search results.")
-        search_results = list(set(search_results))
-        logger.debug("Master list of search results: " + str(search_results))
-
-        # Truncate the master list of search results down to the number of
-        # hits the user requested.
-        if len(search_results) > number_of_results:
-            search_results = search_results[:(number_of_results - 1)]
-        logger.debug("Returning " + str(len(search_results)) + " search results.")
-        logger.debug("Final list of search results: " + str(json.dumps(search_results)))
 
         # If no search results were returned, put that message into the
         # (empty) list of search results.
@@ -478,14 +421,16 @@ while True:
 
         # Construct the message containing the search results.
         message = "Here are your search results:\n"
-        message = message + "\n"
-        for url in search_results:
-            message = message + url + "\n"
-        message = message + "\nEnd of search results"
-        message = MIMEText(message)
-        message['Subject'] = "Incoming search results!"
-        message['From'] = origin_email_address
-        message['To'] = destination_email_address
+        for result in search_results:
+            message = message + "Relevance: " + str(result['score']) + "\n"
+            message = message + result['title'] + "\n"
+            message = message + result['url'] + "\n"
+            message = message + result['content'] + "\n\n"
+        message = message + "End of search results"
+        message = MIMEText(message, 'plain', 'utf-8')
+        message['Subject'] = Header("Incoming search results!", 'utf-8')
+        message['From'] = Header(origin_email_address, 'utf-8')
+        message['To'] = Header(destination_email_address, 'utf-8')
         logger.debug("Created outbound e-mail message with search results.")
         logger.debug(str(message))
 
