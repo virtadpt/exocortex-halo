@@ -8,3 +8,5 @@ web_search_bot.py is also capable of e-mailing search terms to an address specif
 
 web_search_bot.py currently only supports up to fifty (50) search results.  Specifying an invalid number causes it to default to ten (10).
 
+web_index_bot.py is a bot which does the reverse - when you send it a URL it submits it to whatever search engines you have defined in its configuration file.  This could be something like an instance of [YaCy](http://yacy.de/) running on the same host or it could be [the Internet Archive's Wayback Machine](https://web.archive.org/).
+

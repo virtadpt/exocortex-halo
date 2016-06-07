@@ -332,6 +332,13 @@ class XMPPClient(threading.Thread):
         else:
             agent_name = message_body.split(' ')[0]
         logger.debug("Agent name: " + agent_name)
+
+        # If the agent's name is None (some XMPP clients send stanzas with
+        # no bodies), silently bounce.
+        if agent_name == None:
+            logger.debug("The XMPP client sent an empty message body which is interpreted as None.  Bluh.")
+            return
+
         if agent_name not in message_queue.keys():
             logger.debug("Command sent to agent " + agent_name + ", which doesn't exist.")
 
