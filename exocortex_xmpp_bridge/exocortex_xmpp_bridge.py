@@ -266,6 +266,12 @@ class XMPPClient(threading.Thread):
         message_body = str(message.getBody()).strip()
         logger.debug("Value of XMPPClient.process_message().message_body is: " + str(message_body))
 
+        # If the agent's name is None (some XMPP clients send stanzas with
+        # no bodies), silently bounce.
+        if agent_name == None:
+            logger.debug("The XMPP client sent an empty message body which is interpreted as None.  Bluh.")
+            return
+
         # If the user asks for help, display the list of acknowledged commands.
         if message_body == "help":
             logger.debug("User has requested online help.")
@@ -321,10 +327,6 @@ class XMPPClient(threading.Thread):
             self.connection.send(response)
             return
 
-        # Try to catch strange, empty message bodies.
-        if not message_body:
-            return
-
         # Try to split off the bot's name from the message body.  If the
         # agent's name isn't registered, bounce.
         if ',' in message_body:
@@ -336,7 +338,7 @@ class XMPPClient(threading.Thread):
         # If the agent's name is None (some XMPP clients send stanzas with
         # no bodies), silently bounce.
         if agent_name == None:
-            logger.debug("The XMPP client sent an empty message body which is interpreted as None.  Bluh.")
+            logger.debug("The XMPP client sent an empty message body, which means that the agent's name is None, which gets interpreted as None.  WTF?")
             return
 
         if agent_name not in message_queue.keys():
