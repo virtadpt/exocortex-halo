@@ -300,8 +300,6 @@ class XMPPClient(threading.Thread):
         if message_body == "Robots, report.":
 
             # Configured message queues.
-            logger.debug("FC interrupt!  Robots reporting locations!")
-            response_body = "FC interrupt!  The following agents are registered: "
             for key in message_queue.keys():
                 response_body = response_body + key + " "
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
@@ -320,11 +318,6 @@ class XMPPClient(threading.Thread):
                 response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                     body=response_body)
                 self.connection.send(response)
-
-            response_body = "Iris, Waldo, Sensa, Auda, Poet, and Whiz are too busy on Contra to respond right now."
-            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                body=response_body)
-            self.connection.send(response)
             return
 
         # Try to split off the bot's name from the message body.  If the
