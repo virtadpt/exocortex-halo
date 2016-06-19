@@ -253,7 +253,6 @@ def get_search_results(search_term):
         temp['title'] = i['title']
         temp['url'] = i['url']
         temp['score'] = i['score']
-        temp['content'] = i['content']
         results.append(temp)
 
     # Truncate the master list of search results down to the number of
@@ -422,11 +421,10 @@ while True:
         # Construct the message containing the search results.
         message = "Here are your search results:\n"
         for result in search_results:
-            message = message + "Relevance: " + str(result['score']) + "\n"
-            message = message + result['title'] + "\n"
-            message = message + result['url'] + "\n"
-            message = message + result['content'] + "\n\n"
-        message = message + "End of search results"
+            message = message + "Relevance: " + str(result['score']) + "\n\n"
+            message = message + result['title'] + "\n\n"
+            message = message + result['url'] + "\n\n"
+        message = message + "\nEnd of search results.\n"
         message = MIMEText(message, 'plain', 'utf-8')
         message['Subject'] = Header("Incoming search results!", 'utf-8')
         message['From'] = Header(origin_email_address, 'utf-8')
