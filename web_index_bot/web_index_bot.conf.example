@@ -16,6 +16,6 @@ loglevel = info
 [search engines]
 engine1 = post,http://localhost:8090/Crawler_p.html?crawlingMode=url&crawlingDepth=0&range=domain&indexText=on&crawlingURL=
 engine2 = get,http://www.gigablast.com/addurl?c=main&urls=
-engine3 = get,https://web.archive.org/save+
+engine3 = get,https://web.archive.org/save/+
 engine4 = get,http://www.webcitation.org/archive?url=
 

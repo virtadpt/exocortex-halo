@@ -276,7 +276,6 @@ while True:
         # If the index request comes back None (i.e., it wasn't well formed)
         # throw an error and bounce to the top of the loop.
         if not index_request:
-            logger.warn("Uh-oh - the index request didn't parse correctly.")
             time.sleep(float(polling_time))
             continue
 
