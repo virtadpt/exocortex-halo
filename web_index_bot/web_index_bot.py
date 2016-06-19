@@ -119,7 +119,7 @@ def parse_index_request(index_request):
         return None
 
     # Convert the remainder of the list into a URI-encoded string.
-    index_url = words[1]
+    index_url = words[0]
     logger.debug("Index URL: " + index_url)
     return index_url
 
@@ -255,7 +255,6 @@ while True:
     try:
         logger.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)
-        logger.debug("Response from server: " + request.text)
     except:
         logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
         time.sleep(float(polling_time))
