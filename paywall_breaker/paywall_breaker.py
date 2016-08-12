@@ -430,7 +430,8 @@ while True:
             help_reply['reply'] = reply
 
             headers = {"Content-Type:", "application/json"}
-            request = requests.put(server, headers=headers)
+            request = requests.put(server, headers=headers,
+                data=json.dumps(help_reply))
 
             continue
 
