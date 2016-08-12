@@ -183,7 +183,7 @@ class XMPPClient(threading.Thread):
             sys.exit(1)
 
         # Tell the XMPP server that we're ready to rock by sending a presence
-        # Stanza.
+        # stanza.
         logger.info("Successful authentication to XMPP server.  Sending initial presence stanza.")
         self.connection.sendInitPresence()
 
@@ -282,24 +282,18 @@ class XMPPClient(threading.Thread):
         if message_body == "help":
             logger.debug("User has requested online help.")
             resonse_body = "Supported commands:\n- help - This online help."
-            response_body = response_body + "- Robots, report. - List all configured bots.\n"
+            response_body = response_body + "- Robots, report. - List all constructs this bot is configured to communicate with.\n"
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
             self.connection.send(response)
 
-            response_body = "To execute a command, send a message that looks like this:\n"
+            response_body = "To send a command to one of the constructs, use an XMPP client to send a message that looks something like this:\n"
             response_body = response_body + "[bot name], top [n] hits for [search term].\n"
-            response_body = response_body + "At present, at most 30 search results are supported.  The number of search results is spelled out (i.e., 'ten' and not 10).\n"
+            response_body = response_body + "Individual constructs may have their own online help, so try sending the command '[bot name], help.'\n"
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
             self.connection.send(response)
 
-            response_body = "To e-mail search results to someone who isn't you, send a message that looks like this:\n"
-            response_body = response_body + "[bot name], send/e-mail/email/mail [e-mail address] top [n] hits for [search term].\n"
-            response_body = response_body + "Search results will be e-mailed to the address given."
-            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                body=response_body)
-            self.connection.send(response)
             return
 
         # Respond to a command for a status report.
