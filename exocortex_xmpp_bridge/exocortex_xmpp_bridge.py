@@ -302,7 +302,7 @@ class XMPPClient(threading.Thread):
             # Configured message queues.
             for key in message_queue.keys():
                 if key == 'responses':
-                    next
+                    continue
                 response_body = response_body + key + " "
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
@@ -316,7 +316,7 @@ class XMPPClient(threading.Thread):
 
             for key in message_queue.keys():
                 if key == 'responses':
-                    next
+                    continue
                 response_body = "Agent " + key + ": "
                 response_body = response_body + str(message_queue[key])
                 response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
