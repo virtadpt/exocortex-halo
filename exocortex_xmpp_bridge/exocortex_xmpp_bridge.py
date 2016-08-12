@@ -333,11 +333,11 @@ class XMPPClient(threading.Thread):
         logger.debug("Agent name: " + agent_name)
 
         if agent_name not in message_queue.keys():
-            logger.debug("Command sent to agent " + agent_name + ", which doesn't exist.")
+            logger.debug("Command sent to agent " + agent_name + ", which doesn't exist on this bot.")
 
             # Build a response message stanza to inform the user that the
             # agent they're trying to contact doesn't exist.
-            response_body = "Request sent to agent " + agent_name + ", which doesn't exist.  Please check your spelling."
+            response_body = "Request sent to agent " + agent_name + ", which doesn't exist on this bot.  Please check your spelling."
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
             self.connection.send(response)
@@ -388,9 +388,9 @@ class XMPPClient(threading.Thread):
         threading.Timer(60, self.send_xmpp_ping).start()
 
 # RESTRequestHandler: Subclass that implements a REST API service.  The main
-#   rails are the names of agent networks that will poll message queues for
-#   commands.  Each time they poll, they get a JSON dump of all of the
-#   commands waiting for them.
+#   rails are the names of agents or constructs that will poll message queues
+#   for commands.  Each time they poll, they get a JSON dump of the next
+#   command waiting for them in chronological order.
 class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Process HTTP/1.1 GET requests.
