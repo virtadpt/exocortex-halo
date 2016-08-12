@@ -20,7 +20,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
-# v2.2 - Added a universal API rail '/replies' so that bots can send responses
+# v2.2 - Added a universal API rail '/replies' so that bots can send replies
 #        to their user over XMPP by hitting their configured XMPP bridge over
 #        HTTP.
 # v2.1.1 - Started pulling 'search' out of text because this bot is used for
@@ -227,7 +227,7 @@ class XMPPClient(threading.Thread):
         while not self.shutdown:
 
             # See if there are any messages in the XMPP bot's private message
-            # queue 'responses'.  If there are, pick the least recently added
+            # queue 'replies'.  If there are, pick the least recently added
             # one out and transmit it to the bot's user.  This is getting a
             # little hairy so I really should make it readable.
             if len(message_queue['replies']):
@@ -315,7 +315,7 @@ class XMPPClient(threading.Thread):
 
             # Configured message queues.
             for key in message_queue.keys():
-                if key == 'responses':
+                if key == 'replies':
                     continue
                 response_body = response_body + key + " "
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
@@ -329,7 +329,7 @@ class XMPPClient(threading.Thread):
             self.connection.send(response)
 
             for key in message_queue.keys():
-                if key == 'responses':
+                if key == 'replies':
                     continue
                 response_body = "Agent " + key + ": "
                 response_body = response_body + str(message_queue[key])
@@ -467,11 +467,11 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         response = {}
         reply = ""
 
-        # Figure out if the API rail is the 'responses' rail, meaning that a
+        # Figure out if the API rail is the 'replies' rail, meaning that a
         # construct wants to send a response back to the user.  If not, return
         # a 404.
         agent = self.path.strip('/')
-        if agent != "responses":
+        if agent != "replies":
             logger.debug("Something tried to PUT to API rail /" + agent + ".  Better make sure it's not a bug.")
             self.send_response(404)
             self.send_header("Content-type:", "application/json")
@@ -479,7 +479,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             json.dump({agent: "not found"}, self.wfile)
             return
 
-        logger.info("A construct has contacted the /responses API rail.")
+        logger.info("A construct has contacted the /replies API rail.")
         logging.debug("List of headers in the HTTP request:")
         for key in self.headers:
             logging.debug("    " + key + " - " + self.headers[key])
