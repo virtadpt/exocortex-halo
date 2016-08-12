@@ -132,9 +132,6 @@ class XMPPClient(threading.Thread):
     roster = ""
     xmpp_ping = ""
 
-    # Constants that make a few things easier later on.
-    required_keys = ["name", "reply"]
-
     # Initialize new instances of the class.
     def __init__(self, username, password):
         logger.debug("Now initializing an instance of the XMPPClient thread.")
@@ -409,6 +406,9 @@ class XMPPClient(threading.Thread):
 #   command waiting for them in chronological order.
 class RESTRequestHandler(BaseHTTPRequestHandler):
 
+    # Constants that make a few things easier later on.
+    required_keys = ["name", "reply"]
+
     # Process HTTP/1.1 GET requests.
     def do_GET(self):
         # If someone requests /, return the current internal configuration of
@@ -436,7 +436,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         if not len(message_queue[agent]):
             logger.debug("Message queue for agent " + agent + " is empty.")
             self.send_response(200)
-            self.send_header("Content-type:", "application/json")
+            self.send_header("Content-Type:", "application/json")
             self.wfile.write('\n')
             json.dump({"command": "no commands"}, self.wfile)
             return
@@ -450,7 +450,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         logger.debug("Returning earliest command from message queue " + agent
             + ": " + command)
         self.send_response(200)
-        self.send_header("Content-type:", "application/json")
+        self.send_header("Content-Type:", "application/json")
         self.wfile.write('\n')
         json.dump({"command": command}, self.wfile)
         return
@@ -476,7 +476,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         if agent != "replies":
             logger.debug("Something tried to PUT to API rail /" + agent + ".  Better make sure it's not a bug.")
             self.send_response(404)
-            self.send_header("Content-type:", "application/json")
+            self.send_header("Content-Type:", "application/json")
             self.wfile.write('\n')
             json.dump({agent: "not found"}, self.wfile)
             return
@@ -506,15 +506,42 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         response = self._normalize_keys(response)
 
         # Ensure that all of the required keys are in the JSON document.
-        if not self._ensure_all_keys(arguments):
+        if not self._ensure_all_keys(response):
             return
 
         # Generate a reply to the bot's owner and add it to the bot's private
         # message queue.
         reply = "Got a message back from " + response['name'] + ":\n\n"
         reply = reply + response['reply']
-        message_queue['replies'] = reply
+        message_queue['replies'].append(reply)
         return
+
+    # Send an HTTP response, consisting of the status code, headers and
+    # payload.  Takes two arguments, the HTTP status code and a JSON document
+    # containing an appropriate response.
+    def _send_http_response(self, code, response):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(response))
+        return
+
+    # Read content from the client connection and return it as a string.
+    # Return None if there isn't any content.
+    def _read_content(self):
+        content = ""
+        content_length = 0
+
+        try:
+            content_length = int(self.headers['Content-Length'])
+            content = self.rfile.read(content_length)
+            logger.debug("Content sent by client: " + content)
+        except:
+            logger.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+            self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
+            return None
+
+        return content
 
     # Ensure that the content from the client is JSON.
     def _ensure_json(self):

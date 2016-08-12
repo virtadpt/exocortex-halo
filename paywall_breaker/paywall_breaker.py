@@ -285,13 +285,13 @@ if not os.path.exists(config_file):
 config.read(config_file)
 
 # Get the URL of the message queue to contact.
-message_queue = config.get("DEFAULT", "queue")
+server = config.get("DEFAULT", "queue")
 
 # Get the name of the message queue to report to.
 bot_name = config.get("DEFAULT", "bot_name")
 
 # Construct the full message queue name.
-message_queue = message_queue + bot_name
+message_queue = server + bot_name
 
 # Get the default e-mail address.
 default_email = config.get("DEFAULT", "default_email")
@@ -418,6 +418,21 @@ while True:
                 logger.warn("Unable to e-mail failure notice to the user.")
                 time.sleep(float(polling_time))
                 continue
+
+        # If the user is requesting help, assemble a response and send it back
+        # to the server's message queue.
+        if page_request.lower() == "help":
+            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\"
+            reply = reply + """I am capable of jumping most paywalls by spoofing the User-Agent header of a randomly selected search engine, downloading the content, rendering it as plain text, and copying it into a new Etherpad-Lite page for editing and archival.  I will then e-mail you a link to the new page.  Someday soon I'll be able to send you the link to the archived page directly.  To archive a page, send me a message that looks something like this:\n"""
+            reply = reply + bot_name + ", get https://www.example.com/foo.html"
+
+            help_reply['name'] = bot_name
+            help_reply['reply'] = reply
+
+            headers = {"Content-Type:", "application/json"}
+            request = requests.put(server, headers=headers)
+
+            continue
 
         # Try to download the HTML page the user is asking for.
         (title, body) = download_web_page(page_request)
