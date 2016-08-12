@@ -132,6 +132,9 @@ class XMPPClient(threading.Thread):
     roster = ""
     xmpp_ping = ""
 
+    # Constants that make a few things easier later on.
+    required_keys = ["name", "reply"]
+
     # Initialize new instances of the class.
     def __init__(self, username, password):
         logger.debug("Now initializing an instance of the XMPPClient thread.")
@@ -222,6 +225,17 @@ class XMPPClient(threading.Thread):
         # Go into the work loop.
         logger.debug("Entering XMPPClient.run() work loop.")
         while not self.shutdown:
+
+            # See if there are any messages in the XMPP bot's private message
+            # queue 'responses'.  If there are, pick the least recently added
+            # one out and transmit it to the bot's user.  This is getting a
+            # little hairy so I really should make it readable.
+            if len(message_queue['replies']):
+                reply = message_queue['replies'].pop(0)
+                response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
+                    body=reply)
+                self.connection.send(response)
+
             try:
                 # See if there is a stanza in the incoming connection stream.
                 self.connection.Process(10)
@@ -438,6 +452,113 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write('\n')
         json.dump({"command": command}, self.wfile)
         return
+
+    # Replies from a construct will look like this:
+    #
+    # {
+    #   "name": "<bot's name>",
+    #   "reply": "<The bot's witty repartee' goes here.>"
+    # }
+
+    # Process HTTP/1.1 PUT requests.
+    def do_PUT(self):
+        content = ""
+        content_length = 0
+        response = {}
+        reply = ""
+
+        # Figure out if the API rail is the 'responses' rail, meaning that a
+        # construct wants to send a response back to the user.  If not, return
+        # a 404.
+        agent = self.path.strip('/')
+        if agent != "responses":
+            logger.debug("Something tried to PUT to API rail /" + agent + ".  Better make sure it's not a bug.")
+            self.send_response(404)
+            self.send_header("Content-type:", "application/json")
+            self.wfile.write('\n')
+            json.dump({agent: "not found"}, self.wfile)
+            return
+
+        logger.info("A construct has contacted the /responses API rail.")
+        logging.debug("List of headers in the HTTP request:")
+        for key in self.headers:
+            logging.debug("    " + key + " - " + self.headers[key])
+
+        # Read the content sent from the client.  If there is no
+        # "Content-Length" header something screwy is happening because that
+        # breaks the HTTP spec so fire an error.
+        content = self._read_content()
+        if not content:
+            logger.debug("Client sent zero-length content.")
+            return
+
+        # Try to deserialize the JSON sent from the client.  If we can't,
+        # pitch a fit.
+        if not self._ensure_json():
+            return
+        response = self._deserialize_content(content)
+        if not response:
+            return
+
+        # Normalize the keys in the JSON to lowercase.
+        response = self._normalize_keys(response)
+
+        # Ensure that all of the required keys are in the JSON document.
+        if not self._ensure_all_keys(arguments):
+            return
+
+        # Generate a reply to the bot's owner and add it to the bot's private
+        # message queue.
+        reply = "Got a message back from " + response['name'] + ":\n\n"
+        reply = reply + response['reply']
+        message_queue['replies'] = reply
+        return
+
+    # Ensure that the content from the client is JSON.
+    def _ensure_json(self):
+        if "application/json" not in self.headers['Content-Type']:
+            logger.debug('{"result": null, "error": "You need to send JSON.", "id": 400}')
+            self._send_http_response(400, '{"result": null, "error": "You need to send JSON.", "id": 400}')
+            return False
+        else:
+            return True
+
+    # Try to deserialize content from the client.  Return the hash table
+    # containing the deserialized JSON if it exists.
+    def _deserialize_content(self, content):
+        arguments = {}
+
+        try:
+            arguments = json.loads(content)
+        except:
+            logger.debug('400, {"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+            self._send_http_response(400, '{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
+            return None
+
+        return arguments
+
+    # Normalize the keys in the hash table to all lowercase.
+    def _normalize_keys(self, arguments):
+        for key in arguments.keys():
+            arguments[key.lower()] = arguments[key]
+            logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
+        return arguments
+
+    # Ensure that all of the keys required for every client access are in the
+    # hash table.
+    def _ensure_all_keys(self, arguments):
+        all_keys_found = True
+
+        for key in self.required_keys:
+            if key not in arguments.keys():
+                all_keys_found = False
+
+        if not all_keys_found:
+            logger.debug('400, {"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+            self._send_http_response(400, '{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
+            return False
+        else:
+            return True
 
 # Figure out what to set the logging level to.  There isn't a straightforward
 # way of doing this because Python uses constants that are actually integers
