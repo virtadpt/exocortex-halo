@@ -20,6 +20,9 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v2.2 - Added a universal API rail '/replies' so that bots can send responses
+#        to their user over XMPP by hitting their configured XMPP bridge over
+#        HTTP.
 # v2.1.1 - Started pulling 'search' out of text because this bot is used for
 #        much more than just web searches.
 # v2.1 - Working on the "goes into a coma and pegs the CPU problem" by adding
@@ -87,6 +90,9 @@ xmpp_client_thread = None
 # This hash table's keys are the names of agents, the associated values are
 # lists which implement the message queues.
 message_queue = {}
+
+# Add the message queue so this bot's agents can send replies.
+message_queue['replies'] = []
 
 # Handle for the command line argument parser.
 args = ""
