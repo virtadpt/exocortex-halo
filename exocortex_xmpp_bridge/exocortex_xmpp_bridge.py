@@ -206,6 +206,8 @@ class XMPPClient(threading.Thread):
             now_online_message = "The bots "
 
         for key in message_queue.keys():
+            if key == 'replies':
+                continue
             now_online_message = now_online_message + key + ", "
         now_online_message = now_online_message.strip(", ")
 
