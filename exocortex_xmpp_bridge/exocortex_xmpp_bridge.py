@@ -514,6 +514,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         reply = "Got a message back from " + response['name'] + ":\n\n"
         reply = reply + response['reply']
         message_queue['replies'].append(reply)
+        self.send_response(200)
         return
 
     # Send an HTTP response, consisting of the status code, headers and

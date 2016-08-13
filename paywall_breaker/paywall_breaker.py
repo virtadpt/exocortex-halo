@@ -61,7 +61,10 @@ config_file = ""
 config = None
 
 # URL of the message queue to pull orders from.
-queue = ""
+message_queue = ""
+
+# The "http://system:port/" part of the message digest URL.
+server = ""
 
 # Name of the construct.
 bot_name = ""
@@ -162,6 +165,10 @@ def parse_get_request(get_request):
     # Tokenize the search request.
     words = get_request.split(' ')
     logger.debug("Tokenized get request: " + str(words))
+
+    # User asked for help.
+    if words[0].lower() == "help":
+        return words[0]
 
     # "get <URL>"
     if words[0].lower() == "get":
@@ -352,6 +359,7 @@ for search_engine, user_agent in user_agent_strings:
 logger.info("Everything is configured.")
 logger.debug("Values of configuration variables as of right now:")
 logger.debug("Configuration file: " + config_file)
+logger.debug("Server to report to: " + server)
 logger.debug("Message queue to report to: " + message_queue)
 logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Default e-mail address to send results to: " + default_email)
@@ -422,15 +430,16 @@ while True:
         # If the user is requesting help, assemble a response and send it back
         # to the server's message queue.
         if page_request.lower() == "help":
-            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\"
-            reply = reply + """I am capable of jumping most paywalls by spoofing the User-Agent header of a randomly selected search engine, downloading the content, rendering it as plain text, and copying it into a new Etherpad-Lite page for editing and archival.  I will then e-mail you a link to the new page.  Someday soon I'll be able to send you the link to the archived page directly.  To archive a page, send me a message that looks something like this:\n"""
+            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
+            reply = reply + """I am capable of jumping most paywalls by spoofing the User-Agent header of a randomly selected search engine, downloading the content, rendering it as plain text, and copying it into a new Etherpad-Lite page for editing and archival.  I will then e-mail you a link to the new page.  Someday soon I'll be able to send you the link to the archived page directly.  To archive a page, send me a message that looks something like this:\n\n"""
             reply = reply + bot_name + ", get https://www.example.com/foo.html"
 
+            help_reply = {}
             help_reply['name'] = bot_name
             help_reply['reply'] = reply
 
-            headers = {"Content-Type:", "application/json"}
-            request = requests.put(server, headers=headers,
+            headers = {'Content-type': 'application/json'}
+            request = requests.put(server + "replies", headers=headers,
                 data=json.dumps(help_reply))
 
             continue
