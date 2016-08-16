@@ -37,3 +37,6 @@ A bot that sends URLs given to it to the web indexing and archival sites listed 
 ## web_search_bot/
 A bot that periodically polls a REST API service implementing its message queue (exocortex_xmpp_bridge/) looking for search requests.  It carries out those web search requests by relaying them to a copy of [Searx](https://github.com/asciimoo/searx), extracts the search results, and sends them to an arbitrary e-mail address.  For a good while this bot had a list of search engines and ways to parse out links to responses but it got to be too big a hassle to maintain so I opted to make it compatible with the Searx API.  This means that one can, in theory, point it any Searx instance out there and get useful results.
 
+## haloutils/
+During the refactoring process I've broken out a lot of common code into a couple of modules that reside in this directory to make it easier to maintain, extend, and generally not let it mutate out of control.  If nothing else it'll help the other constructs keep a relatively sane architecture.  You can take this to mena that I was up late at night copying-and-pasting code and knowing the whole time that it was a bad, bad, bad idea and I had to put a stop to it.
+
