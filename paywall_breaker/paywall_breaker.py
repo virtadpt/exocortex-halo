@@ -24,8 +24,8 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Clean up parsed HTML - strip out the skillions of \n's and \t's that tend
-#   to litter parsed HTML.
+# - Figure out how to grab and archive regular text and not HTML (for example,
+#   Pastebin /raw URLs).
 
 # Load modules.
 from bs4 import BeautifulSoup
@@ -255,8 +255,15 @@ def download_web_page(url):
 
     # Extract the bits we want.  We need to explicitly change everything to
     # UTF-8 so the rest of our code won't barf.
-    title = parsed_html.head.text.encode('utf-8')
-    body = parsed_html.body.get_text().encode('utf-8')
+    try:
+        title = parsed_html.head.text.encode('utf-8')
+    except:
+        title = "No <head></head> tagset found."
+
+    try:
+        body = parsed_html.body.get_text().encode('utf-8')
+    except:
+        body = "No <body></body> found.  What the hell?"
 
     # We're done here.
     return (title, body)
