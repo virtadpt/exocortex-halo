@@ -45,6 +45,8 @@
 # - Add an error handler to parse_search_requests() that returns something to
 #   the effect of "I don't know what you just said."
 # - Break out the "handle HTTP result code" handler into a function.
+# - Make it possible to send search results back through the /replies API rail
+#   instead of e-mail.
 
 # Load modules.
 from email.message import Message
@@ -97,6 +99,9 @@ config_file = ""
 
 # Loglevel for the bot.
 loglevel = logging.INFO
+
+# The "http://system:port/" part of the message queue URL.
+server = ""
 
 # URL to the message queue to take marching orders from.
 message_queue = ""
@@ -172,6 +177,10 @@ def parse_search_request(search_request):
     # Tokenize the search request.
     words = search_request.split()
     logger.debug("Tokenized search request: " + str(words))
+
+    # User asked for help.
+    if words[0].lower() == "help":
+        return (words[0], None, None)
 
     # "Send/e-mail/email/mail <foo> top <number> hits for <search request...>"
     if (words[0] == "send") or (words[0] == "e-mail") or \
@@ -298,11 +307,14 @@ config.read(config_file)
 # Get the URL of the Searx instance to contact.
 searx = config.get("DEFAULT", "searx")
 
-# Get the message queue to contact.
-message_queue = config.get("DEFAULT", "queue")
+# Get the URL of the message queue to contact.
+server = config.get("DEFAULT", "queue")
 
 # Get the names of the message queues to report to.
 bot_name = config.get("DEFAULT", "bot_name")
+
+# Construct the full message queue URL.
+message_queue = server + bot_name
 
 # Get the default e-mail address.
 default_email = config.get("DEFAULT", "default_email")
@@ -343,14 +355,12 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
-# Construct the full message queue name.
-message_queue = message_queue + bot_name
-
 # Debugging output, if required.
 logger.info("Everything is set up.")
 logger.debug("Values of configuration variables as of right now:")
 logger.debug("Configuration file: " + config_file)
 logger.debug("Searx instance: " + searx)
+logger.debug("Server to report to: " + server)
 logger.debug("Message queue to report to: " + message_queue)
 logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Default e-mail address to send results to: " + default_email)
@@ -392,10 +402,27 @@ while True:
         # Parse the search request.
         (number_of_results, search, destination_email_address) = parse_search_request(search_request)
         logger.debug("Number of search results: " + str(number_of_results))
-        logger.debug("Search request: " + search)
+        logger.debug("Search request: " + str(search))
         if destination_email_address != "":
             logger.debug("E-mail address to send search results to: " +
-                destination_email_address)
+                str(destination_email_address))
+
+        # Test to see if the user requested help.  If so, assemble a response,
+        # send it back to the user, and restart the loop.
+        if (str(number_of_results).lower() == "help"):
+            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
+            reply = reply + """I am an interface to the Searx meta-search engine with very limited conversational capability.  At this time I can accept search requests and e-mail the results to my default destination address.  To execute a search request, send me a message that looks like this:\n\n"""
+            reply = reply + bot_name + " (send/e-mail/email/mail (optional other e-mail address)) top <number> hits for <search request...>"
+
+            help_reply = {}
+            help_reply['name'] = bot_name
+            help_reply['reply'] = reply
+
+            headers = {'Content-type': 'application/json'}
+            request = requests.put(server + "replies", headers=headers,
+                data=json.dumps(help_reply))
+
+            continue
 
         # If the number of search results is zero there was no search
         # request in the message queue, in which case we do nothing and
