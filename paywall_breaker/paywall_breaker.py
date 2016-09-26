@@ -26,6 +26,8 @@
 # TO-DO:
 # - Figure out how to grab and archive regular text and not HTML (for example,
 #   Pastebin /raw URLs).
+# - Refactor the main loop and move all of the "send responses to the XMPP
+#   bridge code into a separate method.
 
 # Load modules.
 from bs4 import BeautifulSoup
@@ -168,6 +170,7 @@ def parse_get_request(get_request):
 
     # User asked for help.
     if words[0].lower() == "help":
+        logger.debug("User asked for online help.")
         return words[0]
 
     # "get <URL>"
@@ -427,12 +430,18 @@ while True:
         # failure message back to the user.
         if "ERROR: " in page_request:
             logger.debug("An invalid URL was received by the construct.")
-            subject_line = "I received an invalid URL."
-            message = "This is " + bot_name + ".  The URL " + page_request + " did not validate as a usable URL.  Please recheck what you sent and try again."
-            if not email_response(subject_line, message):
-                logger.warn("Unable to e-mail failure notice to the user.")
-                time.sleep(float(polling_time))
-                continue
+            reply = "That was an invalid URL.  Try again."
+
+            error_reply = {}
+            error_reply['name'] = bot_name
+            error_reply['reply'] = reply
+
+            headers = {'Content-type': 'application/json'}
+            request = requests.put(server + "replies", headers=headers,
+                data=json.dumps(error_reply))
+
+            time.sleep(float(polling_time))
+            continue
 
         # If the user is requesting help, assemble a response and send it back
         # to the server's message queue.
@@ -456,7 +465,7 @@ while True:
 
         # Did it work?
         if not title or not body:
-            reply = "This is " + bot_name + ".  I was unable to get anything useful from the page at URL " + page_request + ".  Either the HTML's completely broken, it's not HTML at all, or the URL's bad."
+            reply = "I was unable to get anything useful from the page at URL " + page_request + ".  Either the HTML's completely broken, it's not HTML at all, or the URL's bad."
 
             problem_reply = {}
             problem_reply['name'] = bot_name
@@ -464,8 +473,9 @@ while True:
 
             headers = {'Content-type': 'application/json'}
             request = requests.put(server + "replies", headers=headers,
-                data=json.dumps(help_reply))
+                data=json.dumps(problem_reply))
 
+            time.sleep(float(polling_time))
             continue
 
         # Clean up the title for later.
@@ -488,6 +498,14 @@ while True:
         message = "I have successfully downloaded and parsed the text of the web page '" + title + "'.  You can read the page at the URL " + archive_url + pad_id 
         if not email_response(subject_line, message):
             logger.warn("Unable to e-mail failure notice to the user.")
+
+        reply = {}
+        reply['name'] = bot_name
+        reply['reply'] = message
+
+        headers = {'Content-type': 'application/json'}
+        request = requests.put(server + "replies", headers=headers,
+            data=json.dumps(reply))
 
         # Go back to sleep and wait for the next command.
         logger.info("Done.  Going back to sleep until the next episode.")
