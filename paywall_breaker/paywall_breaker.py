@@ -158,6 +158,7 @@ def parse_get_request(get_request):
 
     # Clean up the search request.
     get_request = get_request.strip()
+    get_request = get_request.strip('.')
 
     # If the search request is empty (i.e., nothing in the queue), bounce.
     if "no commands" in get_request:
