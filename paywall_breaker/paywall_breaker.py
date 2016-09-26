@@ -26,8 +26,6 @@
 # TO-DO:
 # - Figure out how to grab and archive regular text and not HTML (for example,
 #   Pastebin /raw URLs).
-# - Refactor the main loop and move all of the "send responses to the XMPP
-#   bridge code into a separate method.
 
 # Load modules.
 from bs4 import BeautifulSoup
@@ -272,6 +270,27 @@ def download_web_page(url):
     # We're done here.
     return (title, body)
 
+# send_message_to_user(): Function that does the work of sending messages back
+# to the user by way of the XMPP bridge.  Takes one argument, the message to
+#   send to the user.  Returns a True or False which delineates whether or not
+#   it worked.
+def send_message_to_user(message):
+    logger.debug("Entered function send_message_to_message().")
+
+    # Headers the XMPP bridge looks for for the message to be valid.
+    headers = {'Content-type': 'application/json'}
+
+    # Set up a hash table of stuff that is used to build the HTTP request to
+    # the XMPP bridge.
+    reply = {}
+    reply['name'] = bot_name
+    reply['reply'] = message
+
+    # Send an HTTP request to the XMPP bridge containing the message for the
+    # user.
+    request = requests.put(server + "replies", headers=headers,
+        data=json.dumps(reply))
+
 # Core code...
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description='A construct that polls a message queue for the URLs of paywalled web pages, tries to download the pages, copies them into an archive, and sends the results to a destination.')
@@ -431,16 +450,7 @@ while True:
         # failure message back to the user.
         if "ERROR: " in page_request:
             logger.debug("An invalid URL was received by the construct.")
-            reply = "That was an invalid URL.  Try again."
-
-            error_reply = {}
-            error_reply['name'] = bot_name
-            error_reply['reply'] = reply
-
-            headers = {'Content-type': 'application/json'}
-            request = requests.put(server + "replies", headers=headers,
-                data=json.dumps(error_reply))
-
+            send_message_to_user("That was an invalid URL.  Try again.")
             time.sleep(float(polling_time))
             continue
 
@@ -450,15 +460,7 @@ while True:
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + """I am capable of jumping most paywalls by spoofing the User-Agent header of a randomly selected search engine, downloading the content, rendering it as plain text, and copying it into a new Etherpad-Lite page for editing and archival.  I will then e-mail you a link to the new page.  Someday soon I'll be able to send you the link to the archived page directly.  To archive a page, send me a message that looks something like this:\n\n"""
             reply = reply + bot_name + ", get https://www.example.com/foo.html"
-
-            help_reply = {}
-            help_reply['name'] = bot_name
-            help_reply['reply'] = reply
-
-            headers = {'Content-type': 'application/json'}
-            request = requests.put(server + "replies", headers=headers,
-                data=json.dumps(help_reply))
-
+            send_message_to_user(reply)
             continue
 
         # Try to download the HTML page the user is asking for.
@@ -467,15 +469,7 @@ while True:
         # Did it work?
         if not title or not body:
             reply = "I was unable to get anything useful from the page at URL " + page_request + ".  Either the HTML's completely broken, it's not HTML at all, or the URL's bad."
-
-            problem_reply = {}
-            problem_reply['name'] = bot_name
-            problem_reply['reply'] = reply
-
-            headers = {'Content-type': 'application/json'}
-            request = requests.put(server + "replies", headers=headers,
-                data=json.dumps(problem_reply))
-
+            send_message_to_user(reply)
             time.sleep(float(polling_time))
             continue
 
@@ -500,13 +494,7 @@ while True:
         if not email_response(subject_line, message):
             logger.warn("Unable to e-mail failure notice to the user.")
 
-        reply = {}
-        reply['name'] = bot_name
-        reply['reply'] = message
-
-        headers = {'Content-type': 'application/json'}
-        request = requests.put(server + "replies", headers=headers,
-            data=json.dumps(reply))
+        send_message_to_user(message)
 
         # Go back to sleep and wait for the next command.
         logger.info("Done.  Going back to sleep until the next episode.")
