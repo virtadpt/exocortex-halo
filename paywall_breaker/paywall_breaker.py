@@ -456,12 +456,16 @@ while True:
 
         # Did it work?
         if not title or not body:
-            subject_line = "I was unable to download the URL."
-            message = "This is " + bot_name + ".  I was unable to download the URL " + page_request + ".  I think I got caught; try it again?"
-            if not email_response(subject_line, message):
-                logger.warn("Unable to e-mail failure notice to the user.")
-                time.sleep(float(polling_time))
-                continue
+            reply = "This is " + bot_name + ".  I was unable to get anything useful from the page at URL " + page_request + ".  Either the HTML's completely broken, it's not HTML at all, or the URL's bad."
+
+            problem_reply = {}
+            problem_reply['name'] = bot_name
+            problem_reply['reply'] = reply
+
+            headers = {'Content-type': 'application/json'}
+            request = requests.put(server + "replies", headers=headers,
+                data=json.dumps(help_reply))
+
             continue
 
         # Clean up the title for later.
