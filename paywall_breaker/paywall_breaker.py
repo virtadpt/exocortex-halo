@@ -249,7 +249,7 @@ def download_web_page(url):
     parsed_html = BeautifulSoup(request.text, 'html.parser')
 
     # Silently rip out the CSS and JavaScript because, technically, those are
-    # part of the next.
+    # part of the text.
     for i in parsed_html(["script", "style"]):
         foo = i.extract()
 
@@ -261,9 +261,9 @@ def download_web_page(url):
         title = "No <head></head> tagset found."
 
     try:
-        body = parsed_html.body.get_text().encode('utf-8')
+        body = parsed_html.get_text().encode('utf-8')
     except:
-        body = "No <body></body> found.  What the hell?"
+        body = "Unable to pull any text out of the HTML page.  What the hell?"
 
     # We're done here.
     return (title, body)
