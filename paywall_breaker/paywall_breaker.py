@@ -458,7 +458,7 @@ while True:
         # to the server's message queue.
         if page_request.lower() == "help":
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
-            reply = reply + """I am capable of jumping most paywalls by spoofing the User-Agent header of a randomly selected search engine, downloading the content, rendering it as plain text, and copying it into a new Etherpad-Lite page for editing and archival.  I will then e-mail you a link to the new page.  Someday soon I'll be able to send you the link to the archived page directly.  To archive a page, send me a message that looks something like this:\n\n"""
+            reply = reply + """I am capable of jumping most paywalls by spoofing the User-Agent header of a randomly selected search engine, downloading the content, rendering it as plain text, and copying it into a new Etherpad-Lite page for editing and archival.  I will then e-mail you a link to the new page.  I will both e-mail and send you the link to the archived page directly.  To archive a page, send me a message that looks something like this:\n\n"""
             reply = reply + bot_name + ", get https://www.example.com/foo.html"
             send_message_to_user(reply)
             continue

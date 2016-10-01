@@ -108,6 +108,13 @@ def parse_index_request(index_request):
     # Start parsing the the index request to see what kind it is.  After
     # making the determination, remove the words we've sussed out to make the
     # rest of the query easier.
+
+    # User asked for help.
+    if words[0].lower() == "help":
+        logger.debug("User asked for online help.")
+        return words[0]
+
+    # User asked the construct to submit the URL for indexing.
     if (words[0] == "index") or (words[0] == "spider") or \
             (words[0] == "submit"):
         logger.info("Got a token that suggests that this is an index request.")
@@ -162,6 +169,25 @@ def submit_for_indexing(index_term):
 
     # Return the list of search results.
     return result
+
+# send_message_to_user(): Function that does the work of sending messages back
+# to the user by way of the XMPP bridge.  Takes one argument, the message to
+#   send to the user.  Returns a True or False which delineates whether or not
+#   it worked.
+def send_message_to_user(message):
+    # Headers the XMPP bridge looks for for the message to be valid.
+    headers = {'Content-type': 'application/json'}
+
+    # Set up a hash table of stuff that is used to build the HTTP request to
+    # the XMPP bridge.
+    reply = {}
+    reply['name'] = bot_name
+    reply['reply'] = message
+
+    # Send an HTTP request to the XMPP bridge containing the message for the
+    # user.
+    request = requests.put(server + "replies", headers=headers,
+        data=json.dumps(reply))
 
 # Core code...
 
@@ -279,12 +305,25 @@ while True:
             time.sleep(float(polling_time))
             continue
 
+        # If the user is requesting help, assemble a response and send it back
+        # to the server's message queue.
+        if page_request.lower() == "help":
+            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
+            reply = reply + """I am capable of accepting URLs for arbitrary websites and submitting them for indexing by the search engines and online archives specified in my configuration file (some of which you may control, of course).  To index a website, send me a message that looks something like this:\n\n"""
+            reply = reply + bot_name + ", [index,spider] https://www.example.com/foo.html\n\n"
+            reply = reply + """The search engines I am configured for are:\n"""
+            for engine in search_engines:
+                reply = reply + """* """ + engine + "\n"
+            send_message_to_user(reply)
+            continue
+
         # Submit the index request to the configured search engines.
         index_request = submit_for_indexing(index_request)
 
         # If something went wrong...
         if not index_request:
             logger.warn("Something went wrong when submitting the URL for indexing.")
+            send_message_to_user("Something went wrong when I submitted the URL for indexing.  Check the shell I'm running in for more details.")
 
     # Message queue not found.
     if request.status_code == 404:
