@@ -47,6 +47,9 @@ config_file = ""
 # Loglevel for the bot.
 loglevel = logging.INFO
 
+# The "http://system:port/" part of the message queue URL.
+server = ""
+
 # URL to the message queue to take marching orders from.
 message_queue = ""
 
@@ -220,11 +223,14 @@ if not os.path.exists(config_file):
     sys.exit(1)
 config.read(config_file)
 
-# Get the message queue to contact.
-message_queue = config.get("DEFAULT", "queue")
+# Get the URL of the message queue to contact.
+server = config.get("DEFAULT", "queue")
 
 # Get the names of the message queues to report to.
 bot_name = config.get("DEFAULT", "bot_name")
+
+# Construct the full message queue URL.
+message_queue = server + bot_name
 
 # Get the default loglevel of the bot.
 config_log = config.get("DEFAULT", "loglevel").lower()
@@ -263,6 +269,7 @@ for i in config.options('search engines'):
 logger.info("Everything is set up.")
 logger.debug("Values of configuration variables as of right now:")
 logger.debug("Configuration file: " + config_file)
+logger.debug("Server to report to: " + server)
 logger.debug("Message queue to report to: " + message_queue)
 logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Time in seconds for polling the message queue: " +
