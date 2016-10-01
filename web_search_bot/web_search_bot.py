@@ -473,7 +473,7 @@ while True:
 
     # Message queue not found.
     if request.status_code == 404:
-        logger.info("Message queue " + name + " does not exist.")
+        logger.info("Message queue " + bot_name + " does not exist.")
 
     # Sleep for the configured amount of time.
     time.sleep(float(polling_time))
