@@ -317,7 +317,7 @@ while True:
             reply = reply + bot_name + ", [index,spider] https://www.example.com/foo.html\n\n"
             reply = reply + """The search engines I am configured for are:\n"""
             for engine in search_engines:
-                reply = reply + """* """ + engine + "\n"
+                reply = reply + """* """ + engine.split(',')[1] + "\n"
             send_message_to_user(reply)
             continue
 
