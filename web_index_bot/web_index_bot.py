@@ -257,9 +257,6 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
-# Construct the full message queue name.
-message_queue = message_queue + bot_name
-
 # Load the list of search engines' URLs to submit other URLs to.
 for i in config.options('search engines'):
     if 'engine' in i:
