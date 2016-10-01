@@ -307,7 +307,7 @@ while True:
 
         # If the user is requesting help, assemble a response and send it back
         # to the server's message queue.
-        if page_request.lower() == "help":
+        if index_request.lower() == "help":
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + """I am capable of accepting URLs for arbitrary websites and submitting them for indexing by the search engines and online archives specified in my configuration file (some of which you may control, of course).  To index a website, send me a message that looks something like this:\n\n"""
             reply = reply + bot_name + ", [index,spider] https://www.example.com/foo.html\n\n"
