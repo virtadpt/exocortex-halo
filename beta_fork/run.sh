@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
 
-# run.sh - Shell script that wraps around dixie_flatline_bot.py if you had
-#    to install it to a virtualenv like I did.  This script assumes that you
-#    set up the virtualenv the way you're supposed to and didn't tinker with
-#    the sandbox too much.  If you did, you're on your own.
+# run.sh - Shell script that wraps around server.py if you installed it into
+#    into a virtualenv like I did.  This script assumes that you set up the
+#    virtualenv the way you're supposed to and didn't tinker with the sandbox
+#    too much.  If you did, you're on your own.
 
-# by: The Doctor [412/724/301/703/415][ZS] <drwho at virtadpt dot net>
+# by: The Doctor [412/724/301/703/415] <drwho at virtadpt dot net>
 
 # Variables
-# Full path to where exocortex_sip_client.py is installed.
+# Full path to where beta_fork/ is installed.
 BETA_FORK_DIR="/path/to/beta_fork"
 
 # Core code.
 cd $BETA_FORK_DIR
 
-# Bring in the virtualenv.  Imagine whatever sci-fi sound effects you wish
+# Activate in the virtualenv.  Imagine whatever sci-fi sound effects you wish
 # as this happens.
 source env/bin/activate
 
 # Grab the first command line argument (which should be a number) and sleep
-# that many seconds.  This is totally a yucky hack.
+# that many seconds.  This is totally a yucky hack but needed under some
+# circumstances.
 sleep $1
 shift
 
