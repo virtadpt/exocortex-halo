@@ -6,6 +6,12 @@
 #   the Python module called irc (https://pythonhosted.org/irc/), which
 #   implements the IRC protocol natively and interfaces with the
 #   beta_fork/server.py process via HTTP (on the same host or another one).
+#
+# Why is the class called DixieBot?  My first IRC bot was called DixieBot,
+# after the Dixie Flatline
+# (http://williamgibson.wikia.com/wiki/The_Dixie_Flatline).  The bot in
+# question can still be found in earlier commits in this Git repository.  I
+# repurposed the code to write this iteration of the bot.
 
 # By: The Doctor <drwho at virtadpt dot net>
 
