@@ -25,7 +25,7 @@ usessl = False
 password = changethisorthebotllgetpwned
 
 # Hostname that the conversation engine is running on.
-engine_host = localhost
+engine_host = 127.0.0.1
 
 # Port on the host the conversation engine is listening on.
 engine_port = 8050
