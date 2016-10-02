@@ -25,11 +25,18 @@
 # - Add 'ghost' support to the bot - once authenticated, the bot's owner can
 #   send text to the channel the bot is sitting in (@Some message here...) and
 #   get replies back via private messages.  !ghost on/off
+# - Other things to add to the bot:
+#   join/unjoin a channel
+#   listen for/stop listening for a particular regular expression
+#   message a particular nick (for authenticating with an IRC service)
+#   change IRC nick to ...
+#   you're (not) allowed to respond in channel (i.e., use the Markov engine)
+#   on (some string), respond
 # - Add a memo function.  Someone can send a privmsg to the bot and it'll sit
 #   on the message until the bot's owner asks for it.  Tell the bot's owner how
 #   many messages are waiting when they authenticate.
 # - Make it possible for the bot to register itself with the server by passing
-#   the server's API key on the command line.
+#   the server's API key on the command line when it's started up.
 # - Clean up how command line arguments are passed to the DixieBot constructor.
 #   I think I can do better, but I need to get it working first.
 
