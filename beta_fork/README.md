@@ -82,3 +82,7 @@ or
     { "response": "failure" }
 ```
 
+The server will create and maintain two [SQLite](http://sqlite.com/) databases for its own use, the names of which are specified in the server.conf file.  The first (by default, clients.db) contains a list of every bot allowed to interact with the server, its API key, and its permissions ("Can it ask the server to generate a response?", "Is it allowed to update the Markov brain?")  The second database (by default, rom.construct) contains the contents of the Markov brain (as implemented by Cobe).
+
+To initialize the Markov brain (or add to it en masse), stop the server if it's running and restart it with the --trainingfile <path to a text file> argument.  The training file must contain plain text, one sentence per line.  Ideally, the sentences will be fairly lengthy and thematically related, but it's all up to you.  It's possible to grow an already existing Markov brain this way but you might get weird results.  Just sayin'.
+
