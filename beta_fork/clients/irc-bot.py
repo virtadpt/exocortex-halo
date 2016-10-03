@@ -267,18 +267,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
             # If the owner asks for online help, provide it.
             if irc_text == "!help" or irc_text == "!commands":
-                connection.privmsg(sending_nick,
-                    "Here are the commands I support:")
-                connection.privmsg(sending_nick,
-                    "!help and !commands - You're reading them right now.")
-                connection.privmsg(sending_nick,
-                    "!quit - Shut me down.")
-                connection.privmsg(sending_nick,
-                    "!auth - Authenticate your current IRC nick as my admin.")
-                connection.privmsg(sending_nick, 
-                    "!config - Send my current configuration.")
-                connection.privmsg(sending_nick, 
-                    "!ping - Ping the conversation engine to make sure I can contact it.")
+                self._help(connection, sending_nick)
                 return
 
             # See if the owner is asking the bot to self-terminate.
@@ -339,6 +328,22 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         else:
             connection.privmsg(nick, "Incorrect.")
             return
+
+    # Helper method that implements online help.
+    def _help(self, connection, nick):
+        connection.privmsg(nick,
+            "Here are the commands I support:")
+        connection.privmsg(nick,
+            "!help and !commands - You're reading them right now.")
+        connection.privmsg(nick,
+            "!quit - Shut me down.")
+        connection.privmsg(nick,
+            "!auth - Authenticate your current IRC nick as my admin.")
+        connection.privmsg(nick, 
+            "!config - Send my current configuration.")
+        connection.privmsg(nick, 
+            "!ping - Ping the conversation engine to make sure I can contact it.")
+        return
 
     # This method fires every time a public message is posted to an IRC
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
