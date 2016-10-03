@@ -47,6 +47,7 @@
 # Load modules.
 # Needed because we're doing floating point division in a few places.
 from __future__ import division
+from wordfilter import Wordfilter
 
 import argparse
 import ConfigParser
@@ -61,7 +62,6 @@ import socket
 import ssl
 import sys
 import time
-import wordfilter
 
 # Global variables.
 # Path to the configuration file and handle to a ConfigParser instance.
