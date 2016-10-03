@@ -98,6 +98,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # Class-level variables which form attributes.  These all refer to aspects
     # of the bot.
     channel = ""
+    canonical_name = ""
     nick = ""
     owner = ""
 
@@ -142,6 +143,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # Initialize the class' attributes.
         self.channel = channel
+        self.canonical_name = nick
         self.nick = nick
         self.owner = owner
         self.server = server
@@ -286,6 +288,11 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 self._ping(connection, sending_nick)
                 return
 
+            # See if the owner is asking the bot to chance its nick.
+            if "!nick" in irc_text:
+                self._nick(connection, irc_text, sending_nick)
+                return
+
             # Always learn from and respond to non-command private messages
             # from the bot's owner.
             json_response = json.loads(self._teach_brain(irc_text))
@@ -329,6 +336,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             "!config - Send my current configuration.")
         connection.privmsg(nick, 
             "!ping - Ping the conversation engine to make sure I can contact it.")
+        connection.privmsg(nick, 
+            "!nick <new nick> - Try to change my IRC nick.")
         return
 
     # Helper method that tells the bot's owner what the bot's current runtime
@@ -337,6 +346,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(nick, "Here's my current runtime configuration.")
         connection.privmsg(nick, "Channel I'm connected to: " + self.channel)
         connection.privmsg(nick, "Current nick: " + self.nick)
+        connection.privmsg(nick, "Canonical name (for interacting with the conversation engine): " + self.canonical_name)
         connection.privmsg(nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
         if self.usessl:
             connection.privmsg(nick, "My connection to the server is encrypted.")
@@ -355,6 +365,14 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             connection.privmsg(nick, "I can hit the conversation engine.")
         else:
             connection.privmsg(nick, "I don't seem to be able to reach the conversation engine.")
+        return
+
+    # Helper method that will allow the bot to change its nick.  This is going
+    # to be experimental for a while.
+    def _nick(self, connection, text, nick):
+        connection.privmsg(nick, "Trying to change my IRC nick...")
+        self.nick = text.split()[1].strip()
+        connection.privmsg(nick, "Done.")
         return
 
     # This method fires every time a public message is posted to an IRC
@@ -467,7 +485,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # JSON documents sent to and received from the conversation engine.
         json_request = {}
-        json_request['botname'] = self.nick
+        json_request['botname'] = self.canonical_name
         json_request['apikey'] = self.api_key
         json_request['stimulus'] = text
         json_response = {}
@@ -492,7 +510,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # JSON documents sent to and received from the conversation engine.
         json_request = {}
-        json_request['botname'] = self.nick
+        json_request['botname'] = self.canonical_name
         json_request['apikey'] = self.api_key
         json_request['stimulus'] = text
         json_response = {}
