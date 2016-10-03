@@ -312,11 +312,11 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # Always learn from and respond to non-command private messages
             # from the bot's owner.
             json_response = self._teach_brain(irc_text)
-            if json_response['id'] != 200:
+            if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
 
             json_response = self._get_response(irc_text)
-            if json_response['id'] != 200:
+            if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                 return
 
@@ -512,7 +512,7 @@ argparser.add_argument('--port', action='store', default=6667,
     help="The port on the IRC server to connect to.  Defaults to 6667/tcp.")
 
 # Set the nickname the bot will log in with.
-argparser.add_argument('--nick', action='store', default='McCoyPauley',
+argparser.add_argument('--nick', action='store',
     help="The IRC nick to log in with.  Defaults to MyBot.  You really should change this.")
 
 # Set the channel the bot will attempt to join.
