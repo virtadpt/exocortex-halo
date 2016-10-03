@@ -275,6 +275,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 logger.info("The bot's owner has told it to shut down.")
                 connection.privmsg(sending_nick,
                     "I get the hint.  Shuttin' down.")
+                connection.disconnect()
                 sys.exit(0)
 
             # See if the owner is asking for the bot's current configuration.
@@ -372,6 +373,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def _nick(self, connection, text, nick):
         connection.privmsg(nick, "Trying to change my IRC nick...")
         self.nick = text.split()[1].strip()
+        connection.nick(self.nick)
         logger.debug("New IRC nick: " + self.nick)
         connection.privmsg(nick, "Done.")
         return
