@@ -182,6 +182,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # looks for.
     def on_nicknameinuse(self, connection, event):
         logger.info("Bot nickname " + self.nick + " is already taken.  Falling back to bot nickname " + self.nick + "_.")
+        connection.privmsg(self.owner, self.nick + " seems to be taken already.  Falling back to nickname " + self.nick + "_.")
         connection.nick(connection.get_nickname() + "_")
 
     # This method fires when the server accepts the bot's connection.  It joins
@@ -189,6 +190,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def on_welcome(self, connection, event):
         connection.join(self.channel)
         logger.info("Successfully joined channel " + self.channel + ".")
+        connection.privmsg(self.owner, "Successfully joined " + self.channel + ".")
 
         # Just to be silly, roll 1d10.  On a 1, say hello to the channel.
         roll = random.randint(1, 10)
@@ -204,14 +206,18 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def on_kick(self, connection, event):
         delay = random.randint(60, 180)
         logger.debug("Got kicked from " + self.channel + ".  Sleeping for " + str(delay) + " seconds.")
+        connection.privmsg(self.owner, "Got kicked from " + self.channel + ".  Sleeping for " + str(delay) + " seconds.")
         time.sleep(delay)
         logger.debug("Rejoining channel " + self.channel + ".")
+        self.privmsg(self.owner, "Rejoining channel " + self.channel + ".")
         connection.join(self.channel)
         logger.info("Successfully re-joined channel " + self.channel + ".")
+        self.privmsg(self.owner, "Successfully re-joined channel " + self.channel + ".")
 
     # This method fires if the bot gets kickbanned.
     def on_bannedfromchan(self, connection, event):
         logger.warn("Uh-oh - I got kickbanned from " + self.channel + ".  Shutting down.  I know when I'm not wanted.")
+        self.privmsg(self.owner, "Uh-oh - I got kickbanned from " + self.channel + ".  Shutting down.  I know when I'm not wanted.")
         sys.exit(2)
 
     # This method fires when the server disconnects the bot for some reason.
@@ -222,11 +228,14 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         logger.warn("Connection dropped from server " + self.server + ".  Sleeping for " + str(delay) + " seconds.")
         time.sleep(delay)
         logger.warn("Reconnecting to server " + self.server + " on port " + str(self.port) + ".")
-        irc.bot.SingleServerIRCBot.connect(self, [(self.server, self.port)],
-            self.nick, self.nick)
-        logger.info("Successfully reconnected to server " + self.server + ".")
+        try:
+            irc.bot.SingleServerIRCBot.connect(self, [(self.server, self.port)],
+                self.nick, self.nick)
+            logger.info("Successfully reconnected to server " + self.server + ".")
+        except:
+            logger.warn("Unable to reconnect to " + self.server + ".  Something's really wrong.")
 
-    # This method would fire when the bot receives a private message.  For the
+    # This method fires when the bot receives a private message.  For the
     # moment, if it's the bot's owner always learn from the text because this
     # is an ideal way to get more interesting stuff into the bot's brain.
     # It'll make a good place to look for and respond to specific commands,
@@ -247,15 +256,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # See if the owner is authenticating to the bot.
         if "!auth " in irc_text:
-            logger.warn("IRC user " + sending_nick + " is attempting to authenticate to the bot.")
-            if self.password in irc_text:
-                connection.privmsg(sending_nick, "Authentication confirmed.  Welcome back.")
-                self.owner = sending_nick
-                self.authenticated = True
-                return
-            else:
-                connection.privmsg(sending_nick, "Incorrect.")
-                return
+            self._authenticate(sending_nick, irc_text)
+            return
 
         # Handle messages from the bot's owner (if authenticated).
         if sending_nick == self.owner:
@@ -325,6 +327,18 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             return
         else:
             logger.debug("Somebody messaged me.  The content of the message was: " + irc_text)
+
+    # Helper method for authenticating the bot's owner.
+    def _authenticate(nick, text):
+        logger.warn("IRC user " + nick + " is attempting to authenticate to the bot.")
+        if self.password in text:
+            connection.privmsg(nick, "Authentication confirmed.  Welcome back.")
+            self.owner = nick
+            self.authenticated = True
+            return
+        else:
+            connection.privmsg(nick, "Incorrect.")
+            return
 
     # This method fires every time a public message is posted to an IRC
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
