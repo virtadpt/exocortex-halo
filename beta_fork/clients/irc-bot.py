@@ -20,8 +20,6 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Split some of the longer stuff in DixieBot.on_pubmsg() and
-#   DixieBot().on_privmsg() out into separate methods.
 # - Add 'ghost' support to the bot - once authenticated, the bot's owner can
 #   send text to the channel the bot is sitting in (@Some message here...) and
 #   get replies back via private messages.  !ghost on/off
