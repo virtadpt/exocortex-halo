@@ -311,12 +311,12 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
             # Always learn from and respond to non-command private messages
             # from the bot's owner.
-            json_response = self._teach_brain(irc_text)
-            if json_response['id'] != int(200):
+            json_response = json.loads(self._teach_brain(irc_text))
+            if json_response['id'] != 200:
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
 
-            json_response = self._get_response(irc_text)
-            if json_response['id'] != int(200):
+            json_response = json.loads(self._get_response(irc_text))
+            if json_response['id'] != 200:
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                 return
 
