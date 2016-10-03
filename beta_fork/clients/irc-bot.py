@@ -256,7 +256,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # See if the owner is authenticating to the bot.
         if "!auth " in irc_text:
-            self._authenticate(sending_nick, irc_text)
+            _authenticate(connection, sending_nick, irc_text)
             return
 
         # Handle messages from the bot's owner (if authenticated).
@@ -329,7 +329,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             logger.debug("Somebody messaged me.  The content of the message was: " + irc_text)
 
     # Helper method for authenticating the bot's owner.
-    def _authenticate(nick, text):
+    def _authenticate(self, connection, nick, text):
         logger.warn("IRC user " + nick + " is attempting to authenticate to the bot.")
         if self.password in text:
             connection.privmsg(nick, "Authentication confirmed.  Welcome back.")
