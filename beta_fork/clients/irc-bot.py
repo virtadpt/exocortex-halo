@@ -285,12 +285,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # See if the owner is asking the bot to ping the conversation
             # engine's server.
             if irc_text == "!ping":
-                connection.privmsg(sending_nick, "Pinging the conversation engine...")
-                http_connection = requests.get(self.engine + "/ping")
-                if http_connection.text == "pong":
-                    connection.privmsg(sending_nick, "I can hit the conversation engine.")
-                else:
-                    connection.privmsg(sending_nick, "I don't seem to be able to reach the conversation engine.")
+                self._ping(connection, sending_nick)
                 return
 
             # Always learn from and respond to non-command private messages
@@ -349,6 +344,19 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             connection.privmsg(nick, "My connection to the server is encrypted.")
         else:
             connection.privmsg(nick, "My connection to the server isn't encrypted.")
+        return
+
+    # Helper method that pings the bot's conversation engine.  I realize that
+    # doing this is probably a little weird, but seeing as how I'm splitting
+    # everything else out into helper methods to make adding functionality
+    # later on easier I may as well.
+    def _ping(self, connection, nick):
+        connection.privmsg(nick, "Pinging the conversation engine...")
+        http_connection = requests.get(self.engine + "/ping")
+        if http_connection.text == "pong":
+            connection.privmsg(nick, "I can hit the conversation engine.")
+        else:
+            connection.privmsg(nick, "I don't seem to be able to reach the conversation engine.")
         return
 
     # This method fires every time a public message is posted to an IRC
