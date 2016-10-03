@@ -18,6 +18,13 @@
 # License: GPLv3
 
 # v1.0 - Initial release.
+# v1.1 - Shook a lot of bugs out.  See the commit logs for details.
+#      - Added wordfilter as a dependency because the bot can train itself
+#        from other people in the channel, and that can be highly problematic
+#        under some circumstances.  This is all stuff I don't say anyway, so
+#        I'm fine with that (plus, I read the code for that module so I'm
+#        okay with that; if you're not, fork() this repo and strip that code
+#        out on your own, it's your problem now).
 
 # TO-DO:
 # - Add 'ghost' support to the bot - once authenticated, the bot's owner can
@@ -54,6 +61,7 @@ import socket
 import ssl
 import sys
 import time
+import wordfilter
 
 # Global variables.
 # Path to the configuration file and handle to a ConfigParser instance.
@@ -120,6 +128,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # Bot's API key to interface with the response engine.
     api_key = ""
 
+    # One instance of wordfilter.Wordfilter() to rule them all...
+    wordfilter = None
+
     # Methods on the connection object to investigate:
     # connect() - Connect to a server?
     # connected() - 
@@ -152,6 +163,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         self.usessl = usessl
         self.engine = 'http://' + engine_host + ':' + engine_port
         self.api_key = api_key
+        self.wordfilter = Wordfilter()
 
         # Connection factory object handle.
         factory = ""
@@ -294,9 +306,14 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 self._ping(connection, sending_nick)
                 return
 
-            # See if the owner is asking the bot to chance its nick.
+            # See if the owner is asking the bot to change its nick.
             if "!nick" in irc_text:
                 self._nick(connection, irc_text, sending_nick)
+                return
+
+            # See if the owner is asking the bot to join a channel.
+            if "!join" in irc_text:
+                self._join(connection, irc_text, sending_nick)
                 return
 
             # Always learn from and respond to non-command private messages
@@ -338,12 +355,14 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             "!quit - Shut me down.")
         connection.privmsg(nick,
             "!auth - Authenticate your current IRC nick as my admin.")
-        connection.privmsg(nick, 
+        connection.privmsg(nick,
             "!config - Send my current configuration.")
-        connection.privmsg(nick, 
+        connection.privmsg(nick,
             "!ping - Ping the conversation engine to make sure I can contact it.")
-        connection.privmsg(nick, 
+        connection.privmsg(nick,
             "!nick <new nick> - Try to change my IRC nick.")
+        connection.privmsg(nick,
+            "!join <channel> - Join a channel.")
         return
 
     # Helper method that tells the bot's owner what the bot's current runtime
@@ -373,14 +392,26 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             connection.privmsg(nick, "I don't seem to be able to reach the conversation engine.")
         return
 
-    # Helper method that will allow the bot to change its nick.  This is going
-    # to be experimental for a while.
+    # Helper method that will allow the bot to change its nick.
     def _nick(self, connection, text, nick):
         connection.privmsg(nick, "Trying to change my IRC nick...")
         self.nick = text.split()[1].strip()
         connection.nick(self.nick)
         logger.debug("New IRC nick: " + self.nick)
         connection.privmsg(nick, "Done.")
+        return
+
+    # Helper method that will allow the bot to join a channel.
+    def _join(self, connection, text, nick):
+        new_channel= text.split()[1].strip()
+        connection.privmsg(nick, "Trying to join channel " + new_channel + ".")
+        logger.debug("Trying to join channel " + new_channel + ".")
+        try:
+            connection.join(self.channel)
+            self.channel = new_channel
+        except:
+            connection.privmsg(nick, "Couldn't join channel " + new_channel + ".  Check the debug logs?")
+            logger.debug("Couldn't join channel " + new_channel + ".")
         return
 
     # This method fires every time a public message is posted to an IRC
@@ -453,6 +484,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         roll = random.randint(1, 10)
         if roll == 1:
             logger.debug("Learning from the last line seen in the channel.")
+            if self.wordfilter.blacklisted(irc_text):
+                logger.warn("Wordfilter: Nope nope nope...")
+                return
             json_response = json.loads(self._teach_brain(irc_text))
             if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
@@ -460,6 +494,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         if roll == 2:
             logger.debug("Learning from the last line seen in the channel and responding to it.")
+            if self.wordfilter.blacklisted(irc_text):
+                logger.warn("Wordfilter: Nope nope nope...")
+                return
             json_response = json.loads(self._teach_brain(irc_text))
             if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
