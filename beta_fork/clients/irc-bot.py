@@ -372,6 +372,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def _nick(self, connection, text, nick):
         connection.privmsg(nick, "Trying to change my IRC nick...")
         self.nick = text.split()[1].strip()
+        logger.debug("New IRC nick: " + self.nick)
         connection.privmsg(nick, "Done.")
         return
 
