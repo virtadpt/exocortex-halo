@@ -1,3 +1,4 @@
 cobe
 irc
 requests
+wordfilter
