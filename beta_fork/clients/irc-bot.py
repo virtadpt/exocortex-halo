@@ -279,14 +279,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
             # See if the owner is asking for the bot's current configuration.
             if irc_text == "!config":
-                connection.privmsg(sending_nick, "Here's my current runtime configuration.")
-                connection.privmsg(sending_nick, "Channel I'm connected to: " + self.channel)
-                connection.privmsg(sending_nick, "Current nick: " + self.nick)
-                connection.privmsg(sending_nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
-                if self.usessl:
-                    connection.privmsg(sending_nick, "My connection to the server is encrypted.")
-                else:
-                    connection.privmsg(sending_nick, "My connection to the server isn't encrypted.")
+                self._current_config(connection, sending_nick)
                 return
 
             # See if the owner is asking the bot to ping the conversation
@@ -343,6 +336,19 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             "!config - Send my current configuration.")
         connection.privmsg(nick, 
             "!ping - Ping the conversation engine to make sure I can contact it.")
+        return
+
+    # Helper method that tells the bot's owner what the bot's current runtime
+    # configuration is.
+    def _current_config(self, connection, nick):
+        connection.privmsg(nick, "Here's my current runtime configuration.")
+        connection.privmsg(nick, "Channel I'm connected to: " + self.channel)
+        connection.privmsg(nick, "Current nick: " + self.nick)
+        connection.privmsg(nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
+        if self.usessl:
+            connection.privmsg(nick, "My connection to the server is encrypted.")
+        else:
+            connection.privmsg(nick, "My connection to the server isn't encrypted.")
         return
 
     # This method fires every time a public message is posted to an IRC
