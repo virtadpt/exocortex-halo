@@ -256,7 +256,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
         # See if the owner is authenticating to the bot.
         if "!auth " in irc_text:
-            _authenticate(connection, sending_nick, irc_text)
+            self._authenticate(connection, sending_nick, irc_text)
             return
 
         # Handle messages from the bot's owner (if authenticated).
