@@ -27,7 +27,6 @@
 #   join/unjoin a channel
 #   listen for/stop listening for a particular regular expression
 #   message a particular nick (for authenticating with an IRC service)
-#   change IRC nick to ...
 #   you're (not) allowed to respond in channel (i.e., use the Markov engine)
 #   on (some string), respond
 # - Add a memo function.  Someone can send a privmsg to the bot and it'll sit
@@ -210,14 +209,20 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         time.sleep(delay)
         logger.debug("Rejoining channel " + self.channel + ".")
         self.privmsg(self.owner, "Rejoining channel " + self.channel + ".")
-        connection.join(self.channel)
-        logger.info("Successfully re-joined channel " + self.channel + ".")
-        self.privmsg(self.owner, "Successfully re-joined channel " + self.channel + ".")
+        try:
+            connection.join(self.channel)
+            logger.info("Successfully re-joined channel " + self.channel + ".")
+            self.privmsg(self.owner, "Successfully re-joined channel " + self.channel + ".")
+        except:
+            logger.info("Unable to re-join " + self.channel + ".")
+            self.privmsg(self.owner, "Unable to re-join " + self.channel + ".")
+        return
 
     # This method fires if the bot gets kickbanned.
     def on_bannedfromchan(self, connection, event):
         logger.warn("Uh-oh - I got kickbanned from " + self.channel + ".  Shutting down.  I know when I'm not wanted.")
         self.privmsg(self.owner, "Uh-oh - I got kickbanned from " + self.channel + ".  Shutting down.  I know when I'm not wanted.")
+        connection.disconnect()
         sys.exit(2)
 
     # This method fires when the server disconnects the bot for some reason.
@@ -298,11 +303,11 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # from the bot's owner.
             json_response = json.loads(self._teach_brain(irc_text))
             if json_response['id'] != 200:
-                logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                logger.warn("DixieBot.on_privmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
 
             json_response = json.loads(self._get_response(irc_text))
             if json_response['id'] != 200:
-                logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                logger.warn("DixieBot.on_privmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                 return
 
             # Send the response text back to the bot's owner.
