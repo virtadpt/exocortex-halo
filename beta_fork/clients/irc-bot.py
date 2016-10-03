@@ -406,8 +406,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(nick, "Trying to join channel " + new_channel + ".")
         logger.debug("Trying to join channel " + new_channel + ".")
         try:
-            connection.join(self.channel)
             self.channel = new_channel
+            connection.join(self.channel)
         except:
             connection.privmsg(nick, "Couldn't join channel " + new_channel + ".  Check the debug logs?")
             logger.debug("Couldn't join channel " + new_channel + ".")
