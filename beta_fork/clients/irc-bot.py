@@ -292,7 +292,6 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 logger.info("The bot's owner has told it to shut down.")
                 connection.privmsg(sending_nick,
                     "I get the hint.  Shuttin' down.")
-                connection.disconnect()
                 sys.exit(0)
 
             # See if the owner is asking for the bot's current configuration.
