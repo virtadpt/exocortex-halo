@@ -235,6 +235,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def on_bannedfromchan(self, connection, event):
         logger.warn("Uh-oh - I got kickbanned from " + event.target + ".  I know when I'm not wanted.")
         self.privmsg(self.owner, "Uh-oh - I got kickbanned from " + event.target + ".  I know when I'm not wanted.")
+        return
 
     # This method fires when the server disconnects the bot for some reason.
     # Ideally, the bot should try to connect again after a random number of
@@ -310,7 +311,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 return
 
             # See if the owner is asking the bot to join a channel.
-            if "!join" in irc_text:
+            if "!join " in irc_text:
                 self._join(connection, irc_text, sending_nick)
                 return
 
@@ -367,7 +368,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # configuration is.
     def _current_config(self, connection, nick):
         connection.privmsg(nick, "Here's my current runtime configuration.")
-        connection.privmsg(nick, "Channel I'm connected to: " + self.channel)
+        connection.privmsg(nick, "Channels I'm connected to: " + str(self.channel))
         connection.privmsg(nick, "Current nick: " + self.nick)
         connection.privmsg(nick, "Canonical name (for interacting with the conversation engine): " + self.canonical_name)
         connection.privmsg(nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
@@ -405,8 +406,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(nick, "Trying to join channel " + new_channel + ".")
         logger.debug("Trying to join channel " + new_channel + ".")
         try:
-            self.channel = new_channel
-            connection.join(self.channel)
+            self.channels.append(new_channel)
+            connection.join(new_channel)
         except:
             connection.privmsg(nick, "Couldn't join channel " + new_channel + ".  Check the debug logs?")
             logger.debug("Couldn't join channel " + new_channel + ".")
@@ -437,7 +438,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # spurious entries in the bot's brain.
             asked_directly = irc_text.split(':')[0].strip()
             if asked_directly == self.nick:
-                logger.debug("The bot's owner addressed the construct directly.  This is a special corner case.")
+                logger.debug("The bot's owner addressed the construct directly.  This is a special case.")
 
                 # Extract the dialogue from the text in the IRC channel.
                 dialogue_text = irc_text.split(':')[1].strip()
