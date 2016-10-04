@@ -366,7 +366,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # configuration is.
     def _current_config(self, connection, nick):
         connection.privmsg(nick, "Here's my current runtime configuration.")
-        connection.privmsg(nick, "Channels I'm connected to: " + str(self.channels))
+        connection.privmsg(nick, "Channels I'm connected to: ")
+        for key in self.channels:
+            connection.privmsg(nick, "  " + key)
         connection.privmsg(nick, "Current nick: " + self.nick)
         connection.privmsg(nick, "Canonical name (for interacting with the conversation engine): " + self.canonical_name)
         connection.privmsg(nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
@@ -403,12 +405,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         new_channel= text.split()[1].strip()
         connection.privmsg(nick, "Trying to join channel " + new_channel + ".")
         logger.debug("Trying to join channel " + new_channel + ".")
-        try:
-            connection.join(new_channel)
-            self.channels.append(new_channel)
-        except:
-            connection.privmsg(nick, "Couldn't join channel " + new_channel + ".  Check the debug logs?")
-            logger.debug("Couldn't join channel " + new_channel + ".")
+        connection.join(new_channel)
+        self.channels.append(new_channel)
         return
 
     # This method fires every time a public message is posted to an IRC
