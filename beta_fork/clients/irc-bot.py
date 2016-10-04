@@ -153,8 +153,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         password, engine_host, engine_port, api_key):
 
         # Initialize the class' attributes.
-        for i in channels:
-            self.channels[i] = 1
+        for i in channel:
+            self.channels[i] = i
         self.canonical_name = nick
         self.nick = nick
         self.owner = owner
@@ -455,7 +455,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                     return
 
                 # Send the reply to the channel.
-                connection.privmsg(self.channel, json_response['response'])
+                connection.privmsg(line.target, json_response['response'])
                 return
 
             # Otherwise, just learn from the bot's owner.
@@ -473,7 +473,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
                 # connection.privmsg() can be used to send text to either a
                 # channel or a user.
-                connection.privmsg(self.channel, json_response['response'])
+                connection.privmsg(line.target, json_response['response'])
             return
 
         # If the line is not from the bot's owner, decide randomly if the bot
@@ -502,7 +502,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                 return
-            connection.privmsg(channel, json_response['response'])
+            connection.privmsg(line.target, json_response['response'])
             return
 
     # This method should fire when a client in the current channel emits a QUIT
@@ -513,7 +513,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         if event.type == "quit" and sending_nick == self.owner and self.authenticated:
             logger.info("The bot's owner has disconnected.  Deauthenticating.")
             self.authenticated = False
-            connection.privmsg(self.channel, "Seeya, boss.")
+            connection.privmsg(line.target, "Seeya, boss.")
             return
 
     # Sends text to train the conversation engine on.
