@@ -199,7 +199,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # This method fires when the server accepts the bot's connection.  It joins
     # the configured channel.
     def on_welcome(self, connection, event):
+        logger.debug("Entered DixieBot.on_welcome().")
         for channel in self.channels:
+            logger.debug("Trying to join channel " + channel + ".")
             connection.join(channel)
             logger.info("Joined channel " + channel + ".")
             connection.privmsg(self.owner, "Joined " + channel + ".")
@@ -222,13 +224,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         time.sleep(delay)
         logger.debug("Rejoining channel " + event.target + ".")
         connection.privmsg(self.owner, "Rejoining channel " + event.target + ".")
-        try:
-            connection.join(event.target)
-            logger.info("Successfully re-joined channel " + event.target + ".")
-            connection.privmsg(self.owner, "Successfully re-joined channel " + event.target + ".")
-        except:
-            logger.info("Unable to re-join " + event.target + ".")
-            connection.privmsg(self.owner, "Unable to re-join " + event.target + ".")
+        connection.join(event.target)
+        logger.info("Successfully re-joined channel " + event.target + ".")
+        connection.privmsg(self.owner, "Successfully re-joined channel " + event.target + ".")
         return
 
     # This method fires if the bot gets kickbanned.
@@ -368,7 +366,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # configuration is.
     def _current_config(self, connection, nick):
         connection.privmsg(nick, "Here's my current runtime configuration.")
-        connection.privmsg(nick, "Channels I'm connected to: " + str(self.channel))
+        connection.privmsg(nick, "Channels I'm connected to: " + str(self.channels))
         connection.privmsg(nick, "Current nick: " + self.nick)
         connection.privmsg(nick, "Canonical name (for interacting with the conversation engine): " + self.canonical_name)
         connection.privmsg(nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
@@ -406,8 +404,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(nick, "Trying to join channel " + new_channel + ".")
         logger.debug("Trying to join channel " + new_channel + ".")
         try:
-            self.channels.append(new_channel)
             connection.join(new_channel)
+            self.channels.append(new_channel)
         except:
             connection.privmsg(nick, "Couldn't join channel " + new_channel + ".  Check the debug logs?")
             logger.debug("Couldn't join channel " + new_channel + ".")
