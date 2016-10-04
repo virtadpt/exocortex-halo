@@ -47,6 +47,7 @@
 # Load modules.
 # Needed because we're doing floating point division in a few places.
 from __future__ import division
+from irc.dict import IRCDict
 from wordfilter import Wordfilter
 
 import argparse
@@ -104,7 +105,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     # Class-level variables which form attributes.  These all refer to aspects
     # of the bot.
-    channels = []
+    channels = IRCDict()
     canonical_name = ""
     nick = ""
     owner = ""
@@ -152,7 +153,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         password, engine_host, engine_port, api_key):
 
         # Initialize the class' attributes.
-        self.channels = channel
+        for i in channels:
+            self.channels[i] = 1
         self.canonical_name = nick
         self.nick = nick
         self.owner = owner
@@ -200,11 +202,11 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # the configured channel.
     def on_welcome(self, connection, event):
         logger.debug("Entered DixieBot.on_welcome().")
-        for channel in self.channels:
-            logger.debug("Trying to join channel " + channel + ".")
-            connection.join(channel)
-            logger.info("Joined channel " + channel + ".")
-            connection.privmsg(self.owner, "Joined " + channel + ".")
+        for channel in self.channels.keys():
+            logger.debug("Trying to join channel " + self.channels[channel] + ".")
+            connection.join(self.channels[channel])
+            logger.info("Joined channel " + self.channels[channel] + ".")
+            connection.privmsg(self.owner, "Joined " + self.channels[channel] + ".")
 
             # Just to be silly, roll 1d10.  On a 1, say hello to the channel.
             roll = random.randint(1, 10)
@@ -212,7 +214,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 pause = random.randint(1, 10)
                 time.sleep(pause)
                 logger.debug("Bot has randomly decided to announce itself.")
-                connection.privmsg(channel, "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
+                connection.privmsg(self.channels[channel], "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
 
     # This method fires if the bot gets kicked from a channel.  The smart
     # thing to do is sleep for a random period of time (between one and three
@@ -406,7 +408,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(nick, "Trying to join channel " + new_channel + ".")
         logger.debug("Trying to join channel " + new_channel + ".")
         connection.join(new_channel)
-        self.channels.append(new_channel)
+        self.channels[channel] = new_channel
         return
 
     # This method fires every time a public message is posted to an IRC
