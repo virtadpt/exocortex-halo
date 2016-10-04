@@ -65,7 +65,7 @@ import time
 
 # Global variables.
 # Path to the configuration file and handle to a ConfigParser instance.
-config_file = "irc.conf"
+config_file = "./irc.conf"
 config = ""
 
 # The IRC server, port, nick, and channel to default to.
@@ -104,7 +104,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     # Class-level variables which form attributes.  These all refer to aspects
     # of the bot.
-    channel = ""
+    channels = []
     canonical_name = ""
     nick = ""
     owner = ""
@@ -152,7 +152,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         password, engine_host, engine_port, api_key):
 
         # Initialize the class' attributes.
-        self.channel = channel
+        self.channels = channel
         self.canonical_name = nick
         self.nick = nick
         self.owner = owner
@@ -199,43 +199,42 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # This method fires when the server accepts the bot's connection.  It joins
     # the configured channel.
     def on_welcome(self, connection, event):
-        connection.join(self.channel)
-        logger.info("Successfully joined channel " + self.channel + ".")
-        connection.privmsg(self.owner, "Successfully joined " + self.channel + ".")
+        for channel in self.channels:
+            connection.join(channel)
+            logger.info("Joined channel " + channel + ".")
+            connection.privmsg(self.owner, "Joined " + channel + ".")
 
-        # Just to be silly, roll 1d10.  On a 1, say hello to the channel.
-        roll = random.randint(1, 10)
-        if roll == 1:
-            pause = random.randint(1, 10)
-            time.sleep(pause)
-            logger.debug("Bot has randomly decided to announce itself.")
-            connection.privmsg(self.channel, "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
+            # Just to be silly, roll 1d10.  On a 1, say hello to the channel.
+            roll = random.randint(1, 10)
+            if roll == 1:
+                pause = random.randint(1, 10)
+                time.sleep(pause)
+                logger.debug("Bot has randomly decided to announce itself.")
+                connection.privmsg(channel, "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
 
     # This method fires if the bot gets kicked from a channel.  The smart
     # thing to do is sleep for a random period of time (between one and three
     # minutes) before trying to join again.
     def on_kick(self, connection, event):
         delay = random.randint(60, 180)
-        logger.debug("Got kicked from " + self.channel + ".  Sleeping for " + str(delay) + " seconds.")
-        connection.privmsg(self.owner, "Got kicked from " + self.channel + ".  Sleeping for " + str(delay) + " seconds.")
+        logger.debug("Got kicked from " + event.target + ".  Sleeping for " + str(delay) + " seconds.")
+        connection.privmsg(self.owner, "Got kicked from " + event.target + ".  Sleeping for " + str(delay) + " seconds.")
         time.sleep(delay)
-        logger.debug("Rejoining channel " + self.channel + ".")
-        self.privmsg(self.owner, "Rejoining channel " + self.channel + ".")
+        logger.debug("Rejoining channel " + event.target + ".")
+        connection.privmsg(self.owner, "Rejoining channel " + event.target + ".")
         try:
-            connection.join(self.channel)
-            logger.info("Successfully re-joined channel " + self.channel + ".")
-            self.privmsg(self.owner, "Successfully re-joined channel " + self.channel + ".")
+            connection.join(event.target)
+            logger.info("Successfully re-joined channel " + event.target + ".")
+            connection.privmsg(self.owner, "Successfully re-joined channel " + event.target + ".")
         except:
-            logger.info("Unable to re-join " + self.channel + ".")
-            self.privmsg(self.owner, "Unable to re-join " + self.channel + ".")
+            logger.info("Unable to re-join " + event.target + ".")
+            connection.privmsg(self.owner, "Unable to re-join " + event.target + ".")
         return
 
     # This method fires if the bot gets kickbanned.
     def on_bannedfromchan(self, connection, event):
-        logger.warn("Uh-oh - I got kickbanned from " + self.channel + ".  Shutting down.  I know when I'm not wanted.")
-        self.privmsg(self.owner, "Uh-oh - I got kickbanned from " + self.channel + ".  Shutting down.  I know when I'm not wanted.")
-        connection.disconnect()
-        sys.exit(2)
+        logger.warn("Uh-oh - I got kickbanned from " + event.target + ".  I know when I'm not wanted.")
+        self.privmsg(self.owner, "Uh-oh - I got kickbanned from " + event.target + ".  I know when I'm not wanted.")
 
     # This method fires when the server disconnects the bot for some reason.
     # Ideally, the bot should try to connect again after a random number of
