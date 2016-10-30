@@ -25,6 +25,9 @@
 #        I'm fine with that (plus, I read the code for that module so I'm
 #        okay with that; if you're not, fork() this repo and strip that code
 #        out on your own, it's your problem now).
+#      - Added a !join command, so the bot is now able to join channels you
+#        tell it to.
+#      - Added multi-channel support, which is surprisingly difficult to do.
 
 # TO-DO:
 # - Add 'ghost' support to the bot - once authenticated, the bot's owner can
@@ -608,7 +611,7 @@ argparser.add_argument('--nick', action='store',
 
 # Set the channel the bot will attempt to join.
 argparser.add_argument('--channel', action='store',
-    help="The IRC channel to join.  No default.  Specify this with a backslash (\#) because the shell will interpret it as a comment and mess with you otherwise.")
+    help="The IRC channel to join.  No default.  Specify this with a backslash (\#) because the shell will interpret it as a comment and mess with you otherwise.  If you want to specify more than one you'll have to put them in the configuration file.")
 
 # Set the nick of the bot's owner, which it will learn from preferentially.
 argparser.add_argument('--owner', action='store',
@@ -660,6 +663,9 @@ if args.loglevel:
     loglevel = process_loglevel(args.loglevel.lower())
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
+
+# MOOF MOOF MOOF - Split the line containing one or more channels into an
+# array of channels.  This array can have only one element.
 
 # IRC server to connect to.
 if args.server:
