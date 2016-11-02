@@ -201,15 +201,15 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(self.owner, self.nick + " seems to be taken already.  Falling back to nickname " + self.nick + "_.")
         connection.nick(connection.get_nickname() + "_")
 
-    # This method fires when the server accepts the bot's connection.  It joins
-    # the configured channel.
+    # This method fires when the server accepts the bot's connection.  It walks
+    # through the IRCDict of channels and tries to join each one.
     def on_welcome(self, connection, event):
         logger.debug("Entered DixieBot.on_welcome().")
         for channel in self.channels.keys():
-            logger.debug("Trying to join channel " + self.channels[channel] + ".")
-            connection.join(self.channels[channel])
-            logger.info("Joined channel " + self.channels[channel] + ".")
-            connection.privmsg(self.owner, "Joined " + self.channels[channel] + ".")
+            logger.debug("Trying to join channel " + channel + ".")
+            connection.join(channel)
+            logger.info("Joined channel " + channel + ".")
+            connection.privmsg(self.owner, "Joined " + channel + ".")
 
             # Just to be silly, roll 1d10.  On a 1, say hello to the channel.
             roll = random.randint(1, 10)
@@ -217,7 +217,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 pause = random.randint(1, 10)
                 time.sleep(pause)
                 logger.debug("Bot has randomly decided to announce itself.")
-                connection.privmsg(self.channels[channel], "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
+                connection.privmsg(channel, "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
 
     # This method fires if the bot gets kicked from a channel.  The smart
     # thing to do is sleep for a random period of time (between one and three
@@ -238,6 +238,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def on_bannedfromchan(self, connection, event):
         logger.warn("Uh-oh - I got kickbanned from " + event.target + ".  I know when I'm not wanted.")
         self.privmsg(self.owner, "Uh-oh - I got kickbanned from " + event.target + ".  I know when I'm not wanted.")
+        del self.channels[event.target]
         return
 
     # This method fires when the server disconnects the bot for some reason.
