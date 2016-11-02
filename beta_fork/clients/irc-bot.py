@@ -412,7 +412,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(nick, "Trying to join channel " + new_channel + ".")
         logger.debug("Trying to join channel " + new_channel + ".")
         connection.join(new_channel)
-        self.channels[channel] = new_channel
+        self.channels[new_channel] = new_channel
         return
 
     # This method fires every time a public message is posted to an IRC
@@ -474,6 +474,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 json_response = json.loads(self._get_response(irc_text))
                 if json_response['id'] != int(200):
                     logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                    return
 
                 # connection.privmsg() can be used to send text to either a
                 # channel or a user.
@@ -501,6 +502,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             json_response = json.loads(self._teach_brain(irc_text))
             if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
+                return
 
             json_response = json.loads(self._get_response(irc_text))
             if json_response['id'] != int(200):
@@ -510,7 +512,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             return
 
     # This method should fire when a client in the current channel emits a QUIT
-    # event (relayed by the server.  It detects the bot's owner disconnecting
+    # event relayed by the server.  It detects the bot's owner disconnecting
     # and deauthenticates them.
     def on_quit(self, connection, event):
         sending_nick = event.source.split("!~")[0]
