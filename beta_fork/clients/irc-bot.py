@@ -108,7 +108,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
     # Class-level variables which form attributes.  These all refer to aspects
     # of the bot.
-    channels = IRCDict()
+    joined_channels = IRCDict()
     canonical_name = ""
     nick = ""
     owner = ""
@@ -152,12 +152,12 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # stats() - 
     # time() - 
 
-    def __init__(self, channel, nickname, server, port, owner, usessl,
+    def __init__(self, channels, nickname, server, port, owner, usessl,
         password, engine_host, engine_port, api_key):
 
         # Initialize the class' attributes.
-        for i in channel:
-            self.channels[i] = i
+        for i in channels:
+            self.joined_channels[i] = 1
         self.canonical_name = nick
         self.nick = nick
         self.owner = owner
@@ -191,6 +191,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         logger.debug("Instantiating SingleServerIRCBot superclass.")
         irc.bot.SingleServerIRCBot.__init__(self, [(self.server, self.port)],
             self.nick, self.nick, connect_factory=factory)
+        logger.debug("Channels configured for this bot:")
+        logger.debug("  " + str(self.joined_channels))
 
     # This method fires if the configured nickname is already in use.  If that
     # happens, change the bot's nick slightly.
@@ -205,7 +207,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # through the IRCDict of channels and tries to join each one.
     def on_welcome(self, connection, event):
         logger.debug("Entered DixieBot.on_welcome().")
-        for channel in self.channels.keys():
+        for channel in self.joined_channels:
             logger.debug("Trying to join channel " + channel + ".")
             connection.join(channel)
             logger.info("Joined channel " + channel + ".")
@@ -218,6 +220,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 time.sleep(pause)
                 logger.debug("Bot has randomly decided to announce itself.")
                 connection.privmsg(channel, "Hey, bro!  I'm " + self.nick + ", the best cowboy who ever punched deck!")
+        logger.debug("Exiting DixieBot.on_welcome().")
 
     # This method fires if the bot gets kicked from a channel.  The smart
     # thing to do is sleep for a random period of time (between one and three
@@ -238,7 +241,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def on_bannedfromchan(self, connection, event):
         logger.warn("Uh-oh - I got kickbanned from " + event.target + ".  I know when I'm not wanted.")
         self.privmsg(self.owner, "Uh-oh - I got kickbanned from " + event.target + ".  I know when I'm not wanted.")
-        del self.channels[event.target]
+        self.joined_channels.remove(event.target)
         return
 
     # This method fires when the server disconnects the bot for some reason.
@@ -373,8 +376,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def _current_config(self, connection, nick):
         connection.privmsg(nick, "Here's my current runtime configuration.")
         connection.privmsg(nick, "Channels I'm connected to: ")
-        for key in self.channels:
-            connection.privmsg(nick, "  " + key)
+        for channel in self.joined_channels:
+            connection.privmsg(nick, "  " + channel)
         connection.privmsg(nick, "Current nick: " + self.nick)
         connection.privmsg(nick, "Canonical name (for interacting with the conversation engine): " + self.canonical_name)
         connection.privmsg(nick, "Server and port: " + self.server + " " + str(self.port) + "/tcp")
@@ -412,7 +415,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(nick, "Trying to join channel " + new_channel + ".")
         logger.debug("Trying to join channel " + new_channel + ".")
         connection.join(new_channel)
-        self.channels[new_channel] = new_channel
+        self.joined_channels[new_channel] = 1
         return
 
     # This method fires every time a public message is posted to an IRC
