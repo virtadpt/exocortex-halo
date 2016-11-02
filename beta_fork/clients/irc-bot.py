@@ -644,7 +644,7 @@ if os.path.exists(config_file):
     irc_server = config.get("DEFAULT", "server")
     irc_port = config.get("DEFAULT", "port")
     nick = config.get("DEFAULT", "nick")
-    channel = config.get("DEFAULT", "channel")
+    channel = config.get("DEFAULT", "channel").split(',')
     owner = config.get("DEFAULT", "owner")
     loglevel = config.get("DEFAULT", "loglevel").lower()
     usessl = config.getboolean("DEFAULT", "usessl")
@@ -664,9 +664,7 @@ if args.loglevel:
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-# MOOF MOOF MOOF - Split the line containing one or more channels into an
-# array of channels.  This array can have only one element.
-
+# Remember - command line arguments override settings in the config file!
 # IRC server to connect to.
 if args.server:
     irc_server = args.server
@@ -681,7 +679,7 @@ if args.nick:
 
 # Channel to connect to.
 if args.channel:
-    channel = args.channel
+    channel = args.channel.split(',')
 
 # Nick of the bot's owner to follow around.
 if args.owner:
@@ -704,9 +702,11 @@ if args.password:
 # If the bot doesn't have an authentication password set, don't let the bot
 # start up because somebody will eventually take it over and that'll be bad.
 if not password:
-    print "You don't have a password set on the bot.  This means that anybody cold take"
-    print "it over and do things with it.  That's no good.  Set a password in the config"
-    print "file or on the command line and try again."
+    print """
+You don't have a password set on the bot.  This means that anybody cold take
+it over and do things with it.  That's no good.  Set a password in the config
+file or on the command line and try again.
+"""
     sys.exit(1)
 
 # Prime the RNG.
