@@ -430,7 +430,7 @@ while True:
         logger.debug("Number of search results: " + str(number_of_results))
         logger.debug("Search request: " + str(search))
         if destination_email_address == "XMPP":
-            logger.debug("Sending search results back via XMPP."
+            logger.debug("Sending search results back via XMPP.")
 
         # MOOF MOOF MOOF
         if destination_email_address != "":
