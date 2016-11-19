@@ -462,7 +462,11 @@ while True:
         # If no search results were returned, put that message into the
         # (empty) list of search results.
         if len(search_results) == 0:
-            search_results = ["No search results found."]
+            temp = {}
+            temp['title'] = "No search results found."
+            temp['url'] = ""
+            temp['score'] = 0.0
+            search_results.append(temp)
 
         # Construct the message containing the search results.
         message = "Here are your search results:\n"
