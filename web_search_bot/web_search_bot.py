@@ -464,18 +464,25 @@ while True:
         if len(search_results) == 0:
             search_results = ["No search results found."]
 
-        # If the search results are to be e-mailed, transmit them and then
-        # bounce to the next iteration of the loop.
-        if destination_email_address == "":
-            destination_email_address = default_email
-
         # Construct the message containing the search results.
         message = "Here are your search results:\n"
         for result in search_results:
+            message = message + result['title'] + "\n"
+            message = message + result['url'] + "\n"
             message = message + "Relevance: " + str(result['score']) + "\n\n"
-            message = message + result['title'] + "\n\n"
-            message = message + result['url'] + "\n\n"
-        message = message + "\nEnd of search results.\n"
+        message = message + "End of search results.\n"
+
+        # If the response is supposed to go over XMPP, send it back and go
+        # on with our lives.
+        if destination_email_address == "XMPP":
+            send_message_to_user(message)
+            time.sleep(float(polling.time))
+            continue
+
+        # If the search results are to be e-mailed, complete the SMTP message.
+        if destination_email_address == "":
+            destination_email_address = default_email
+
         message = MIMEText(message, 'plain', 'utf-8')
         message['Subject'] = Header("Incoming search results!", 'utf-8')
         message['From'] = Header(origin_email_address, 'utf-8')
