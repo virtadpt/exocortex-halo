@@ -17,17 +17,72 @@
 # TO-DO:
 
 # Load modules.
+from email.mime.text import MIMEText
+
+import json
+import logging
+import requests
+import smtplib
 import sys
-
-# Constants.
-
-# Global variables.
-
-# If this is a class or module, say what it is and what it does.
 
 # Classes.
 
 # Functions.
+# email_response(): Function that e-mails something to the bot's user.  Takes
+#   four arguments, strings containing a subject line, a message, an e-mail
+#   address the message appears to be from, the destination e-mail address,
+#   and the hostname of an SMTP server to send the message through.  Uses the
+#   configured SMTP server to send the message.  Returns True (it worked) or
+#   False (it didn't go through).
+def email_response(subject_line, message, origin_address, destination_address,
+    smtp_server):
+    smtp = None
+
+    # Due diligence.
+    if not subject_line:
+        return False
+    if not message:
+        return False
+    if not origin_address:
+        return False
+    if not destination_address:
+        return False
+    if not smtp_server:
+        return False
+
+    # Set up the outbound message.
+    message = MIMEText(message)
+    message['Subject'] = subject_line
+    message['From'] = origin_address
+    message['To'] = destination_address
+
+    # Set up the SMTP connection and transmit the message.
+    smtp = smtplib.SMTP(smtp_server)
+    smtp.sendmail(origin_address, destination_address, message.as_string())
+    smtp.quit()
+    smtp = None
+    return True
+
+# send_message_to_user(): Function that does the work of sending messages back
+# to the user by way of the XMPP bridge.  Takes three arguments, a string
+#   containing the base URL of the message bus to contact, a string containing
+#   the name of the bot that is sending the message, and the message to send
+#   to the user.
+def send_message_to_user(server, bot_name, message):
+    # Headers the XMPP bridge looks for for the message to be valid.
+    headers = {'Content-type': 'application/json'}
+
+    # Set up a hash table of stuff that is used to build the HTTP request to
+    # the XMPP bridge.
+    reply = {}
+    reply['name'] = bot_name
+    reply['reply'] = message
+
+    # Send an HTTP request to the XMPP bridge containing the message for the
+    # user.
+    request = requests.put(server + "replies", headers=headers,
+        data=json.dumps(reply))
+
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
 def set_loglevel(loglevel):
