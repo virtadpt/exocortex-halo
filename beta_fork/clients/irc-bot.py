@@ -53,6 +53,8 @@ from __future__ import division
 from irc.dict import IRCDict
 from wordfilter import Wordfilter
 
+import halolib
+
 import argparse
 import ConfigParser
 import irc.bot
@@ -572,26 +574,6 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         json_response = json.loads(http_request.content)
         return json_response
 
-# Functions.
-# Figure out what to set the logging level to.  There isn't a straightforward
-# way of doing this because Python uses constants that are actually integers
-# under the hood, and I'd really like to be able to do something like
-# loglevel = 'logging.' + loglevel
-# I can't have a pony, either.  Takes a string, returns a Python loglevel.
-def process_loglevel(loglevel):
-    if loglevel == "critical":
-        return 50
-    if loglevel == "error":
-        return 40
-    if loglevel == "warning":
-        return 30
-    if loglevel == "info":
-        return 20
-    if loglevel == "debug":
-        return 10
-    if loglevel == "notset":
-        return 0
-
 # Core code...
 # Set up a command line argument parser, because that'll make it easier to play
 # around with this bot.  There's no sense in not doing this right at the very
@@ -664,9 +646,9 @@ else:
 # Figure out how to configure the logger.  Start by reading from the config
 # file, then try the argument vector.
 if loglevel:
-    loglevel = process_loglevel(loglevel)
+    loglevel = halolib.set_loglevel(loglevel)
 if args.loglevel:
-    loglevel = process_loglevel(args.loglevel.lower())
+    loglevel = halolib.set_loglevel(args.loglevel.lower())
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
