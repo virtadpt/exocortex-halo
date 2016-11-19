@@ -154,16 +154,16 @@ def parse_get_request(get_request):
     logger.debug("Entered function parse_get_request().")
     words = []
 
-    # Clean up the search request.
+    # Clean up the get request.
     get_request = get_request.strip()
     get_request = get_request.strip('.')
 
-    # If the search request is empty (i.e., nothing in the queue), bounce.
+    # If the get request is empty (i.e., nothing in the queue), bounce.
     if "no commands" in get_request:
         logger.debug("Got empty get request.")
         return
 
-    # Tokenize the search request.
+    # Tokenize the get request.
     words = get_request.split(' ')
     logger.debug("Tokenized get request: " + str(words))
 

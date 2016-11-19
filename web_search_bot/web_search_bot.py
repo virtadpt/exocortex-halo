@@ -47,6 +47,8 @@
 # - Break out the "handle HTTP result code" handler into a function.
 # - Make it possible to send search results back through the /replies API rail
 #   instead of e-mail.
+# - Refactor repeated code into helper methods, ala my other bots.
+# - Pull common code into a Python module to make maintenance easier.
 
 # Load modules.
 from email.message import Message
@@ -182,10 +184,9 @@ def parse_search_request(search_request):
     if words[0].lower() == "help":
         return (words[0], None, None)
 
-    # "Send/e-mail/email/mail <foo> top <number> hits for <search request...>"
+    # "send/e-mail/email/mail <foo> top <number> hits for <search request...>"
     if (words[0] == "send") or (words[0] == "e-mail") or \
             (words[0] == "email") or (words[0] == "mail"):
-
         logger.info("Got a token suggesting that search results should be e-mailed to someone.")
 
         # See if the next token fits the general pattern of an e-mail address.
@@ -194,18 +195,22 @@ def parse_search_request(search_request):
         if email_matcher.match(words[1]):
             email_address = words[1]
             del words[0]
-            del words[1]
+            del words[0]
+            del words[0]
             logger.info("The e-mail address to send search results to: " +
                 email_address)
         else:
             logger.warn("The e-mail address " + words[1] + " didn't match the general format of an SMTP address.  Aborting.")
             return (number_of_search_results, search_term, email_address)
 
-    # Start parsing the the search request to see what kind it is.  After
-    # making the determination, remove the words we've sussed out to make the
-    # rest of the query easier.
+    # "get top <number> hits for <search request...>"
+    if (words[0] == "get"):
+        logger.info("Got a token suggesting that search results should be sent over XMPP.")
+        del words[0]
+        email_address = "XMPP"
+
     # "top <foo> hits for <search request...>
-    logger.debug("Starting to parse search request.")
+    logger.debug("Figuring out how many results to return for the search request.")
     if words[0] == "top":
         if isinstance(words[1], (int)):
             number_of_search_results = words[1]
@@ -272,6 +277,27 @@ def get_search_results(search_term):
 
     # Return the list of search results.
     return results
+
+# send_message_to_user(): Function that does the work of sending messages back
+# to the user by way of the XMPP bridge.  Takes one argument, the message to
+#   send to the user.  Returns a True or False which delineates whether or not
+#   it worked.
+def send_message_to_user(message):
+    logger.debug("Entered function send_message_to_message().")
+
+    # Headers the XMPP bridge looks for for the message to be valid.
+    headers = {'Content-type': 'application/json'}
+
+    # Set up a hash table of stuff that is used to build the HTTP request to
+    # the XMPP bridge.
+    reply = {}
+    reply['name'] = bot_name
+    reply['reply'] = message
+
+    # Send an HTTP request to the XMPP bridge containing the message for the
+    # user.
+    request = requests.put(server + "replies", headers=headers,
+        data=json.dumps(reply))
 
 # Core code...
 
@@ -414,7 +440,7 @@ while True:
             reply = reply + "I am an interface to the Searx meta-search engine with very limited conversational capability.  At this time I can accept search requests and e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n"
             reply = reply + bot_name + " (send/e-mail/email/mail (optional other e-mail address)) top <number> hits for <search request...>\n\n"
             reply = reply + bot_name + "I can also return search results directly to this instant messager session.  Send me a request that looks like this:\n"
-            reply = reply + bot_name + " (get) top <number> hits for <search request...>\n\n"
+            reply = reply + bot_name + " get top <number> hits for <search request...>\n\n"
 
             help_reply = {}
             help_reply['name'] = bot_name
