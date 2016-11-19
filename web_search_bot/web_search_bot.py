@@ -411,8 +411,10 @@ while True:
         # send it back to the user, and restart the loop.
         if (str(number_of_results).lower() == "help"):
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
-            reply = reply + """I am an interface to the Searx meta-search engine with very limited conversational capability.  At this time I can accept search requests and e-mail the results to my default destination address.  To execute a search request, send me a message that looks like this:\n\n"""
-            reply = reply + bot_name + " (send/e-mail/email/mail (optional other e-mail address)) top <number> hits for <search request...>"
+            reply = reply + "I am an interface to the Searx meta-search engine with very limited conversational capability.  At this time I can accept search requests and e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n"
+            reply = reply + bot_name + " (send/e-mail/email/mail (optional other e-mail address)) top <number> hits for <search request...>\n\n"
+            reply = reply + bot_name + "I can also return search results directly to this instant messager session.  Send me a request that looks like this:\n"
+            reply = reply + bot_name + " (get) top <number> hits for <search request...>\n\n"
 
             help_reply = {}
             help_reply['name'] = bot_name
