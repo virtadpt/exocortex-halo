@@ -275,7 +275,7 @@ def download_web_page(url):
 #   send to the user.  Returns a True or False which delineates whether or not
 #   it worked.
 def send_message_to_user(message):
-    logger.debug("Entered function send_message_to_message().")
+    logger.debug("Entered function send_message_to_user().")
 
     # Headers the XMPP bridge looks for for the message to be valid.
     headers = {'Content-type': 'application/json'}

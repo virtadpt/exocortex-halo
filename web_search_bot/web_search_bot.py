@@ -283,7 +283,7 @@ def get_search_results(search_term):
 #   send to the user.  Returns a True or False which delineates whether or not
 #   it worked.
 def send_message_to_user(message):
-    logger.debug("Entered function send_message_to_message().")
+    logger.debug("Entered function send_message_to_user().")
 
     # Headers the XMPP bridge looks for for the message to be valid.
     headers = {'Content-type': 'application/json'}
@@ -429,6 +429,10 @@ while True:
         (number_of_results, search, destination_email_address) = parse_search_request(search_request)
         logger.debug("Number of search results: " + str(number_of_results))
         logger.debug("Search request: " + str(search))
+        if destination_email_address == "XMPP":
+            logger.debug("Sending search results back via XMPP."
+
+        # MOOF MOOF MOOF
         if destination_email_address != "":
             logger.debug("E-mail address to send search results to: " +
                 str(destination_email_address))
@@ -441,15 +445,7 @@ while True:
             reply = reply + bot_name + " (send/e-mail/email/mail (optional other e-mail address)) top <number> hits for <search request...>\n\n"
             reply = reply + bot_name + "I can also return search results directly to this instant messager session.  Send me a request that looks like this:\n"
             reply = reply + bot_name + " get top <number> hits for <search request...>\n\n"
-
-            help_reply = {}
-            help_reply['name'] = bot_name
-            help_reply['reply'] = reply
-
-            headers = {'Content-type': 'application/json'}
-            request = requests.put(server + "replies", headers=headers,
-                data=json.dumps(help_reply))
-
+            send_message_to_user(reply)
             continue
 
         # If the number of search results is zero there was no search
