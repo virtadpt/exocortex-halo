@@ -29,8 +29,9 @@
 
 # Load modules.
 from bs4 import BeautifulSoup
-from email.mime.text import MIMEText
 from etherpad_lite import EtherpadLiteClient
+
+import halolib
 
 import argparse
 import ConfigParser
@@ -130,22 +131,6 @@ pad_id = ""
 hash = None
 
 # Functions.
-# set_loglevel(): Turn a string into a numerical value which Python's logging
-#   module can use because.
-def set_loglevel(loglevel):
-    if loglevel == "critical":
-        return 50
-    if loglevel == "error":
-        return 40
-    if loglevel == "warning":
-        return 30
-    if loglevel == "info":
-        return 20
-    if loglevel == "debug":
-        return 10
-    if loglevel == "notset":
-        return 0
-
 # parse_get_request(): Takes a string and susses out the URL the user wants
 #   grabbed and archived.  Commands are of the form "Botname, get
 #   https://www.example.com/paywalled_page.html".  Returns the URL to download
@@ -182,35 +167,6 @@ def parse_get_request(get_request):
             return "ERROR: '" + str(words) + "' was not a valid URL."
         else:
             return words[0]
-
-# email_response(): Function that e-mails something to the bot's user.  Takes
-#   two arguments, strings containing a subject line and a message.  Uses the
-#   configured SMTP server to send the message.  Returns True (it worked) or
-#   False (it didn't go through).
-def email_response(subject_line, message):
-    smtp = None
-
-    # Due diligence.
-    if not subject_line:
-        return False
-    if not message:
-        return False
-
-    # Set up the outbound message.
-    message = MIMEText(message)
-    message['Subject'] = subject_line
-    message['From'] = origin_email_address
-    message['To'] = default_email
-    logger.debug("Created outbound e-mail.")
-
-    # Set up the SMTP connection and transmit the message.
-    logger.info("E-mail message to " + default_email)
-    smtp = smtplib.SMTP(smtp_server)
-    smtp.sendmail(origin_email_address, default_email, message.as_string())
-    smtp.quit()
-    logger.info("Message transmitted.  Deallocating SMTP server object.")
-    smtp = None
-    return True
 
 # download_web_page(): This function takes a URL from the bot's user and
 #   downloads it while spoofing the User-Agent field of the request in an
@@ -270,27 +226,6 @@ def download_web_page(url):
     # We're done here.
     return (title, body)
 
-# send_message_to_user(): Function that does the work of sending messages back
-# to the user by way of the XMPP bridge.  Takes one argument, the message to
-#   send to the user.  Returns a True or False which delineates whether or not
-#   it worked.
-def send_message_to_user(message):
-    logger.debug("Entered function send_message_to_user().")
-
-    # Headers the XMPP bridge looks for for the message to be valid.
-    headers = {'Content-type': 'application/json'}
-
-    # Set up a hash table of stuff that is used to build the HTTP request to
-    # the XMPP bridge.
-    reply = {}
-    reply['name'] = bot_name
-    reply['reply'] = message
-
-    # Send an HTTP request to the XMPP bridge containing the message for the
-    # user.
-    request = requests.put(server + "replies", headers=headers,
-        data=json.dumps(reply))
-
 # Core code...
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description='A construct that polls a message queue for the URLs of paywalled web pages, tries to download the pages, copies them into an archive, and sends the results to a destination.')
@@ -336,7 +271,7 @@ default_email = config.get("DEFAULT", "default_email")
 # Get the default loglevel of the bot.
 config_log = config.get("DEFAULT", "loglevel").lower()
 if config_log:
-    loglevel = set_loglevel(config_log)
+    loglevel = halolib.set_loglevel(config_log)
 
 # Set the number of seconds to wait in between polling runs on the message
 # queues.
@@ -359,7 +294,7 @@ origin_email_address = config.get("DEFAULT", "origin_email_address")
 
 # Set the loglevel from the override on the command line.
 if args.loglevel:
-    loglevel = set_loglevel(args.loglevel.lower())
+    loglevel = halolib.set_loglevel(args.loglevel.lower())
 
 # Configure the logger.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
@@ -450,7 +385,7 @@ while True:
         # failure message back to the user.
         if "ERROR: " in page_request:
             logger.debug("An invalid URL was received by the construct.")
-            send_message_to_user("That was an invalid URL.  Try again.")
+            halolib.send_message_to_user(server, bot_name, "That was an invalid URL.  Try again.")
             time.sleep(float(polling_time))
             continue
 
@@ -460,7 +395,7 @@ while True:
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + "I am capable of jumping most paywalls by spoofing the User-Agent header of a randomly selected search engine, downloading the content, rendering it as plain text, and copying it into a new Etherpad-Lite page for editing and archival.  I will then e-mail you a link to the new page.  I will both e-mail and send you the link to the archived page directly.  To archive a page, send me a message that looks something like this:\n\n"
             reply = reply + bot_name + ", get https://www.example.com/foo.html"
-            send_message_to_user(reply)
+            halolib.send_message_to_user(server, bot_name, reply)
             continue
 
         # Try to download the HTML page the user is asking for.
@@ -469,7 +404,7 @@ while True:
         # Did it work?
         if not title or not body:
             reply = "I was unable to get anything useful from the page at URL " + page_request + ".  Either the HTML's completely broken, it's not HTML at all, or the URL's bad."
-            send_message_to_user(reply)
+            halolib.send_message_to_user(server, bot_name, reply)
             time.sleep(float(polling_time))
             continue
 
@@ -491,9 +426,10 @@ while True:
         # bot's user through both SMTP and XMPP.
         subject_line = "Successfully downloaded page '" + title + "'"
         message = "I have successfully downloaded and parsed the text of the web page '" + title + "'.  You can read the page at the URL " + archive_url + pad_id 
-        if not email_response(subject_line, message):
+        if not halolib.email_response(subject_line, message,
+            origin_email_address, default_email, smtp_server):
             logger.warn("Unable to e-mail failure notice to the user.")
-        send_message_to_user(message)
+        halolib.send_message_to_user(server, bot_name, message)
 
         # Go back to sleep and wait for the next command.
         logger.info("Done.  Going back to sleep until the next episode.")
