@@ -20,7 +20,6 @@
 from email.mime.text import MIMEText
 
 import json
-import logging
 import requests
 import smtplib
 import sys
