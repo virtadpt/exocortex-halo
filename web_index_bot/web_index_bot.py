@@ -20,6 +20,8 @@
 # - 
 
 # Load modules.
+import halolib
+
 import argparse
 import ConfigParser
 import json
@@ -68,22 +70,6 @@ search_engines = []
 index_request = None
 
 # Functions.
-# set_loglevel(): Turn a string into a numerical value which Python's logging
-#   module can use because.
-def set_loglevel(loglevel):
-    if loglevel == "critical":
-        return 50
-    if loglevel == "error":
-        return 40
-    if loglevel == "warning":
-        return 30
-    if loglevel == "info":
-        return 20
-    if loglevel == "debug":
-        return 10
-    if loglevel == "notset":
-        return 0
-
 # parse_index_request(): Takes a string and figures out if it was a correctly
 #   formatted request to submit a URL to a bunch of search engines.  Requests
 #   are of the form "index <some URL here>".  Returns the URL to submit for
@@ -173,25 +159,6 @@ def submit_for_indexing(index_term):
     # Return the list of search results.
     return result
 
-# send_message_to_user(): Function that does the work of sending messages back
-# to the user by way of the XMPP bridge.  Takes one argument, the message to
-#   send to the user.  Returns a True or False which delineates whether or not
-#   it worked.
-def send_message_to_user(message):
-    # Headers the XMPP bridge looks for for the message to be valid.
-    headers = {'Content-type': 'application/json'}
-
-    # Set up a hash table of stuff that is used to build the HTTP request to
-    # the XMPP bridge.
-    reply = {}
-    reply['name'] = bot_name
-    reply['reply'] = message
-
-    # Send an HTTP request to the XMPP bridge containing the message for the
-    # user.
-    request = requests.put(server + "replies", headers=headers,
-        data=json.dumps(reply))
-
 # Core code...
 
 # Set up the command line argument parser.
@@ -235,7 +202,7 @@ message_queue = server + bot_name
 # Get the default loglevel of the bot.
 config_log = config.get("DEFAULT", "loglevel").lower()
 if config_log:
-    loglevel = set_loglevel(config_log)
+    loglevel = halolib.set_loglevel(config_log)
 
 # Set the number of seconds to wait in between polling runs on the message
 # queues.
@@ -247,7 +214,7 @@ except:
 
 # Set the loglevel from the override on the command line.
 if args.loglevel:
-    loglevel = set_loglevel(args.loglevel.lower())
+    loglevel = halolib.set_loglevel(args.loglevel.lower())
 
 # Configure the logger.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
@@ -318,7 +285,7 @@ while True:
             reply = reply + """The search engines I am configured for are:\n"""
             for engine in search_engines:
                 reply = reply + """* """ + engine.split(',')[1] + "\n"
-            send_message_to_user(reply)
+            halolib.send_message_to_user(server, bot_name, reply)
             continue
 
         # Submit the index request to the configured search engines.
@@ -327,7 +294,7 @@ while True:
         # If something went wrong...
         if not index_request:
             logger.warn("Something went wrong when submitting the URL for indexing.")
-            send_message_to_user("Something went wrong when I submitted the URL for indexing.  Check the shell I'm running in for more details.")
+            halolib.send_message_to_user(server, bot_name, "Something went wrong when I submitted the URL for indexing.  Check the shell I'm running in for more details.")
 
     # Message queue not found.
     if request.status_code == 404:
