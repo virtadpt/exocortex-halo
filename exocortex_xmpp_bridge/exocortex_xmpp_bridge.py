@@ -74,6 +74,8 @@
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
+import halolib
+
 import argparse
 import ConfigParser
 import json
@@ -590,25 +592,6 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         else:
             return True
 
-# Figure out what to set the logging level to.  There isn't a straightforward
-# way of doing this because Python uses constants that are actually integers
-# under the hood, and I'd really like to be able to do something like
-# loglevel = 'logging.' + loglevel
-# I can't have a pony, either.  Takes a string, returns a Python loglevel.
-def process_loglevel(loglevel):
-    if loglevel == "critical":
-        return 50
-    if loglevel == "error":
-        return 40
-    if loglevel == "warning":
-        return 30
-    if loglevel == "info":
-        return 20
-    if loglevel == "debug":
-        return 10
-    if loglevel == "notset":
-        return 0
-
 # Core code...
 # If we're running in a Python environment earlier than v3.0, set the
 # default text encoding to UTF-8 because XMPP requires it.
@@ -654,11 +637,11 @@ for i in agents.split(','):
 # file.
 config_log = config.get("DEFAULT", "loglevel").lower()
 if config_log:
-    loglevel = process_loglevel(config_log)
+    loglevel = halolib.set_loglevel(config_log)
 
 # Then try the command line.
 if args.loglevel:
-    loglevel = process_loglevel(args.loglevel.lower())
+    loglevel = halolib.set_loglevel(args.loglevel.lower())
 
 # Configure the logger with the base loglevel.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
