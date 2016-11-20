@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
-# This is a module which collects all of the common functions and methods in
-# the Exocortex Halo into one place.  This'll make future maintenance and
-# adding new bots later somewhat easier.
+""" This is a module which collects all of the common functions and methods in
+the Exocortex Halo into one place.  This'll make future maintenance and
+adding new bots later somewhat easier. """
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -27,12 +27,12 @@ import sys
 # Classes.
 
 # Functions.
-# email_response(): Function that e-mails something to the bot's user.  Takes
-#   four arguments, strings containing a subject line, a message, an e-mail
-#   address the message appears to be from, the destination e-mail address,
-#   and the hostname of an SMTP server to send the message through.  Uses the
-#   configured SMTP server to send the message.  Returns True (it worked) or
-#   False (it didn't go through).
+""" email_response(): Function that e-mails something to the bot's user.  Takes
+four arguments, strings containing a subject line, a message, an e-mail
+address the message appears to be from, the destination e-mail address,
+and the hostname of an SMTP server to send the message through.  Uses the
+configured SMTP server to send the message.  Returns True (it worked) or
+False (it didn't go through). """
 def email_response(subject_line, message, origin_address, destination_address,
     smtp_server):
     smtp = None
@@ -62,11 +62,11 @@ def email_response(subject_line, message, origin_address, destination_address,
     smtp = None
     return True
 
-# send_message_to_user(): Function that does the work of sending messages back
-# to the user by way of the XMPP bridge.  Takes three arguments, a string
-#   containing the base URL of the message bus to contact, a string containing
-#   the name of the bot that is sending the message, and the message to send
-#   to the user.
+""" send_message_to_user(): Function that does the work of sending messages back
+to the user by way of the XMPP bridge.  Takes three arguments, a string
+containing the base URL of the message bus to contact, a string containing
+the name of the bot that is sending the message, and the message to send
+to the user. """
 def send_message_to_user(server, bot_name, message):
     # Headers the XMPP bridge looks for for the message to be valid.
     headers = {'Content-type': 'application/json'}
@@ -82,8 +82,8 @@ def send_message_to_user(server, bot_name, message):
     request = requests.put(server + "replies", headers=headers,
         data=json.dumps(reply))
 
-# set_loglevel(): Turn a string into a numerical value which Python's logging
-#   module can use because.
+""" set_loglevel(): Turn a string into a numerical value which Python's logging
+module can use. """
 def set_loglevel(loglevel):
     if loglevel == "critical":
         return 50
