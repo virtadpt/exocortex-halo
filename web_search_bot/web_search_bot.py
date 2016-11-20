@@ -55,8 +55,6 @@ from email.message import Message
 from email.header import Header
 from email.mime.text import MIMEText
 
-import halolib
-
 import argparse
 import ConfigParser
 import json
@@ -138,6 +136,22 @@ origin_email_address = ""
 message = ""
 
 # Functions.
+# set_loglevel(): Turn a string into a numerical value which Python's logging
+#   module can use because.
+def set_loglevel(loglevel):
+    if loglevel == "critical":
+        return 50
+    if loglevel == "error":
+        return 40
+    if loglevel == "warning":
+        return 30
+    if loglevel == "info":
+        return 20
+    if loglevel == "debug":
+        return 10
+    if loglevel == "notset":
+        return 0
+
 # parse_search_request(): Takes a string and figures out what kind of search
 #   request the user wants.  Requests are something along the form of "top ten
 #   hits for foo" or "search Tor for bar".  Returns a set of URLs for search
@@ -264,6 +278,27 @@ def get_search_results(search_term):
     # Return the list of search results.
     return results
 
+# send_message_to_user(): Function that does the work of sending messages back
+# to the user by way of the XMPP bridge.  Takes one argument, the message to
+#   send to the user.  Returns a True or False which delineates whether or not
+#   it worked.
+def send_message_to_user(message):
+    logger.debug("Entered function send_message_to_user().")
+
+    # Headers the XMPP bridge looks for for the message to be valid.
+    headers = {'Content-type': 'application/json'}
+
+    # Set up a hash table of stuff that is used to build the HTTP request to
+    # the XMPP bridge.
+    reply = {}
+    reply['name'] = bot_name
+    reply['reply'] = message
+
+    # Send an HTTP request to the XMPP bridge containing the message for the
+    # user.
+    request = requests.put(server + "replies", headers=headers,
+        data=json.dumps(reply))
+
 # Core code...
 
 # Set up the command line argument parser.
@@ -313,7 +348,7 @@ default_email = config.get("DEFAULT", "default_email")
 # Get the default loglevel of the bot.
 config_log = config.get("DEFAULT", "loglevel").lower()
 if config_log:
-    loglevel = halolib.set_loglevel(config_log)
+    loglevel = set_loglevel(config_log)
 
 # Set the number of seconds to wait in between polling runs on the message
 # queues.
@@ -336,7 +371,7 @@ origin_email_address = config.get("DEFAULT", "origin_email_address")
 
 # Set the loglevel from the override on the command line.
 if args.loglevel:
-    loglevel = halolib.set_loglevel(args.loglevel.lower())
+    loglevel = set_loglevel(args.loglevel.lower())
 
 # Configure the logger.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
@@ -410,7 +445,7 @@ while True:
             reply = reply + bot_name + ", (send/e-mail/email/mail (optional other e-mail address)) top <number> hits for <search request...>\n\n"
             reply = reply + "I can also return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
             reply = reply + bot_name + ", get top <number> hits for <search request...>\n\n"
-            halolib.send_message_to_user(server, bot_name, reply)
+            send_message_to_user(reply)
             continue
 
         # If the number of search results is zero there was no search
@@ -427,7 +462,11 @@ while True:
         # If no search results were returned, put that message into the
         # (empty) list of search results.
         if len(search_results) == 0:
-            search_results = ["No search results found."]
+            temp = {}
+            temp['title'] = "No search results found."
+            temp['url'] = ""
+            temp['score'] = 0.0
+            search_results.append(temp)
 
         # Construct the message containing the search results.
         message = "Here are your search results:\n"
@@ -440,15 +479,32 @@ while True:
         # If the response is supposed to go over XMPP, send it back and go
         # on with our lives.
         if destination_email_address == "XMPP":
-            halolib.send_message_to_user(server, bot_name, message)
+            send_message_to_user(message)
             time.sleep(float(polling_time))
             continue
 
         # If the search results are to be e-mailed, complete the SMTP message.
         if destination_email_address == "":
             destination_email_address = default_email
-        halolib.email_response("Incoming search results!", message,
-            origin_email_address, destination_email_address, smtp_server)
+
+        message = MIMEText(message, 'plain', 'utf-8')
+        message['Subject'] = Header("Incoming search results!", 'utf-8')
+        message['From'] = Header(origin_email_address, 'utf-8')
+        message['To'] = Header(destination_email_address, 'utf-8')
+        logger.debug("Created outbound e-mail message with search results.")
+        logger.debug(str(message))
+
+        # Set up the SMTP connection and transmit the message.
+        logger.info("E-mailing search results to " + destination_email_address)
+        smtp = smtplib.SMTP(smtp_server)
+        smtp.sendmail(origin_email_address, destination_email_address,
+            message.as_string())
+        smtp.quit()
+        logger.info("Search results transmitted.  Deallocating SMTP server object.")
+
+        # Deallocate resources we don't need now that the message is en route.
+        smtp = ""
+        destination_email_address = ""
 
     # Message queue not found.
     if request.status_code == 404:
