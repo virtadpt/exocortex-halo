@@ -16,6 +16,7 @@
 
 # v1.1 - Added some code to send a notification of a successful submission back
 #        to the user through the XMPP bridge.
+#      - Added some code to warn of an unsuccessful submission of a URL.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -172,6 +173,7 @@ def submit_for_indexing(index_term):
             send_message_to_user("Successfully submitted link " + url + ".")
         except:
             logger.warn("Unable to submit URL: " + str(url))
+            send_message_to_user("ERROR: Unable to submit link " + url + ".")
 
     # Return the list of search results.
     return result
