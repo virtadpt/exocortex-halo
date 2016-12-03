@@ -14,6 +14,8 @@
 
 # License: GPLv3
 
+# v1.1 - Added some code to send a notification of a successful submission back
+#        to the user through the XMPP bridge.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -167,6 +169,7 @@ def submit_for_indexing(index_term):
             if method == "post":
                 request = requests.post(url)
             result = True
+            send_message_to_user("Successfully submitted link " + url + ".")
         except:
             logger.warn("Unable to submit URL: " + str(url))
 
