@@ -488,7 +488,7 @@ while True:
         try:
             etherpad.createPad(padID=pad_id, text=page_text)
         except EtherpadException:
-            logger.warn("etherpad module threw an exception: " + str(EtherpadExceptoin))
+            logger.warn("Etherpad-Lite module threw an exception: " + str(EtherpadException))
             send_message_to_user(str(EtherpadException))
             time.sleep(float(polling_time))
             continue
