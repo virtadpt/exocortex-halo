@@ -485,7 +485,13 @@ while True:
         # Contact Etherpad and create a new pad with the contents of the page.
         etherpad = EtherpadLiteClient(base_params={'apikey': etherpad_api_key})
         page_text = str(title) + "\n\n" + str(body) + "\n"
-        etherpad.createPad(padID=pad_id, text=page_text)
+        try:
+            etherpad.createPad(padID=pad_id, text=page_text)
+        except EtherpadException:
+            logger.warn("etherpad module threw an exception: " + str(EtherpadExceptoin))
+            send_message_to_user(str(EtherpadException))
+            time.sleep(float(polling_time))
+            continue
 
         # E-mail a success message with a link to the archived page to the
         # bot's user.

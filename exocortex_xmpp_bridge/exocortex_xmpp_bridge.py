@@ -64,7 +64,8 @@
 #   instead of all caps) match when search requests are pushed into the
 #   message queue.  I think I can do this, I just need to play with it.
 # - Refactor command parser to break out commands and search requests into
-#   smaller methods.  It's pretty messy, and thus difficult to debug.
+#   smaller methods.  It's pretty messy, and thus difficult to maintain and
+#   debug.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -306,7 +307,6 @@ class XMPPClient(threading.Thread):
             response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
                 body=response_body)
             self.connection.send(response)
-
             return
 
         # Respond to a command for a status report.
@@ -397,7 +397,13 @@ class XMPPClient(threading.Thread):
     # This is a self-contained method which sends an XEP-0199 ping to the
     # server every 60 seconds to keep the client's connection alive.
     def send_xmpp_ping(self):
-        self.connection.send(self.xmpp_ping)
+        try:
+            self.connection.send(self.xmpp_ping)
+        except:
+            logger.warn("External IP address changed.  Unable to send ping.  Reconnecting.")
+            self.connection_resource = False
+            while not self.connection_resource:
+                self.connection_resource = self.connection.reconnectAndReauth()
         threading.Timer(60, self.send_xmpp_ping).start()
 
 # RESTRequestHandler: Subclass that implements a REST API service.  The main
