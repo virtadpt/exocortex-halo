@@ -189,6 +189,13 @@ def parse_search_request(search_request):
             (words[0] == "email") or (words[0] == "mail"):
         logger.info("Got a token suggesting that search results should be e-mailed to someone.")
 
+        # See if the next token is "me", which means use the default address.
+        if words[1].lower() == "me":
+            email_address = default_email
+            del words[0]
+            del words[0]
+            break
+
         # See if the next token fits the general pattern of an e-mail address.
         # It doesn't need to be perfect, it just needs to vaguely fit the
         # pattern.
