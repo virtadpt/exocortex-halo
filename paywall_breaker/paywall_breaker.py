@@ -30,7 +30,7 @@
 # Load modules.
 from bs4 import BeautifulSoup
 from email.mime.text import MIMEText
-from etherpad_lite import EtherpadLiteClient
+from etherpad_lite import EtherpadLiteClient, EtherpadException
 
 import argparse
 import ConfigParser
@@ -487,9 +487,9 @@ while True:
         page_text = str(title) + "\n\n" + str(body) + "\n"
         try:
             etherpad.createPad(padID=pad_id, text=page_text)
-        except EtherpadException:
-            logger.warn("Etherpad-Lite module threw an exception: " + str(EtherpadException))
-            send_message_to_user(str(EtherpadException))
+        except EtherpadException as e:
+            logger.warn("Etherpad-Lite module threw an exception: " + str(e))
+            send_message_to_user(str(e))
             time.sleep(float(polling_time))
             continue
 

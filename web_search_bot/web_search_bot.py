@@ -48,7 +48,10 @@
 # - Make it possible to send search results back through the /replies API rail
 #   instead of e-mail.
 # - Refactor repeated code into helper methods, ala my other bots.
-# - Pull common code into a Python module to make maintenance easier.
+# - Rework parse_search_request() because there's a corner case in which the
+#   word 'get' could accidentally be used and interpreted after an "<email>
+#   <foo>" command.  In other words, fat-fingering a command could mess things
+#   up in indeterminant ways.
 
 # Load modules.
 from email.message import Message
