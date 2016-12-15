@@ -196,12 +196,13 @@ def parse_search_request(search_request):
             email_address = words[1]
             del words[0]
             del words[0]
-            del words[0]
             logger.info("The e-mail address to send search results to: " +
                 email_address)
         else:
-            logger.warn("The e-mail address " + words[1] + " didn't match the general format of an SMTP address.  Aborting.")
-            return (number_of_search_results, search_term, email_address)
+            logger.warn("The e-mail address " + words[1] + " didn't match the general format of an SMTP address.  Using default e-mail address.")
+            send_message_to_user("The e-mail address given didn't match.  Using the default e-mail address of " + default_email + ".")
+            email_address = default_email
+            del words[0]
 
     # "get top <number> hits for <search request...>"
     if (words[0] == "get"):
@@ -212,6 +213,11 @@ def parse_search_request(search_request):
     # "top <foo> hits for <search request...>
     logger.debug("Figuring out how many results to return for the search request.")
     if words[0] == "top":
+        if not words[1]:
+            logger.error("Got a truncated search request.")
+            send_message_to_user("Got a truncated search request - something weird happened.")
+            return (number_of_search_results, search_term, email_address)
+
         if isinstance(words[1], (int)):
             number_of_search_results = words[1]
 
@@ -230,6 +236,7 @@ def parse_search_request(search_request):
     # If the parsed search term is now empty, return an error.
     if not len(words):
         logger.error("The search term appears to be empty: " + str(words))
+        send_message_to_user("Your search term is prematurely terminated.  Something weird happened.")
         return (number_of_search_results, search_term, email_address)
 
     # Convert the remainder of the list into a URI-encoded string.
@@ -443,6 +450,7 @@ while True:
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + "I am an interface to the Searx meta-search engine with very limited conversational capability.  At this time I can accept search requests and e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n\n"
             reply = reply + bot_name + ", (send/e-mail/email/mail) <e-mail address> top <number> hits for <search request...>\n\n"
+            reply = reply + "By default, I will e-mail results to the address " + default_email + ".\n\n"
             reply = reply + "I can also return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
             reply = reply + bot_name + ", get top <number> hits for <search request...>\n\n"
             send_message_to_user(reply)
