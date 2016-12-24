@@ -197,7 +197,6 @@ def parse_search_request(search_request):
             email_address = default_email
             del words[0]
             del words[0]
-            break
 
         # See if the next token fits the general pattern of an e-mail address.
         # It doesn't need to be perfect, it just needs to vaguely fit the
