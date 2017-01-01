@@ -20,6 +20,10 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v3.0 - Rewriting to use SleekXMPP, because I'm tired of XMPPpy's lack of
+#        documentation.  The code is much more sleek, if nothing else.
+#      - Refactored the core message processing method to split out the
+#        common stuff (online help and status reports) into helper methods.
 # v2.2 - Added a universal API rail '/replies' so that bots can send replies
 #        to their user over XMPP by hitting their configured XMPP bridge over
 #        HTTP.
@@ -63,9 +67,6 @@
 #   lowercase instead of proper capitalization, or proper capitalization
 #   instead of all caps) match when search requests are pushed into the
 #   message queue.  I think I can do this, I just need to play with it.
-# - Refactor command parser to break out commands and search requests into
-#   smaller methods.  It's pretty messy, and thus difficult to maintain and
-#   debug.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -74,6 +75,9 @@
 
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
+from sleekxmpp import ClientXMPP
+from sleekxmpp.exceptions import IqError, IqTimeout
+from sleekxmpp.xmlstream import scheduler
 
 import argparse
 import ConfigParser
@@ -82,11 +86,10 @@ import logging
 import os
 import sys
 import threading
-import xmpp
 
 # Globals.
-# Handle for the XMPP client thread.
-xmpp_client_thread = None
+# Handle for the XMPP client.
+xmpp_client = None
 
 # This hash table's keys are the names of agents, the associated values are
 # lists which implement the message queues.
@@ -107,97 +110,72 @@ loglevel = ""
 # XMPPClient: XMPP client class.  Implemented using threading.Thread because
 #   it'll spin out on its own to connect to the XMPP server, while the custom
 #   REST API server handles the distribution of requests to other agents.
-class XMPPClient(threading.Thread):
-    # Username information needed to log into the XMPP server.
-    username = ""
+class XMPPClient(ClientXMPP):
+    # Bot's friendly nickname.
     nickname = ""
-    JID = ""
-    password = ""
-    server = ""
 
     # This is the bot's designated owner, which controls whether or not it
     # responds to any commands.
     owner = ""
 
-    # Local reference to a method that will run when the thread is instructed
-    # to terminate itself.
-    on_end = None
-
-    # This flag determines whether or not the thread will terminate itself.
-    shutdown = False
-
-    # Handles to parts of an active XMPP connection.
-    connection = False
-    connection_resource = False
-    authentication_resource = False
-    roster = ""
-    xmpp_ping = ""
+    # Handle to the /replies processor thread.
+    replies_processor = None
 
     # Initialize new instances of the class.
-    def __init__(self, username, password):
-        logger.debug("Now initializing an instance of the XMPPClient thread.")
-        threading.Thread.__init__(self)
+    def __init__(self, username, password, owner):
 
         # Store the username, password and nickname as local attributes.
-        self.username = username
-        self.password = password
-        self.nickname = self.username.split('@')[0]
+        self.nickname = username.split('@')[0].capitalize()
 
         # Register the bot's owner.
         self.owner = owner
 
-        # Generate a JID, because that seems to be a specific data structure
-        # in xmpppy.
-        self.JID = xmpp.JID(username)
+        logger.debug("Username: " + username)
+        logger.debug("Password: " + password)
+        logger.debug("Construct's XMPP nickname: " + self.nickname)
+        logger.debug("Construct's owner: " + self.owner)
 
-        # Build an XEP-0199 client-to-server ping stanza.
-        self.xmpp_ping = self.build_xmpp_ping()
+        # Log into the server.
+        logger.debug("Logging into the XMPP server...")
+        ClientXMPP.__init__(self, username, password)
 
-        # Start the thread.
-        logger.debug("Initiating the XMPPClient thread by calling self.start().")
-        self.start()
+        # Register event handlers to process different event types.  A single
+        # event can be processed by multiple event handlers...
+        self.add_event_handler("failed_auth", self.failed_auth, threaded=True)
+        self.add_event_handler("no_auth", self.no_auth, threaded=True)
+        self.add_event_handler("session_start", self.session_start,
+            threaded=True)
+        self.add_event_handler("message", self.message, threaded=True)
+        self.add_event_handler("disconnected", self.on_disconnect,
+            threaded=True)
 
-    # run(): Method that is started by self.start() above which does the actual
-    #   work of the thread.
-    def run(self):
-        logger.debug("Entered XMPPClient.run().")
+        # Start the /replies processing thread.
+        self.schedule("replies_processor", 20, self.process_replies_queue,
+            repeat=True)
 
-        now_online = ""
+    # Fires when the construct isn't able to authenticate with the server.
+    def failed_auth(self, event):
+        logger.critical("Unable to authenticate with the JID " + self.username)
+        return
+
+    # Fires when all authentication methods available to the construct have
+    # failed.
+    def no_auth(self, event):
+        logger.critical("All authentication methods with the JID " + self.username + " have failed.")
+        return
+
+    # Fires whenever an XMPP session starts.  Just about anything can go in
+    # here.  'event' is an empty dict.
+    def session_start(self, event):
         now_online_message = ""
 
-        # Connect to the XMPP server.  ABEND if we can't.
-        self.connection = xmpp.Client(self.JID.getDomain(), debug=[])
-        self.connection_resource = self.connection.connect()
-        if not self.connection_resource:
-            logger.fatal("Unable to connect to XMPP server " + self.JID.getDomain() + " with JID " + self.JID + "!")
-            sys.exit(1)
+        logger.debug("Sending the bot's session presence to the server and requesting the roster.")
+        self.send_presence()
+        self.get_roster()
 
-        # Test for an encrypted connection, because that's how I roll.
-        if self.connection_resource != 'tls':
-            logger.warning("Unable to establish a TLS encrypted connection to server " + self.JID.getDomain() + "!")
-
-        # Authenticate to the server.  ABEND if we can't.
-        self.authentication_resource = self.connection.auth(self.JID.getNode(),
-            self.password, self.nickname)
-        if not self.authentication_resource:
-            logger.fatal("Failed authentication to XMPP server " + self.JID.getDomain() + " with JID " + str(self.JID) + "!")
-            sys.exit(1)
-
-        # Tell the XMPP server that we're ready to rock by sending a presence
-        # stanza.
-        logger.info("Successful authentication to XMPP server.  Sending initial presence stanza.")
-        self.connection.sendInitPresence()
-
-        # Get the login account's buddy list (XMPP stanza: roster).
-        logger.debug("Pulling buddy list from server's database...")
-        self.roster = self.connection.getRoster()
-
-        # Register a handler that processes messages from the connection's
-        # data stream.
-        self.connection.RegisterHandler("message", self.process_message)
-
-        # Send a message to the bot's owner that it is now online.
-        logger.info("Now informing " + self.owner + " that the configured agents are now online.")
+        # Construct a message for the bot's owner that consists of the list of
+        # bots that access the message bridge, along with appropriate
+        # plurality of nouns.
         if len(message_queue.keys()) == 1:
             now_online_message = "The bot "
         else:
@@ -214,127 +192,45 @@ class XMPPClient(threading.Thread):
         else:
             now_online_message = now_online_message + " are now online."
 
-        now_online = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-            body=now_online_message)
-        self.connection.send(now_online)
+        # Send the message to the bot's owner.
+        self.send_message(mto=self.owner, mbody=now_online_message)
 
-        # Initiate the server XMPP ping thread.
-        logger.debug("Initiating the background XMPP server ping thread.")
-        self.send_xmpp_ping()
-
-        # Go into the work loop.
-        logger.debug("Entering XMPPClient.run() work loop.")
-        while not self.shutdown:
-
-            # See if there are any messages in the XMPP bot's private message
-            # queue 'replies'.  If there are, pick the least recently added
-            # one out and transmit it to the bot's user.  This is getting a
-            # little hairy so I really should make it readable.
-            if len(message_queue['replies']):
-                reply = message_queue['replies'].pop(0)
-                response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                    body=reply)
-                self.connection.send(response)
-
-            try:
-                # See if there is a stanza in the incoming connection stream.
-                self.connection.Process(10)
-
-            except KeyboardInterrupt:
-                logger.debug("Received KeyboardInterrupt.")
-                self.shutdown = True
-
-        # If we get down to here, the thread has been told to terminate.
-        logger.debug("XMPPClient.run() has entered the termination phase.")
-        return
-
-    # process_message(): Method that is attached to an XMPPClient.connection
-    #   object which fires whenever a message arrives from the connection data
-    #   stream
-    def process_message(self, connection, message):
-        logger.debug("Processing an XMPP message stanza.")
-
-        # Variables used to dissect and respond to XMPP message stanzas.
-        message_sender = ""
-        message_type = ""
-        message_body = ""
+    # Event handler that fires whenever an XMPP message is sent to the bot.
+    # 'received_message' represents a message object from the server.
+    def message(self, received_message):
+        message_sender = str(received_message.getFrom()).strip().split('/')[0]
+        message_body = str(received_message['body']).strip()
         agent_name = ""
-        response = ""
-        response_body = ""
-        acknowledge = ""
-        acknowledge_text = ""
         command = ""
+        acknowledgement = ""
 
-        # Only pay attention to messages from the bot's owner.  We don't
-        # respond because we don't want to leak any information to someone
-        # probing this aspect of the exocortex.
-        message_sender = message.getFrom()
-        message_sender = str(message_sender).split('/')[0]
-        logger.debug("Value of XMPPClient.process_message().message_sender is: " + message_sender)
+        logger.debug("Value of XMPPClient.message().message_sender is: " + str(message_sender))
+        logger.debug("Value of XMPPClient.message().message_body is: " + str(message_body))
+
+        # Potential message types: normal, chat, error, headline, groupchat
+        # Only pay attention to 'normal' and 'chat' messages.
+        if received_message['type'] not in ('chat', 'normal'):
+            return
+
+        # If the sender isn't the bot's owner, ignore the message.
         if message_sender != self.owner:
             logger.debug("Received a command from invalid bot owner " + message_sender + ".")
             return
 
-        # Only pay attention to one-to-one message stanzas.
-        message_type = message.getType()
-        logger.debug("Value of XMPPClient.process_message().message_type is: " + message_type)
-        if message_type not in ('normal', 'chat'):
-            logger.debug("Received a message stanza of type " + str(message_type) + ", which is not what I'm looking for.")
-            return
-
-        # Extract the message body for parsing.
-        message_body = str(message.getBody()).strip()
-        logger.debug("Value of XMPPClient.process_message().message_body is: " + str(message_body))
-
-        # If the agent's name is None (some XMPP clients send stanzas with
-        # no bodies), silently bounce.
+        # If the message body is empty (which some XMPP clients do just to
+        # mess with us), ignore it.
         if message_body == "None":
             logger.debug("The XMPP client sent an empty message body which is interpreted as None.  Bluh.")
             return
 
-        # If the user asks for help, display the list of acknowledged commands.
+        # The user is asking for online help.
         if message_body == "help":
-            logger.debug("User has requested online help.")
-            resonse_body = "Supported commands:\n- help - This online help."
-            response_body = response_body + "- Robots, report. - List all constructs this bot is configured to communicate with.\n"
-            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                body=response_body)
-            self.connection.send(response)
-
-            response_body = "To send a command to one of the constructs, use an XMPP client to send a message that looks something like this:\n"
-            response_body = response_body + "[bot name], top [n] hits for [search term].\n"
-            response_body = response_body + "Individual constructs may have their own online help, so try sending the command '[bot name], help.'\n"
-            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                body=response_body)
-            self.connection.send(response)
+            self._online_help()
             return
 
-        # Respond to a command for a status report.
+        # The user is asking for a status report.
         if message_body == "Robots, report.":
-
-            # Configured message queues.
-            for key in message_queue.keys():
-                if key == 'replies':
-                    continue
-                response_body = response_body + key + " "
-            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                body=response_body)
-            self.connection.send(response)
-
-            # Contents of message queues.
-            response_body = "Contents of message queues are as follows:"
-            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                body=response_body)
-            self.connection.send(response)
-
-            for key in message_queue.keys():
-                if key == 'replies':
-                    continue
-                response_body = "Agent " + key + ": "
-                response_body = response_body + str(message_queue[key])
-                response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                    body=response_body)
-                self.connection.send(response)
+            self._status_report()
             return
 
         # Try to split off the bot's name from the message body.  If the
@@ -347,13 +243,8 @@ class XMPPClient(threading.Thread):
 
         if agent_name not in message_queue.keys():
             logger.debug("Command sent to agent " + agent_name + ", which doesn't exist on this bot.")
-
-            # Build a response message stanza to inform the user that the
-            # agent they're trying to contact doesn't exist.
-            response_body = "Request sent to agent " + agent_name + ", which doesn't exist on this bot.  Please check your spelling."
-            response = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-                body=response_body)
-            self.connection.send(response)
+            response = "Request sent to agent " + agent_name + ", which doesn't exist on this bot.  Please check your spelling."
+            self.send_message(mto=self.owner, mbody=response)
             return
 
         # Extract the command from the message body and clean it up.
@@ -366,45 +257,60 @@ class XMPPClient(threading.Thread):
         logger.debug("Received request: " + command)
 
         # Push the request into the appropriate message queue.
-        logger.debug("Added request to " + agent_name + "'s message queue.")
         message_queue[agent_name].append(command)
+        logger.debug("Added request to " + agent_name + "'s message queue.")
 
         # Tell the bot's owner that the request has been added to the agent's
         # message queue.
         logger.debug("Sending acknowledgement of request to " + self.owner + ".")
-        acknowledge_text = "Your request has been added to " + agent_name + "'s request queue."
-        acknowledge = xmpp.protocol.Message(to=xmpp.JID(self.owner),
-            body=acknowledge_text)
-        self.connection.send(acknowledge)
+        acknowledgment = "Your request has been added to " + agent_name + "'s request queue."
+        self.send_message(mto=self.owner, mbody=acknowledgement)
         return
 
-    # Constructs an XEP-0199 client-to-server ping Iq stanza, which will be
-    # re-used all the time.
-    def build_xmpp_ping(self):
-        xmpp_ping_stanza = ""
-        xmpp_ping = ""
+    # Helper method that returns online help when queried.
+    def _online_help(self):
+        logger.debug("Entering XMPPClient._online_help().")
+        logger.debug("User has requested online help.")
 
-        xmpp_ping_stanza = "<iq from='" + self.username + "' "
-        xmpp_ping_stanza = xmpp_ping_stanza + "id='c2s1' type='get'>"
-        xmpp_ping_stanza = xmpp_ping_stanza + "\n"
-        xmpp_ping_stanza = xmpp_ping_stanza + "  <ping xmlns='urn:xmpp:ping'/>"
-        xmpp_ping_stanza = xmpp_ping_stanza + "\n"
-        xmpp_ping_stanza = xmpp_ping_stanza + "</iq>"
-        xmpp_ping = xmpp.Iq(node=xmpp_ping_stanza)
+        help_text = """
+Supported commands:\n
+- help - This online help.\n
+- Robots, report. - List all constructs this bot is configured to communicate with.\n
+To send a command to one of the constructs, use your XMPP client to send a message that looks something like this:\n
+"[bot name], do this thing for me."\n
+Individual constructs may have their own online help, so try sending the command "[bot name], help."\n
+            """
 
-        return xmpp_ping
+        self.send_message(mto=self.owner, mbody=help_text)
+        return
 
-    # This is a self-contained method which sends an XEP-0199 ping to the
-    # server every 60 seconds to keep the client's connection alive.
-    def send_xmpp_ping(self):
-        try:
-            self.connection.send(self.xmpp_ping)
-        except:
-            logger.warn("External IP address changed.  Unable to send ping.  Reconnecting.")
-            self.connection_resource = False
-            while not self.connection_resource:
-                self.connection_resource = self.connection.reconnectAndReauth()
-        threading.Timer(60, self.send_xmpp_ping).start()
+    # Helper method that returns a status report when queried.
+    def _status_report(self):
+        logger.debug("Entering XMPPClient._status_report().")
+        response = "Contents of message queues are as follows:\n\n"
+        for key in message_queue.keys():
+            if key == 'replies':
+                continue
+            response = response + "Agent " + key + ": "
+            response = response + str(message_queue[key]) + "\n"
+        self.send_message(mto=self.owner, mbody=response)
+        return
+
+    # Thread that wakes up every n seconds and processes the bot's private
+    # message queue (/replies).  If there are any, picks the least recently
+    # used one out and sends it to the bot's owner.
+    def process_replies_queue(self):
+        logger.debug("Entering XMPPClient.process_replies_queue().")
+        if len(message_queue['replies']):
+            reply = message_queue['replies'].pop(0)
+            self.send_message(mto=self.owner, mbody=reply)
+        return
+
+    # Fires whenever the bot's connection dies.  I need to figure out how to
+    # make the bot wait for a random period of time and then try to reconnect
+    # to the server.
+    def on_disconnect(self, event):
+        return
 
 # RESTRequestHandler: Subclass that implements a REST API service.  The main
 #   rails are the names of agents or constructs that will poll message queues
@@ -418,7 +324,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
     # Process HTTP/1.1 GET requests.
     def do_GET(self):
         # If someone requests /, return the current internal configuration of
-        # this microservice to be helpful.
+        # this bot in an attempt to be helpful.
         if self.path == '/':
             logger.debug("User requested /.  Returning list of configured agents.")
             self.send_response(200)
@@ -428,7 +334,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             return
 
         # Figure out if the base API rail contacted is one of the agents
-        # monitoring this microservice.  If not, return a 404.
+        # pulling requests from this bot.  If not, return a 404.
         agent = self.path.strip('/')
         if agent not in message_queue.keys():
             logger.debug("Message queue for agent " + agent + " not found.")
@@ -623,7 +529,7 @@ if sys.version_info < (3, 0):
     sys.setdefaultencoding('utf-8')
 
 # Set up the command line argument parser.
-argparser = argparse.ArgumentParser(description="A microservice that logs into an XMPP server with credentials from a configuration file, builds message queues for the Huginn agent networks listed in the config file, and listens for messages sent from the microservice's designated owner.")
+argparser = argparse.ArgumentParser(description="A construct that logs into an XMPP server with credentials from a configuration file, builds message queues for the other constructs listed in the config file, and listens for messages sent from the construct's designated owner.")
 
 # Set the default config file and the command line option to specify a new one.
 argparser.add_argument('--config', action='store',
@@ -672,7 +578,19 @@ logger = logging.getLogger(__name__)
 
 # Instantiate the XMPP client thread.
 logger.debug("Initializing the XMPP client thread.")
-xmpp_client_thread = XMPPClient(username, password)
+xmpp_client = XMPPClient(username, password, owner)
+
+# Register some XEP plugins.
+xmpp_client.register_plugin('xep_0030') # Service discovery
+xmpp_client.register_plugin('xep_0078') # Legacy authentication
+xmpp_client.register_plugin('xep_0199') # XMPP ping
+
+if xmpp_client.connect():
+    logger.info("Logged into XMPP server.")
+    xmpp_client.process(block=False)
+else:
+    logger.critical("Unable to connect to XMPP server!")
+    sys.exit(1)
 
 # Allocate and start the Simple HTTP Server instance.
 api_server = HTTPServer(("localhost", 8003), RESTRequestHandler)
@@ -681,6 +599,5 @@ while True:
     api_server.serve_forever()
 
 # Fin.
-xmpp_client_thread.join()
 sys.exit(0)
 

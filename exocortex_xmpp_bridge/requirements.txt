@@ -1,3 +1,4 @@
-xmpppy
+sleekxmpp
+dnspython
 pyasn1
 pyasn1_modules
