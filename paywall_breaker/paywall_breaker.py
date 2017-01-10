@@ -15,6 +15,8 @@
 
 # License: GPLv3
 
+# v1.2 - Added some HTTP request code handlers.
+#      - Added an exception handler.
 # v1.1 - Figured out how to strip out all CSS and JS to make pages easier to
 #        deal with in the pad.
 #      - Got tired of fighting with the padID argument in Etherpad-Lite's API
