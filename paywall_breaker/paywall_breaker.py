@@ -242,6 +242,18 @@ def download_web_page(url):
     request = requests.get(url, headers=custom_headers)
 
     # Check to see if the request worked.
+    if not request:
+        logger.warn("Request object errored out and was unable to do anything.  Uh-oh.")
+        return (None, None)
+
+    if request.status_code >= 500:
+        logger.warn("Got HTTP status code " + str(request.status_code) + ".  Something went wrong on the destination web server.")
+        return (None, None)
+
+    if request.status_code >= 400:
+        logger.warn("Got HTTP status code " + str(request.status_code) + ".  Something went wrong with the request I made.")
+        return (None, None)
+
     if request.status_code != 200:
         logger.warn("Got HTTP status code " + str(request.status_code) + ".  Uh-oh.")
         return (None, None)
