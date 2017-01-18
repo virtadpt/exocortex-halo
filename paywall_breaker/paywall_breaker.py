@@ -179,6 +179,10 @@ def parse_get_request(get_request):
         # Ditch the 'get' request.
         del words[0]
 
+        # Make sure the command isn't truncated.
+        if not len(words):
+            return "ERROR: There was no URL there."
+
         # Try to validate that whatever's left in the list is an URL.
         if not validators.url(words[0]):
             return "ERROR: '" + str(words) + "' was not a valid URL."
