@@ -157,8 +157,10 @@ def set_loglevel(loglevel):
 
 # parse_search_request(): Takes a string and figures out what kind of search
 #   request the user wants.  Requests are something along the form of "top ten
-#   hits for foo" or "search Tor for bar".  Returns a set of URLs for search
-#   engines and search terms.
+#   hits for foo" or "search Tor for bar".  Returns the number of results to
+#   send the user, the URI for the search terms, and the address to send the
+#   results to ("XMPP" if it's supposed to go back to the user via the XMPP
+#   bridge.
 def parse_search_request(search_request):
     logger.debug("Entered function parse_search_request().")
     number_of_search_results = 0
@@ -218,6 +220,8 @@ def parse_search_request(search_request):
         logger.info("Got a token suggesting that search results should be sent over XMPP.")
         del words[0]
         email_address = "XMPP"
+    if not len(words):
+        return (0, "", None)
 
     # "top <foo> hits for <search request...>
     logger.debug("Figuring out how many results to return for the search request.")
