@@ -62,7 +62,7 @@ message_queue = ""
 bot_name = ""
 
 # How often to poll the message queues for orders.
-polling_time = 0
+polling_time = 60
 
 # Global list of search engines' URLs to submit URLs to.
 search_engines = []
@@ -116,6 +116,8 @@ def parse_index_request(index_request):
     # rest of the query easier.
 
     # User asked for help.
+    if not len(words):
+        return None
     if words[0].lower() == "help":
         logger.debug("User asked for online help.")
         return words[0]
@@ -211,8 +213,7 @@ argparser.add_argument('--loglevel', action='store',
     help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.')
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument('--polling', action='store', default=60,
-    help='Default: 60 seconds')
+argparser.add_argument('--polling', action='store', help='Default: 60 seconds')
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -327,12 +328,20 @@ while True:
             continue
 
         # Submit the index request to the configured search engines.
+        reply = "Submitting your index request now.  Please stand by."
+        send_message_to_user(reply)
         index_request = submit_for_indexing(index_request)
 
         # If something went wrong...
         if not index_request:
             logger.warn("Something went wrong when submitting the URL for indexing.")
-            send_message_to_user("Something went wrong when I submitted the URL for indexing.  Check the shell I'm running in for more details.")
+            reply = "Something went wrong when I submitted the URL for indexing.  Check the shell I'm running in for more details."
+            send_message_to_user(reply)
+            continue
+
+        # Reply that it was successful.
+        reply = "Your URL has been submitted to all of the search engines and archives I know about."
+        send_message_to_user(reply)
 
     # Message queue not found.
     if request.status_code == 404:
@@ -342,4 +351,5 @@ while True:
     time.sleep(float(polling_time))
 
 # Fin.
+sys.exit(0)
 
