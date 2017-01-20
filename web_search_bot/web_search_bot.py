@@ -120,7 +120,7 @@ default_email = ""
 bot_name = ""
 
 # How often to poll the message queues for orders.
-polling_time = 0
+polling_time = 60
 
 # Search request sent from the user.
 search_request = ""
@@ -329,8 +329,7 @@ argparser.add_argument('--loglevel', action='store',
     help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.')
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument('--polling', action='store', default=60,
-    help='Default: 60 seconds')
+argparser.add_argument('--polling', action='store', help="Default: 60 seconds")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -440,6 +439,11 @@ while True:
         search_request = json.loads(request.text)
         logger.debug("Value of search_request: " + str(search_request))
         search_request = search_request['command']
+        if not search_request:
+            reply = "That appears to be an empty search request."
+            send_message_to_user(reply)
+            time.sleep(float(polling_time))
+            continue
 
         # Parse the search request.
         (number_of_results, search, destination_email_address) = parse_search_request(search_request)
