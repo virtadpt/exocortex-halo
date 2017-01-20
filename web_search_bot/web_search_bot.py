@@ -553,4 +553,5 @@ while True:
     time.sleep(float(polling_time))
 
 # Fin.
+sys.exit(0)
 
