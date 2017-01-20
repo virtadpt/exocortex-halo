@@ -226,31 +226,45 @@ def parse_search_request(search_request):
     # "top <foo> hits for <search request...>
     logger.debug("Figuring out how many results to return for the search request.")
     if words[0] == "top":
-        if not words[1]:
+        del words[0]
+        if not len(words):
+            return (0, "", None)
+
+        # "<foo> hits for <search request...>
+        if not words[0]:
             logger.error("Got a truncated search request.")
             send_message_to_user("Got a truncated search request - something weird happened.")
             return (number_of_search_results, search_term, email_address)
 
-        if isinstance(words[1], (int)):
-            number_of_search_results = words[1]
+        if not len(words):
+            return (0, "", None)
+        if isinstance(words[0], (int)):
+            number_of_search_results = words[0]
 
-        if words[1] in numbers.keys():
-            number_of_search_results = numbers[words[1]]
+        if not len(words):
+            return (0, "", None)
+        if words[0] in numbers.keys():
+            number_of_search_results = numbers[words[0]]
         else:
             # Return a default of 10 search results.
             number_of_search_results = 10
+    if not len(words):
+        return (0, "", None)
     del words[0]
-    del words[1]
 
     # Remove words that make commands a little easier to phrase - "hits for"
+    if not len(words):
+        return (0, "", None)
     del words[0]
+    if not len(words):
+        return (0, "", None)
     del words[0]
 
     # If the parsed search term is now empty, return an error.
     if not len(words):
         logger.error("The search term appears to be empty: " + str(words))
         send_message_to_user("Your search term is prematurely terminated.  Something weird happened.")
-        return (number_of_search_results, search_term, email_address)
+        return (0, "", None)
 
     # Convert the remainder of the list into a URI-encoded string.
     search_term = "+".join(unicode(word) for word in words)
