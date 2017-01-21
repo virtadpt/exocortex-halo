@@ -51,10 +51,8 @@ Clone this repo onto a Linux box you control.  You could use a VPS running at a 
 
 * `cd exocortex-halo/exocortex_xmpp_bridge/`
 * Set up a [Python virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs/) to install the XMPP bridge's dependencies into.
-
-** `virtualenv2 env`
-** Wait...
-
+ * `virtualenv2 env`
+ * Wait...
 * Activate the virtualenv
  * `. env/bin/activate`
  * The command line prompt will change - it will start with "(env) "
