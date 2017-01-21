@@ -37,7 +37,7 @@ A bot that sends URLs given to it to the web indexing and archival sites listed 
 ## web_search_bot/
 A bot that periodically polls a REST API service implementing its message queue (exocortex_xmpp_bridge/) looking for search requests.  It carries out those web search requests by relaying them to a copy of [Searx](https://github.com/asciimoo/searx), extracts the search results, and sends them to an arbitrary e-mail address.  For a good while this bot had a list of search engines and ways to parse out links to responses but it got to be too big a hassle to maintain so I opted to make it compatible with the Searx API.  This means that one can, in theory, point it any Searx instance out there and get useful results.
 
-# Setting this up.
+# Setting everything up
 
 ## Get an account on an XMPP server
 
@@ -51,8 +51,10 @@ Clone this repo onto a Linux box you control.  You could use a VPS running at a 
 
 * `cd exocortex-halo/exocortex_xmpp_bridge/`
 * Set up a [Python virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs/) to install the XMPP bridge's dependencies into.
+
 ** `virtualenv2 env`
 ** Wait...
+
 * Activate the virtualenv
 ** `. env/bin/activate`
 ** The command line prompt will change - it will start with "(env) "
