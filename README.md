@@ -2,7 +2,7 @@
 Various and sundry additional pieces of software I've written to incorporate into my exocortex that extend the functionality of Huginn (https://github.com/cantino/huginn).  You never know what you're going to find in here because I do a lot of idiosyncratic stuff and as I get ideas for functionality to incorporate new things will appear in here.  Not all of them will make sense.  I've tried to use as few external modules as possible; in general, if a particular module comes with a default Python v2.7 install I prefer it over somebody else's.  I'm developing on Arch Linux and Ubuntu Server v14.04 LTS (both 64-bit).  For times where a module isn't included by default (or available in the default package repositories) I've included a requirements.txt file, suitable for use with [virtualenv](https://virtualenv.readthedocs.org/en/latest/) and [pip](https://pypi.python.org/pypi/pip).
 
 ## beta_fork/
-A more generic implementation of irc_bot/.  Again, there is a REST API server which maintains a Markov brain.  This simplifies writing other kinds of bots (IRC, Slack, XMPP, Twitter, et cetera) by breaking out the chat part.  Right now only a proof-of-concept bot (an IRC bot) exists; it should serve as an example of writing other kinds of chatbots that plug into it.  This is, again, in the experimental stage and doesn't have a lot of features (like databases of stuff to monitor channels for) yet.
+A more generic implementation of irc_bot/.  Again, there is a REST API server which maintains a Markov brain; hypothetically speaking, you could swap out the Markov engine for any other kind of conversation engine you want.  This simplifies writing other kinds of bots (IRC, Slack, XMPP, Twitter, et cetera) by breaking out the chat part.  Right now only a proof-of-concept bot (an IRC bot) exists; it should serve as an example of writing other kinds of chatbots that plug into it.  This is, again, in the experimental stage and doesn't have a lot of features (like databases of stuff to monitor channels for) yet.
 
 ## exocortex_gps_mapper/
 A relatively simple web application that uses web.py (http://webpy.org/) to implement a REST API.  An application running on a smartphone periodically pings an endpoint with its current GPS coordinates.  Contacting the web app throws up a Google Map with the GPS coordinates.  It's far from complete because I don't know JavaScript but right now it's enough for my purposes.
@@ -36,4 +36,49 @@ A bot that sends URLs given to it to the web indexing and archival sites listed 
 
 ## web_search_bot/
 A bot that periodically polls a REST API service implementing its message queue (exocortex_xmpp_bridge/) looking for search requests.  It carries out those web search requests by relaying them to a copy of [Searx](https://github.com/asciimoo/searx), extracts the search results, and sends them to an arbitrary e-mail address.  For a good while this bot had a list of search engines and ways to parse out links to responses but it got to be too big a hassle to maintain so I opted to make it compatible with the Searx API.  This means that one can, in theory, point it any Searx instance out there and get useful results.
+
+# Setting this up.
+
+## Get an account on an XMPP server
+
+First, you need a dedicated XMPP (Jabber) account for the XMPP bridge.  You could use a public one like [jabber.ccc.de](http://jabber.ccc.de/), a friend's Jabber server (you'll need at least two XMPP accounts, one for yourself and one for each instance of the XMPP bridge), or you can set up your own on a VPS (they're pretty easy to set up and a more than usable VPS will cost $5-10us per month); again, you'll need at least two accounts on the XMPP server.
+
+## Check out this Git repository.
+
+Clone this repo onto a Linux box you control.  You could use a VPS running at a hosting provider, a Linux box at home, a RaspberryPi, or a full-sized machine someplace.
+
+## Set up exocortex_XMPP_bridge
+
+* `cd exocortex-halo/exocortex_xmpp_bridge/`
+* Set up a [Python virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs/) to install the XMPP bridge's dependencies into.
+** `virtualenv2 env`
+** Wait...
+* Activate the virtualenv
+** `. env/bin/activate`
+** The command line prompt will change - it will start with "(env) "
+* Install the dependencies
+** `pip install -r requirements.txt`
+* Copy exocortex_xmpp_bridge.conf.example to exocortex_xmpp_bridge.conf and customize it for your environment.  The XMPP username and password you set up for the XMPP bridge need to go in here.  The 'real' names of the bots you plan to associate with this bridge need to go in the 'agents' list at the very end as shown.
+* You'll need one instance of exocortex_xmpp_bridge.py for each server you have.  I have multiple instances on different machines, all running different bots.
+* Start the XMPP bridge.
+** `python2 ./exocortex_xmpp_bridge.py`
+
+## Log into your admin XMPP account and test the XMPP bridge.
+
+Configure an XMPP client (I kinda like [Profanity](http://profanity.im/)) to log into your person (admin) XMPP account on the same server the XMPP bridge uses.  Send an IM to your copy of the XMPP bridge and ask it for a status report:
+
+`Robots, report.`
+
+You should get a response something like this:
+
+```
+16:53 - me: Robots, report.
+16:53 - Bridge : Contents of message queues are as follows:
+
+        Agent Alice: []
+        Agent Bob: []
+```
+
+This means that the XMPP bridge is up, running, and has set up message queues for the bots you told it to in the configuration file.
+
 
