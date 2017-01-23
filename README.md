@@ -65,7 +65,7 @@ Clone this repo onto a Linux box you control.  You could use a VPS running at a 
 
 ## Log into your admin XMPP account and test the XMPP bridge.
 
-Configure an XMPP client (I kinda like [Profanity](http://profanity.im/)) to log into your person (admin) XMPP account on the same server the XMPP bridge uses.  Send an IM to your copy of the XMPP bridge and ask it for a status report:
+Configure an XMPP client (I kinda like [Profanity](http://profanity.im/)) to log into your personal (admin) XMPP account on the same server the XMPP bridge uses.  Send an IM to your copy of the XMPP bridge and ask it for a status report:
 
 `Robots, report.`
 
