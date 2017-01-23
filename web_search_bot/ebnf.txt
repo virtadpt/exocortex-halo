@@ -10,9 +10,9 @@ punctuation = "[" | "]" | "{" | "}" | "(" | ")" | "<" | ">" | "'" | '"' | "=" | 
 
 mail command = "send" | [ "e" ],[ "-" ],"mail" ;
 
-email = { alphabet | digit | '.' | '+' | '-'}, '@', {alphabet | digit | '.' | '-' } ;
+email address = { alphabet | digit | '.' | '+' | '-'}, '@', {alphabet | digit | '.' | '-' } ;
 
 search term = { alphabet | number | whitespace | punctuation } ;
 
-command = ( ( (mail command, [ email ]) | "get" ), "top", number, "hits for", search term ) | "help" ;
+command = ( ( (mail command, [ email address ]) | "get" ), "top", number, "hits for", search term ) | "help" ;
 
