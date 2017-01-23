@@ -8,11 +8,11 @@ whitespace = ? white space characters ? ;
 
 punctuation = "[" | "]" | "{" | "}" | "(" | ")" | "<" | ">" | "'" | '"' | "=" | "|" | "." | "," | ";" | "_r"| "-" | "@"  | '"' | "'";
 
-mail = "send" | [ "e" ],[ "-" ],"mail" ;
+mail command = "send" | [ "e" ],[ "-" ],"mail" ;
 
 email = { alphabet | digit | '.' | '+' | '-'}, '@', {alphabet | digit | '.' | '-' } ;
 
 search term = { alphabet | number | whitespace | punctuation } ;
 
-command = ( ( (mail, email) | "get" ), "top", number, "hits for", search term ) | "help" ;
+command = ( ( (mail command, [ email ]) | "get" ), "top", number, "hits for", search term ) | "help" ;
 
