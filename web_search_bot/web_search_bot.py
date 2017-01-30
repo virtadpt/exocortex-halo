@@ -48,6 +48,9 @@
 # - Break out the "handle HTTP result code" handler into a function.
 # - Add more interactivity to the bot, which is to say, have it respond to the
 #   user when it's doing stuff.
+# - Break up the main loop into a few functions to make it easier to read.
+# - Make the "get" part of "get top foo..." optional because it's more English
+#   like.
 
 # Load modules.
 from email.message import Message
@@ -534,6 +537,7 @@ while True:
             continue
 
         # Run the web searches and get the results.
+        send_message_to_user("Running web search.  Please stand by.")
         search_results = get_search_results(search)
 
         # If no search results were returned, put that message into the
@@ -572,11 +576,13 @@ while True:
         logger.debug(str(message))
 
         # Set up the SMTP connection and transmit the message.
+        send_message_to_user("E-mailing search results to " + destination_email_address + ".")
         logger.info("E-mailing search results to " + destination_email_address)
         smtp = smtplib.SMTP(smtp_server)
         smtp.sendmail(origin_email_address, destination_email_address,
             message.as_string())
         smtp.quit()
+        send_message_to_user("Search results en route via email.")
         logger.info("Search results transmitted.  Deallocating SMTP server object.")
 
         # Deallocate resources we don't need now that the message is en route.
