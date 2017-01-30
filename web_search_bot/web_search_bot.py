@@ -240,7 +240,7 @@ def parse_and_email_results(request):
     command = command + pp.Group(search_terms).setResultsName("searchterms")
 
     number_of_search_results = 0
-    destination = ""
+    destination_address = ""
 
     try:
         parsed_command = command.parseString(request)
@@ -252,11 +252,11 @@ def parse_and_email_results(request):
         # Figure out which e-mail address to use - the default or the supplied
         # one.  On error, use the default address.
         if parsed_command["dest"]:
-            destination = parsed_command["dest"]
+            destination_address = parsed_command["dest"]
         else:
-            destination = default_email
+            destination_address = default_email
 
-        return (number_of_search_results, search_term, destination)
+        return (number_of_search_results, search_term, destination_address)
     except pp.ParseException as x:
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
