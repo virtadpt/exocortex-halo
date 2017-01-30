@@ -46,6 +46,8 @@
 # - Add an error handler to parse_search_requests() that returns something to
 #   the effect of "I don't know what you just said."
 # - Break out the "handle HTTP result code" handler into a function.
+# - Add more interactivity to the bot, which is to say, have it respond to the
+#   user when it's doing stuff.
 
 # Load modules.
 from email.message import Message
@@ -251,7 +253,7 @@ def parse_and_email_results(request):
 
         # Figure out which e-mail address to use - the default or the supplied
         # one.  On error, use the default address.
-        if parsed_command["dest"]:
+        if "dest" in parsed_command.keys():
             destination_address = parsed_command["dest"]
         else:
             destination_address = default_email
