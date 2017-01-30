@@ -139,6 +139,22 @@ origin_email_address = ""
 # E-mail message containing search results.
 message = ""
 
+# Parser primitives.
+# We define them up here because they'll be re-used over and over.
+help_command = pp.CaselessLiteral("help")
+get_command = pp.CaselessLiteral("get")
+top_command = pp.CaselessLiteral("top")
+results_count = (pp.Word(pp.nums) |
+                 pp.Word(pp.alphas + "-")).setResultsName("count")
+hitsfor_command = pp.CaselessLiteral("hits for")
+search_term = pp.Word(pp.alphanums + "_,'")
+search_terms = pp.OneOrMore(search_term)
+send_command = (pp.CaselessLiteral("send") | pp.CaselessLiteral("e-mail") |
+                pp.CaselessLiteral("email") | pp.CaselessLiteral("mail"))
+me = pp.CaselessLiteral("me")
+email = pp.Regex(r"(?P<user>[A-Za-z0-9._%+-]+)@(?P<hostname>[A-Za-z0-9.-]+)\.(?P<domain>[A-Za-z]{2,4})")
+destination = pp.Optional(me | email).setResultsName("dest")
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -182,6 +198,76 @@ def word_and_number(value):
     else:
         # Set a default number of search terms.
         return 10
+
+# This function matches whenever it encounters the word "help" all by itself
+# in an input string.  Returns "help" for the number of search terms, None for
+# the search string, and None for the destination e-mail.
+def parse_help(command):
+    try:
+        parsed_command = help_command.parseString(command)
+        return ("help", None, None)
+    except pp.ParseException as x:
+        logger.info("No match: {0}".format(str(x)))
+        return (None, None, None)
+
+# This function matches on commands of the form "get top <foo> hits for <bar>."
+# in an input string.  Returns an integer number of search results (up to 40),
+# a URL encoded search string, and the e-mail address "XMPP", meaning that the
+# results will be sent to the user via the XMPP bridge.
+def parse_get_request(command):
+
+    # Build the parser out of predeclared primitives.
+    command = get_command + top_command + results_count + hitsfor_command
+    command = command + pp.Group(search_terms).setResultsName("searchterms")
+
+    number_of_search_results = 0
+
+    # Try to parse the command.
+    try:
+        parsed_command = command.parseString(request)
+        number_of_search_results = word_and_number(parsed_command["count"])
+
+        # Grab the search term.
+        search_term = make_search_term(parsed_command["searchterms"])
+
+        return (number_of_search_results, search_term, "XMPP")
+    except pp.ParseException as x:
+        logger.info("No match: {0}".format(str(x)))
+        return (None, None, None)
+
+# This function matches on commands of the form "send/e-mail/email/mail top
+# <foo> hits for <search terms>".  Returns an integer number of search results
+# (up to 40), a URL encoded search string, and an e-mail address.
+def parse_and_email_results(command):
+
+    # Build the parser out of predeclared primitives.
+    command = send_command + destination + top_command + results_count
+    command = command + hitsfor_command
+    command = command + pp.Group(search_terms).setResultsName("searchterms")
+
+    number_of_search_results = 0
+    destination = ""
+
+    try:
+        parsed_command = command.parseString(request)
+        number_of_search_results = word_and_number(parsed_command["count"])
+
+        # Grab the search term.
+        search_term = make_search_term(parsed_command["searchterms"])
+
+        # Figure out which e-mail address to use - the default or the supplied
+        # one.  On error, use the default address.
+        if parsed_command["dest"]:
+            destination = parsed_command["dest"]
+        else:
+            destination = default_email
+
+        # <number of search terms>, <search string>, <destination e-mail>
+        return (number_of_search_results, search_term, destination)
+
+    except pp.ParseException as x:
+        logger.info("No match: {0}".format(str(x)))
+        return (None, None, None)
 
 # parse_search_request(): Takes a string and figures out what kind of search
 #   request the user wants.  Requests are something along the form of "top ten
