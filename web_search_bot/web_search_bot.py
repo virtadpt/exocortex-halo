@@ -43,18 +43,9 @@
 # TO-DO:
 # - Pull the argument vector and config file parsing stuff into their own
 #   functions to neaten up the core code.
-# - Holy crap my command parser is bobbins.  I don't need a full NLP toolkit
-#   just yet, though.
 # - Add an error handler to parse_search_requests() that returns something to
 #   the effect of "I don't know what you just said."
 # - Break out the "handle HTTP result code" handler into a function.
-# - Make it possible to send search results back through the /replies API rail
-#   instead of e-mail.
-# - Refactor repeated code into helper methods, ala my other bots.
-# - Rework parse_search_request() because there's a corner case in which the
-#   word 'get' could accidentally be used and interpreted after an "<email>
-#   <foo>" command.  In other words, fat-fingering a command could mess things
-#   up in indeterminant ways.
 
 # Load modules.
 from email.message import Message
@@ -205,9 +196,9 @@ def word_and_number(value):
 # This function matches whenever it encounters the word "help" all by itself
 # in an input string.  Returns "help" for the number of search terms, None for
 # the search string, and None for the destination e-mail.
-def parse_help(command):
+def parse_help(request):
     try:
-        parsed_command = help_command.parseString(command)
+        parsed_command = help_command.parseString(request)
         return ("help", None, None)
     except pp.ParseException as x:
         logger.info("No match: {0}".format(str(x)))
@@ -217,7 +208,7 @@ def parse_help(command):
 # in an input string.  Returns an integer number of search results (up to 40),
 # a URL encoded search string, and the e-mail address "XMPP", meaning that the
 # results will be sent to the user via the XMPP bridge.
-def parse_get_request(command):
+def parse_get_request(request):
 
     # Build the parser out of predeclared primitives.
     command = get_command + top_command + results_count + hitsfor_command
@@ -241,7 +232,7 @@ def parse_get_request(command):
 # This function matches on commands of the form "send/e-mail/email/mail top
 # <foo> hits for <search terms>".  Returns an integer number of search results
 # (up to 40), a URL encoded search string, and an e-mail address.
-def parse_and_email_results(command):
+def parse_and_email_results(request):
 
     # Build the parser out of predeclared primitives.
     command = send_command + destination + top_command + results_count
@@ -297,7 +288,7 @@ def parse_search_request(search_request):
 
     # Attempt to parse a request for online help.
     (number_of_search_results, search_term, email_address) = parse_help(search_request)
-    if number_of_search_terms == "help":
+    if number_of_search_results == "help":
         logger.info("The user is asking for online help.")
         return ("help", None, None)
 
@@ -516,7 +507,7 @@ while True:
             logger.debug("Sending search results back via XMPP.")
 
         # MOOF MOOF MOOF
-        if destination_email_address != "":
+        if destination_email_address:
             logger.debug("E-mail address to send search results to: " +
                 str(destination_email_address))
 
