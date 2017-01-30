@@ -15,6 +15,9 @@
 
 # License: GPLv3
 
+# v3.0 - Rewrote the bot's command parser using PyParsing
+#        (http://pyparsing.wikispaces.com/) because I got tired of trying
+#        to maintain my own parser.  This is much more robust.
 # v2.0 - Rewrote much of this bot's functionality to use Searx
 #        (https://github.com/asciimoo/searx) rather than a user-supplied list
 #        of arbitrary search engines.  This means that it's possible to
@@ -262,9 +265,7 @@ def parse_and_email_results(command):
         else:
             destination = default_email
 
-        # <number of search terms>, <search string>, <destination e-mail>
         return (number_of_search_results, search_term, destination)
-
     except pp.ParseException as x:
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
@@ -280,7 +281,6 @@ def parse_search_request(search_request):
     number_of_search_results = 0
     search_term = ""
     email_address = ""
-    words = []
 
     # Clean up the search request.
     search_request = search_request.strip()
@@ -295,95 +295,26 @@ def parse_search_request(search_request):
         logger.debug("Got empty search request.")
         return (number_of_search_results, search_term, email_address)
 
-    # Tokenize the search request.
-    words = search_request.split()
-    logger.debug("Tokenized search request: " + str(words))
+    # Attempt to parse a request for online help.
+    (number_of_search_results, search_term, email_address) = parse_help(search_request)
+    if number_of_search_terms == "help":
+        logger.info("The user is asking for online help.")
+        return ("help", None, None)
 
-    # User asked for help.
-    if words[0].lower() == "help":
-        return (words[0], None, None)
+    # Attempt to parse a "get" request.
+    (number_of_search_results, search_term, email_address) = parse_get_request(search_request)
+    if number_of_search_results and (email_address == "XMPP"):
+        logger.info("The user has sent the search term " + str(search_term))
+        return (number_of_search_results, search_term, "XMPP")
 
-    # "send/e-mail/email/mail <foo> top <number> hits for <search request...>"
-    if (words[0] == "send") or (words[0] == "e-mail") or \
-            (words[0] == "email") or (words[0] == "mail"):
-        logger.info("Got a token suggesting that search results should be e-mailed to someone.")
+    # Attempt to parse an "email results" request.
+    (number_of_search_results, search_term, email_address) = parse_and_email_results(search_request)
+    if number_of_search_results and ("@" in email_address):
+        logger.info("The user has requested that search results for " + str(search_term) + " be e-mailed to " + email_address + ".")
+        return (number_of_search_results, search_term, email_address)
 
-        # See if the next token is "me", which means use the default address.
-        if words[1].lower() == "me":
-            email_address = default_email
-            del words[0]
-            del words[0]
-
-        # See if the next token fits the general pattern of an e-mail address.
-        # It doesn't need to be perfect, it just needs to vaguely fit the
-        # pattern.
-        if email_matcher.match(words[1]):
-            email_address = words[1]
-            del words[0]
-            del words[0]
-            logger.info("The e-mail address to send search results to: " +
-                email_address)
-        else:
-            logger.warn("The e-mail address " + words[1] + " didn't match the general format of an SMTP address.  Using default e-mail address.")
-            send_message_to_user("The e-mail address given didn't match.  Using the default e-mail address of " + default_email + ".")
-            email_address = default_email
-            del words[0]
-
-    # "get top <number> hits for <search request...>"
-    if (words[0] == "get"):
-        logger.info("Got a token suggesting that search results should be sent over XMPP.")
-        del words[0]
-        email_address = "XMPP"
-    if not len(words):
-        return (0, "", None)
-
-    # "top <foo> hits for <search request...>
-    logger.debug("Figuring out how many results to return for the search request.")
-    if words[0] == "top":
-        del words[0]
-        if not len(words):
-            return (0, "", None)
-
-        # "<foo> hits for <search request...>
-        if not words[0]:
-            logger.error("Got a truncated search request.")
-            send_message_to_user("Got a truncated search request - something weird happened.")
-            return (number_of_search_results, search_term, email_address)
-
-        if not len(words):
-            return (0, "", None)
-        if isinstance(words[0], (int)):
-            number_of_search_results = words[0]
-
-        if not len(words):
-            return (0, "", None)
-        if words[0] in numbers.keys():
-            number_of_search_results = numbers[words[0]]
-        else:
-            # Return a default of 10 search results.
-            number_of_search_results = 10
-    if not len(words):
-        return (0, "", None)
-    del words[0]
-
-    # Remove words that make commands a little easier to phrase - "hits for"
-    if not len(words):
-        return (0, "", None)
-    del words[0]
-    if not len(words):
-        return (0, "", None)
-    del words[0]
-
-    # If the parsed search term is now empty, return an error.
-    if not len(words):
-        logger.error("The search term appears to be empty: " + str(words))
-        send_message_to_user("Your search term is prematurely terminated.  Something weird happened.")
-        return (0, "", None)
-
-    # Convert the remainder of the list into a URI-encoded string.
-    search_term = "+".join(unicode(word) for word in words)
-    logger.debug("Search term: " + search_term)
-    return (number_of_search_results, search_term, email_address)
+    # Fall-through - this should happen only if nothing at all matches.
+    return (0, "", None)
 
 # get_search_results(): Function that does the heavy lifting of contacting the
 #   search engines, getting the results, and parsing them.  Takes one argument,
