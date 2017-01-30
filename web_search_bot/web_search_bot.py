@@ -141,7 +141,7 @@ message = ""
 # Parser primitives.
 # We define them up here because they'll be re-used over and over.
 help_command = pp.CaselessLiteral("help")
-get_command = pp.CaselessLiteral("get")
+get_command = pp.Optional(pp.CaselessLiteral("get"))
 top_command = pp.CaselessLiteral("top")
 results_count = (pp.Word(pp.nums) |
                  pp.Word(pp.alphas + "-")).setResultsName("count")
@@ -310,6 +310,8 @@ def parse_search_request(search_request):
         return (number_of_search_results, search_term, email_address)
 
     # Fall-through - this should happen only if nothing at all matches.
+    logger.info("Fell all the way through in parse_search_request().  Telling the user I didn't understand what they said.")
+    send_message_to_user("I didn't understand your command.  Try again, please.")
     return (0, "", None)
 
 # get_search_results(): Function that does the heavy lifting of contacting the
@@ -524,7 +526,7 @@ while True:
             reply = reply + bot_name + ", (send/e-mail/email/mail) <e-mail address> top <number> hits for <search request...>\n\n"
             reply = reply + "By default, I will e-mail results to the address " + default_email + ".\n\n"
             reply = reply + "I can also return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
-            reply = reply + bot_name + ", get top <number> hits for <search request...>\n\n"
+            reply = reply + bot_name + ", (get) top <number> hits for <search request...>\n\n"
             send_message_to_user(reply)
             continue
 
