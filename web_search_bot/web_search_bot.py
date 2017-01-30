@@ -578,12 +578,12 @@ while True:
         logger.debug(str(message))
 
         # Set up the SMTP connection and transmit the message.
-        send_message_to_user("E-mailing search results to " + destination_email_address + ".")
         logger.info("E-mailing search results to " + destination_email_address)
         smtp = smtplib.SMTP(smtp_server)
         smtp.sendmail(origin_email_address, destination_email_address,
             message.as_string())
         smtp.quit()
+        send_message_to_user("E-mailed search results to " + destination_email_address + ".")
         send_message_to_user("Search results en route via email.")
         logger.info("Search results transmitted.  Deallocating SMTP server object.")
 
