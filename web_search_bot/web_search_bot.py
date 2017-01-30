@@ -46,11 +46,7 @@
 # - Add an error handler to parse_search_requests() that returns something to
 #   the effect of "I don't know what you just said."
 # - Break out the "handle HTTP result code" handler into a function.
-# - Add more interactivity to the bot, which is to say, have it respond to the
-#   user when it's doing stuff.
 # - Break up the main loop into a few functions to make it easier to read.
-# - Make the "get" part of "get top foo..." optional because it's more English
-#   like.
 
 # Load modules.
 from email.message import Message
