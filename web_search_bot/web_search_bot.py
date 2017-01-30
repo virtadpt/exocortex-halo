@@ -63,6 +63,7 @@ import ConfigParser
 import json
 import logging
 import os
+import pyparsing as pp
 import re
 import requests
 import smtplib
@@ -154,6 +155,33 @@ def set_loglevel(loglevel):
         return 10
     if loglevel == "notset":
         return 0
+
+# This function takes a string of the form "foo bar baz" and turns it into a
+# URL encoded string "foo+bar+baz", which is then returned to the calling
+# method.
+def make_search_term(search_terms):
+    return "+".join(term for term in search_terms)
+    return
+
+# This function takes a number represented as a word ("twenty") or a number
+# ("20") and turns it into a number (20) if it's the former.  Returns a number
+# no matter what.
+def word_and_number(value):
+
+    # Numbers as actual digits are stored inside the parser as strings.
+    # This fucks with us.  So, detect if they're digits, and if so turn
+    # them back into integers.
+    if value.isdigit():
+        return int(value)
+
+    # If the number of search results is a word ("twenty"), look it up in
+    # the global hash table numbers{} and use the corresponding numerical
+    # value as the number of search results to pick up.
+    if value in numbers.keys():
+        return numbers[value]
+    else:
+        # Set a default number of search terms.
+        return 10
 
 # parse_search_request(): Takes a string and figures out what kind of search
 #   request the user wants.  Requests are something along the form of "top ten
