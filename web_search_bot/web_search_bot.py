@@ -142,7 +142,7 @@ top_command = pp.CaselessLiteral("top")
 results_count = (pp.Word(pp.nums) |
                  pp.Word(pp.alphas + "-")).setResultsName("count")
 hitsfor_command = pp.CaselessLiteral("hits for")
-search_term = pp.Word(pp.alphanums + "_,'")
+search_term = pp.Word(pp.alphanums + "_,'-")
 search_terms = pp.OneOrMore(search_term)
 send_command = (pp.CaselessLiteral("send") | pp.CaselessLiteral("e-mail") |
                 pp.CaselessLiteral("email") | pp.CaselessLiteral("mail"))
