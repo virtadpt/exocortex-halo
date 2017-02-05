@@ -519,7 +519,7 @@ while True:
         if (str(number_of_results).lower() == "help"):
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + "I am an interface to the Searx meta-search engine with very limited conversational capability.  At this time I can accept search requests and e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n\n"
-            reply = reply + bot_name + ", (send/e-mail/email/mail) <e-mail address> top <number> hits for <search request...>\n\n"
+            reply = reply + bot_name + ", (send/e-mail/email/mail) (me/<e-mail address>) top <number> hits for <search request...>\n\n"
             reply = reply + "By default, I will e-mail results to the address " + default_email + ".\n\n"
             reply = reply + "I can also return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
             reply = reply + bot_name + ", (get) top <number> hits for <search request...>\n\n"
@@ -580,7 +580,6 @@ while True:
             message.as_string())
         smtp.quit()
         send_message_to_user("E-mailed search results to " + destination_email_address + ".")
-        send_message_to_user("Search results en route via email.")
         logger.info("Search results transmitted.  Deallocating SMTP server object.")
 
         # Deallocate resources we don't need now that the message is en route.
