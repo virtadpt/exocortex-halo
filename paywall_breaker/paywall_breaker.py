@@ -252,6 +252,12 @@ def download_web_page(url):
         logger.warn("Request object errored out and was unable to do anything.  Uh-oh.")
         return (None, None)
 
+    # Some web server that get into a bad state throw invalid HTTP error
+    # codes (such as "'" (yes, a single quote)).  Trap such a situation.
+    if type(request.status_code) != int:
+        logger.warn("Got something that isn't an HTTP status code.  WTF?")
+        return (None, None)
+
     if request.status_code >= 500:
         logger.warn("Got HTTP status code " + str(request.status_code) + ".  Something went wrong on the destination web server.")
         return (None, None)
