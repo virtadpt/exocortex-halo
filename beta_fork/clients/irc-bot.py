@@ -140,6 +140,10 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # Whether or not to use the conversation engine to respond?
     respond = None
 
+    # Whether or not the bot's owner can speak through the bot by using
+    # private messages.  By default, the bot doesn't let you do that.
+    ghost = None
+
     # Methods on the connection object to investigate:
     # connect() - Connect to a server?
     # connected() - 
@@ -175,6 +179,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         self.api_key = api_key
         self.wordfilter = Wordfilter()
         self.respond = respond
+        self.ghost = False
 
         # Connection factory object handle.
         factory = ""
@@ -278,6 +283,12 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         # Line of text sent from the channel or private message.
         irc_text = line.arguments[0]
 
+        # String that holds what may or may not be a channel name.
+        possible_channel_name = None
+
+        # String that may or may not hold a respond to a channel in ghost mode.
+        irc_response = None
+
         # Handle to an HTTP request object.
         http_connection = ""
 
@@ -333,8 +344,33 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 self._respond(connection, irc_text, sending_nick)
                 return
 
-            # Always learn from and respond to non-command private messages
-            # from the bot's owner.
+            # See if the owner is flipping the self.ghost flag.
+            if "!ghost" in irc_text:
+                self._ghost_mode(connection, irc_text, sending_nick)
+                return
+
+            # See if the owner is asking for help on ghost mode.
+            if "!ghosthelp" in irc_text:
+                self._ghost_help(connection, irc_text, sending_nick)
+                return
+
+            # If the bot's in ghost mode, determine whether or not the bot's
+            # owner has sent text destined for a channel the bot's sitting in.
+            # If this is the case, send the 
+            if self.ghost:
+                possible_channel_name = irc_text.split()[0]
+                if "#" in possible_channel_name:
+                    irc_response = " ".join(irc_text.split()[1:])
+                    connection.privmsg(possible_channel_name, irc_response)
+
+            # Always learn from private messages from the bot's owner.  Do not
+            # respond to them if the bot's in ghost mode.  Determine whether
+            # or not a #channelname is at the head of the text and if so
+            # elide it by setting the line of text from the IRC channel to
+            # the IRC response which already has the #channelname removed.
+            if "#" in possible_channel_name:
+                irc_text = irc_response
+
             json_response = json.loads(self._teach_brain(irc_text))
             if json_response['id'] != 200:
                 logger.warn("DixieBot.on_privmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
@@ -382,6 +418,10 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             "!join <channel> - Join a channel.")
         connection.privmsg(nick,
             "!respond - Toggle respond/don't respond to users flag.")
+        connection.privmsg(nick,
+            "!ghost - Whether or not the bot's registered owner can remotely interact with a channel the bot's a member of using the bot as a client.")
+        connection.privmsg(nick,
+            "!ghosthelp - Get online help for ghost mode.")
         return
 
     # Helper method that tells the bot's owner what the bot's current runtime
@@ -448,6 +488,35 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             logger.info("Turn on the bot's auto-response mode.")
             connection.privmsg(nick, "Now responding to people talking to me.")
             return
+
+    # Flips the ghost mode flag.
+    def _ghost_mode(connection, irc_text, sending_nick):
+        if self.ghost == False:
+            self.ghost = True
+            logger.info("Ghost mode now activated.")
+            connection.privmsg(nick, "Ghost mode activated.")
+            connection.privmsg(nick, "You can now interact with the following channels through me: ")
+            for channel in self.joined_channels:
+                connection.privmsg(nick, "  " + channel)
+            return
+        if self.ghost == True:
+            self.ghost = False
+            logger.info("Ghost mode now deactivated.")
+            connection.privmsg(nick, "Ghost mode deactivated.")
+            return
+
+    # Send the user online help for ghost mode.
+    def _ghost_help(connection, irc_text, sending_nick):
+        connection.privmsg(nick, "Ghost mode lets you interact with any channel I'm sitting in remotely so you don't have to join it.")
+        connection.privmsg(nick, "This is ideal if you want to maintain a certain degree of stealth.")
+        connection.privmsg(nick, "I can join the channel from one server and interact with everyone like a bot, and you can connect from another server without joining any channels, !auth to me, and communiate through me.")
+        connection.privmsg(nick, "If I get rumbled, I get bounced and your disposable server can be banned, and all you have to do is get a copy of my conversation engine to preserve me.  You should be okay.")
+        connection.privmsg(nick, "Please note that if you have me join a number of busy channels you may not be able to keep up with all the traffic, so choose the channels I join wisely.  Keep the number small for best results.")
+        connection.privmsg(nick, "Put the name of the channel you want me to send text to at the front of a private message, like this:")
+        connection.privmsg(nick, "/msg botname")
+        connection.privmsg(nick, "#somechannel Hello, world.")
+        connection.privmsg(nick, "I will send activity in the channel back to you via the same privmsg as long as you're authenticated.")
+        return
 
     # This method fires every time a public message is posted to an IRC
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
@@ -523,6 +592,12 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 connection.privmsg(line.target, json_response['response'])
             return
 
+        # If the line is not from the bot's owner, and the bot is in ghost
+        # mode, relay the line to the bot's owner via privmsg.
+        if self.ghost and self.authenticated:
+            logger.debug("Relaying a line of text from " + line.target + " to the bot's owner.")
+            connection.privmsg(self.owner, line.target + ":: " + irc_text)
+
         # If the line is not from the bot's owner, decide randomly if the bot
         # should learn from it, or learn from and respond to it.  Respect the
         # respond/don't respond flag.
@@ -538,7 +613,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             return
 
         if roll == 2:
-            logger.debug("Learning from the last line seen in the channel and responding to it.")
+            logger.debug("Learning from the last line seen in the channel.  I might respond to it.")
             if self.wordfilter.blacklisted(irc_text):
                 logger.warn("Wordfilter: Nope nope nope...")
                 return
