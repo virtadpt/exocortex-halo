@@ -36,7 +36,6 @@
 #   send text to the channel the bot is sitting in (@Some message here...) and
 #   get replies back via private messages.  !ghost on/off
 # - Other things to add to the bot:
-#   join/unjoin a channel
 #   listen for/stop listening for a particular regular expression
 #   message a particular nick (for authenticating with an IRC service)
 # - Add a memo function.  Someone can send a privmsg to the bot and it'll sit
