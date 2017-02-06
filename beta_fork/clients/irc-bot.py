@@ -556,6 +556,10 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                     logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                     return
 
+                # If the bot is in ghost mode, do not respond.
+                if self.ghost:
+                    return
+
                 # Get a response to the text from the channel.
                 json_response = json.loads(self._get_response(irc_text))
                 if json_response['id'] != int(200):
