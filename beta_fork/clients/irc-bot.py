@@ -356,7 +356,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
             # If the bot's in ghost mode, determine whether or not the bot's
             # owner has sent text destined for a channel the bot's sitting in.
-            # If this is the case, send the 
+            # If this is the case, send the channel the text sent by the
+            # bot's owner.
             if self.ghost:
                 possible_channel_name = irc_text.split()[0]
                 if "#" in possible_channel_name:
