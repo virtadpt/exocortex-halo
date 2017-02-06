@@ -330,7 +330,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 return
 
             # See if the owner is flipping the self.respond flag.
-            if "!respond " in irc_text:
+            if "!respond" in irc_text:
                 self._respond(connection, irc_text, sending_nick)
                 return
 
