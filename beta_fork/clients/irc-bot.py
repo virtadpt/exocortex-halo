@@ -386,14 +386,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # or not a #channelname is at the head of the text and if so
             # elide it by setting the line of text from the IRC channel to
             # the IRC response which already has the #channelname removed.
-            if "#" in possible_channel_name and self.ghost:
+            if "#" in possible_channel_name:
                 irc_text = irc_response
-                logger.debug("Set value of irc_text to: " + str(irc_text))
-            else:
-                logger.debug("Channel name given but not in ghost mode.  Not going to learn from this line.")
-                connection.privmsg(sending_nick,
-                    "Not going to train on a line with a channel name in it, and I'm not in ghost mode.  Bad idea.")
-                return
+                logger.debug("Got a possible channel name.  Set value of irc_text to: " + str(irc_text))
 
             # Train the bot on text sent by the bot's owner.
             json_response = json.loads(self._teach_brain(irc_text))
