@@ -344,14 +344,14 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 self._respond(connection, irc_text, sending_nick)
                 return
 
-            # See if the owner is flipping the self.ghost flag.
-            if "!ghost" in irc_text:
-                self._ghost_mode(connection, sending_nick)
-                return
-
             # See if the owner is asking for help on ghost mode.
             if "!ghosthelp" in irc_text:
                 self._ghost_help(connection, sending_nick)
+                return
+
+            # See if the owner is flipping the self.ghost flag.
+            if "!ghost" in irc_text:
+                self._ghost_mode(connection, sending_nick)
                 return
 
             # If the bot's in ghost mode, determine whether or not the bot's
@@ -419,9 +419,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.privmsg(nick,
             "!respond - Toggle respond/don't respond to users flag.")
         connection.privmsg(nick,
-            "!ghost - Whether or not the bot's registered owner can remotely interact with a channel the bot's a member of using the bot as a client.")
-        connection.privmsg(nick,
             "!ghosthelp - Get online help for ghost mode.")
+        connection.privmsg(nick,
+            "!ghost - Whether or not the bot's registered owner can remotely interact with a channel the bot's a member of using the bot as a client.")
         return
 
     # Helper method that tells the bot's owner what the bot's current runtime
@@ -489,7 +489,20 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             connection.privmsg(nick, "Now responding to people talking to me.")
             return
 
-    # Flips the ghost mode flag.
+    # Send the user online help for ghost mode.
+    def _ghost_help(connection, nick):
+        connection.privmsg(nick, "Ghost mode lets you interact with any channel I'm sitting in remotely so you don't have to join it.")
+        connection.privmsg(nick, "This is ideal if you want to maintain a certain degree of stealth.")
+        connection.privmsg(nick, "I can join the channel from one server and interact with everyone like a bot, and you can connect from another server without joining any channels, !auth to me, and communiate through me.")
+        connection.privmsg(nick, "If I get rumbled, I get bounced and your disposable server can be banned, and all you have to do is get a copy of my conversation engine to preserve me.  You should be okay.")
+        connection.privmsg(nick, "Please note that if you have me join a number of busy channels you may not be able to keep up with all the traffic, so choose the channels I join wisely.  Keep the number small for best results.")
+        connection.privmsg(nick, "Put the name of the channel you want me to send text to at the front of a private message, like this:")
+        connection.privmsg(nick, "/msg botname")
+        connection.privmsg(nick, "#somechannel Hello, world.")
+        connection.privmsg(nick, "I will send activity in the channel back to you via the same privmsg as long as you're authenticated.")
+        return
+
+     # Flips the ghost mode flag.
     def _ghost_mode(connection, nick):
         if self.ghost == False:
             self.ghost = True
@@ -505,20 +518,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             connection.privmsg(nick, "Ghost mode deactivated.")
             return
 
-    # Send the user online help for ghost mode.
-    def _ghost_help(connection, nick):
-        connection.privmsg(nick, "Ghost mode lets you interact with any channel I'm sitting in remotely so you don't have to join it.")
-        connection.privmsg(nick, "This is ideal if you want to maintain a certain degree of stealth.")
-        connection.privmsg(nick, "I can join the channel from one server and interact with everyone like a bot, and you can connect from another server without joining any channels, !auth to me, and communiate through me.")
-        connection.privmsg(nick, "If I get rumbled, I get bounced and your disposable server can be banned, and all you have to do is get a copy of my conversation engine to preserve me.  You should be okay.")
-        connection.privmsg(nick, "Please note that if you have me join a number of busy channels you may not be able to keep up with all the traffic, so choose the channels I join wisely.  Keep the number small for best results.")
-        connection.privmsg(nick, "Put the name of the channel you want me to send text to at the front of a private message, like this:")
-        connection.privmsg(nick, "/msg botname")
-        connection.privmsg(nick, "#somechannel Hello, world.")
-        connection.privmsg(nick, "I will send activity in the channel back to you via the same privmsg as long as you're authenticated.")
-        return
-
-    # This method fires every time a public message is posted to an IRC
+   # This method fires every time a public message is posted to an IRC
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
     # this module figured out...
     def on_pubmsg(self, connection, line):
