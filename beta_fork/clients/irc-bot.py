@@ -491,7 +491,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             return
 
     # Send the user online help for ghost mode.
-    def _ghost_help(connection, nick):
+    def _ghost_help(self, connection, nick):
         connection.privmsg(nick, "Ghost mode lets you interact with any channel I'm sitting in remotely so you don't have to join it.")
         connection.privmsg(nick, "This is ideal if you want to maintain a certain degree of stealth.")
         connection.privmsg(nick, "I can join the channel from one server and interact with everyone like a bot, and you can connect from another server without joining any channels, !auth to me, and communiate through me.")
@@ -504,7 +504,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         return
 
      # Flips the ghost mode flag.
-    def _ghost_mode(connection, nick):
+    def _ghost_mode(self, connection, nick):
         if self.ghost == False:
             self.ghost = True
             logger.info("Ghost mode now activated.")
