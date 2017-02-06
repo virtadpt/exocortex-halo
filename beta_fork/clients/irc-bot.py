@@ -358,8 +358,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # owner has sent text destined for a channel the bot's sitting in.
             # If this is the case, send the channel the text sent by the
             # bot's owner.
+            possible_channel_name = irc_text.split()[0]
             if self.ghost:
-                possible_channel_name = irc_text.split()[0]
                 if "#" in possible_channel_name:
                     irc_response = " ".join(irc_text.split()[1:])
                     connection.privmsg(possible_channel_name, irc_response)
