@@ -388,7 +388,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # the IRC response which already has the #channelname removed.
             if "#" in possible_channel_name:
                 irc_text = irc_response
-                logger.debug("Set value of irc_text to: " + irc_text)
+                logger.debug("Set value of irc_text to: " + str(irc_text))
 
             json_response = json.loads(self._teach_brain(irc_text))
             if json_response['id'] != 200:
