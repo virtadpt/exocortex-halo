@@ -359,9 +359,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # If this is the case, send the channel the text sent by the
             # bot's owner.
             possible_channel_name = irc_text.split()[0]
+            logger.debug("Value of possible_channel_name: " + possible_channel_name)
             if self.ghost:
                 if "#" in possible_channel_name:
-                    logger.debug("Value of possible_channel_name: " + possible_channel_name)
 
                     # Test to see if the bot is in the channel in question.
                     in_channel = False
