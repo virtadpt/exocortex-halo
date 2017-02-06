@@ -361,6 +361,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             possible_channel_name = irc_text.split()[0]
             if self.ghost:
                 if "#" in possible_channel_name:
+                    logger.debug("Value of possible_channel_name: " + possible_channel_name)
 
                     # Test to see if the bot is in the channel in question.
                     in_channel = False
@@ -369,12 +370,15 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                             in_channel = True
                             break
                     if not in_channel:
+                        logger.debug("Not in channel " + possible_channel_name + ".")
                         connection.privmsg(sending_nick,
                             "I'm not in channel " + possible_channel_name + ".")
                         return
+                    logger.debug("In channel " + possible_channel_name + ".")
 
                     # Send the text to the channel.
                     irc_response = " ".join(irc_text.split()[1:])
+                    logger.debug("Value of irc_response: " + irc_response)
                     connection.privmsg(possible_channel_name, irc_response)
 
             # Always learn from private messages from the bot's owner.  Do not
@@ -384,6 +388,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # the IRC response which already has the #channelname removed.
             if "#" in possible_channel_name:
                 irc_text = irc_response
+                logger.debug("Set value of irc_text to: " + irc_text)
 
             json_response = json.loads(self._teach_brain(irc_text))
             if json_response['id'] != 200:
