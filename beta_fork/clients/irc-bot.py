@@ -387,7 +387,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             # elide it by setting the line of text from the IRC channel to
             # the IRC response which already has the #channelname removed.
             if "#" in possible_channel_name:
-                irc_text = irc_response
+                irc_text = " ".join(irc_text.split()[1:])
                 logger.debug("Got a possible channel name.  Set value of irc_text to: " + str(irc_text))
 
             # Train the bot on text sent by the bot's owner.
