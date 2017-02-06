@@ -395,10 +395,16 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                     "Not going to train on a line with a channel name in it, and I'm not in ghost mode.  Bad idea.")
                 return
 
+            # Train the bot on text sent by the bot's owner.
             json_response = json.loads(self._teach_brain(irc_text))
             if json_response['id'] != 200:
                 logger.warn("DixieBot.on_privmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
 
+            # Don't get responses when in ghost mode.
+            if self.ghost:
+                return
+
+            # Get a response for text sent by the bot's owner.
             json_response = json.loads(self._get_response(irc_text))
             if json_response['id'] != 200:
                 logger.warn("DixieBot.on_privmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
