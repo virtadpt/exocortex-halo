@@ -28,6 +28,8 @@
 #      - Added a !join command, so the bot is now able to join channels you
 #        tell it to.
 #      - Added multi-channel support, which is surprisingly difficult to do.
+# v1.2 - Added a respond/don't respond feature to the bot so the user can turn
+#        decide whether or not the bot will respond to users on the server.
 
 # TO-DO:
 # - Add 'ghost' support to the bot - once authenticated, the bot's owner can
@@ -37,8 +39,6 @@
 #   join/unjoin a channel
 #   listen for/stop listening for a particular regular expression
 #   message a particular nick (for authenticating with an IRC service)
-#   you're (not) allowed to respond in channel (i.e., use the Markov engine)
-#   on (some string), respond
 # - Add a memo function.  Someone can send a privmsg to the bot and it'll sit
 #   on the message until the bot's owner asks for it.  Tell the bot's owner how
 #   many messages are waiting when they authenticate.
@@ -101,6 +101,9 @@ engine_port = 0
 # This particular bot's API key for accessing the conversation engine.
 api_key = ""
 
+# Whether or not to respond to users saying things to the bot.
+respond = None
+
 # Classes.
 # This is an instance of irc.bot which connects to an IRC server and channel
 #   and shadows its owner.
@@ -135,6 +138,9 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # One instance of wordfilter.Wordfilter() to rule them all...
     wordfilter = None
 
+    # Whether or not to use the conversation engine to respond?
+    respond = None
+
     # Methods on the connection object to investigate:
     # connect() - Connect to a server?
     # connected() - 
@@ -153,7 +159,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     # time() - 
 
     def __init__(self, channels, nickname, server, port, owner, usessl,
-        password, engine_host, engine_port, api_key):
+        password, engine_host, engine_port, api_key, respond):
 
         # Initialize the class' attributes.
         for i in channels:
@@ -169,6 +175,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         self.engine = 'http://' + engine_host + ':' + engine_port
         self.api_key = api_key
         self.wordfilter = Wordfilter()
+        self.respond = respond
 
         # Connection factory object handle.
         factory = ""
@@ -322,6 +329,11 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 self._join(connection, irc_text, sending_nick)
                 return
 
+            # See if the owner is flipping the self.respond flag.
+            if "!respond " in irc_text:
+                self._respond(connection, irc_text, sending_nick)
+                return
+
             # Always learn from and respond to non-command private messages
             # from the bot's owner.
             json_response = json.loads(self._teach_brain(irc_text))
@@ -369,6 +381,8 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             "!nick <new nick> - Try to change my IRC nick.")
         connection.privmsg(nick,
             "!join <channel> - Join a channel.")
+        connection.privmsg(nick,
+            "!respond - Toggle respond/don't respond to users flag.")
         return
 
     # Helper method that tells the bot's owner what the bot's current runtime
@@ -385,6 +399,10 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             connection.privmsg(nick, "My connection to the server is encrypted.")
         else:
             connection.privmsg(nick, "My connection to the server isn't encrypted.")
+        if self.respond:
+            connection.privmsg(nick, "I respond to people talking to me.")
+        else:
+            connection.privmsg(nick, "I don't respond to people talking to me.")
         return
 
     # Helper method that pings the bot's conversation engine.  I realize that
@@ -417,6 +435,20 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         connection.join(new_channel)
         self.joined_channels[new_channel] = 1
         return
+
+    # Helper method that flips the bot's mode from "respond when spoken to" to
+    # don't respond when spoken to.
+    def _respond(self, connection, text, nick):
+        if self.respond == True:
+            self.respond = False
+            logger.info("Turn off the bot's auto-response mode.")
+            connection.privmsg(nick, "I won't respond to people talking to me.")
+            return
+        if self.respond == False:
+            self.respond = True
+            logger.info("Turn on the bot's auto-response mode.")
+            connection.privmsg(nick, "Now responding to people talking to me.")
+            return
 
     # This method fires every time a public message is posted to an IRC
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
@@ -471,9 +503,16 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                 return
 
-            # Decide if the bot is going to respond or not.
-            roll = random.randint(1, 10)
-            if roll == 1:
+            # Check the respond/don't respond flag.  If it's set to False,
+            # don't say anything.
+            if not self.respond:
+                return
+
+            # If the respond/don't respond flag it set to True, decide if the
+            # bot is going to respond or not.  To be polite to people, only
+            # respond 5% of the time.  10% was too much.
+            roll = random.randint(1, 100)
+            if roll <= 5:
                 json_response = json.loads(self._get_response(irc_text))
                 if json_response['id'] != int(200):
                     logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
@@ -481,11 +520,13 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
                 # connection.privmsg() can be used to send text to either a
                 # channel or a user.
+                # Send the response.
                 connection.privmsg(line.target, json_response['response'])
             return
 
         # If the line is not from the bot's owner, decide randomly if the bot
-        # should learn from it, or learn from and respond to it.
+        # should learn from it, or learn from and respond to it.  Respect the
+        # respond/don't respond flag.
         roll = random.randint(1, 10)
         if roll == 1:
             logger.debug("Learning from the last line seen in the channel.")
@@ -507,6 +548,12 @@ class DixieBot(irc.bot.SingleServerIRCBot):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
                 return
 
+            # Check the respond/don't respond flag.  If it's set to False,
+            # don't say anything.
+            if not self.respond:
+                return
+
+            # Get and send a response.
             json_response = json.loads(self._get_response(irc_text))
             if json_response['id'] != int(200):
                 logger.warn("DixieBot.on_pubmsg(): Conversation engine returned error code " + str(json_response['id']) + ".")
@@ -636,6 +683,11 @@ argparser.add_argument('--ssl', action='store_true', default=False,
 argparser.add_argument('--password', action='store',
     help="The password the bot's owner can use to authenticate to the bot and give it owners.  This will also change the bot's idea of what its owner's nick is in case that changes for whatever reason.")
 
+# The bot's owner can decide whether or not the bot will respond to other users
+# by default.  Defaults to True.
+argparser.add_argument('--respond', action='store_true', default=True,
+    help='Whether or not the bot will respond to users talking directly to the bot.  Possible settings are True or False.  Defaults to True.  If you want the bot to be silent, set this to False.')
+
 # Parse the command line arguments.
 args = argparser.parse_args()
 
@@ -658,6 +710,7 @@ if os.path.exists(config_file):
     engine_host = config.get("DEFAULT", "engine_host")
     engine_port = config.get("DEFAULT", "engine_port")
     api_key = config.get("DEFAULT", "api_key")
+    respond = config.get("DEFAULT", "respond")
 else:
     print "Unable to open configuration file " + config_file + "."
 
@@ -715,12 +768,16 @@ file or on the command line and try again.
 """
     sys.exit(1)
 
+# Flip the bit on the respond/don't respond flag.
+if args.respond:
+    respond = args.respond
+
 # Prime the RNG.
 random.seed()
 
 # Instantiate a copy of the bot class and activate it.
 bot = DixieBot(channel, nick, irc_server, irc_port, owner, usessl, password,
-    engine_host, engine_port, api_key)
+    engine_host, engine_port, api_key, respond)
 bot.start()
 
 # Fin.

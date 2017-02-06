@@ -33,3 +33,7 @@ engine_port = 8050
 # Conversation engine API key for this particular instance of the IRC bot.
 api_key = changeme
 
+# Whether or not to respond to users on IRC saying things to the bot.  Default
+# to true.
+respond = True
+
