@@ -473,6 +473,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
         logger.debug("Trying to join channel " + new_channel + ".")
         connection.join(new_channel)
         self.joined_channels[new_channel] = 1
+        connection.privmsg(nick, "Joined " + new_channel + ".")
         return
 
     # Helper method that flips the bot's mode from "respond when spoken to" to
