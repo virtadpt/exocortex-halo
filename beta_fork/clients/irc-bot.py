@@ -361,6 +361,19 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             possible_channel_name = irc_text.split()[0]
             if self.ghost:
                 if "#" in possible_channel_name:
+
+                    # Test to see if the bot is in the channel in question.
+                    in_channel = False
+                    for channel in self.joined_channels:
+                        if channel == possible_channel_name:
+                            in_channel = True
+                            break
+                    if not in_channel:
+                        connection.privmsg(sending_nick,
+                            "I'm not in channel " + possible_channel_name + ".")
+                        return
+
+                    # Send the text to the channel.
                     irc_response = " ".join(irc_text.split()[1:])
                     connection.privmsg(possible_channel_name, irc_response)
 
