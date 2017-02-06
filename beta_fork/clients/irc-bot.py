@@ -346,12 +346,12 @@ class DixieBot(irc.bot.SingleServerIRCBot):
 
             # See if the owner is flipping the self.ghost flag.
             if "!ghost" in irc_text:
-                self._ghost_mode(connection, irc_text, sending_nick)
+                self._ghost_mode(connection, sending_nick)
                 return
 
             # See if the owner is asking for help on ghost mode.
             if "!ghosthelp" in irc_text:
-                self._ghost_help(connection, irc_text, sending_nick)
+                self._ghost_help(connection, sending_nick)
                 return
 
             # If the bot's in ghost mode, determine whether or not the bot's
@@ -490,7 +490,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             return
 
     # Flips the ghost mode flag.
-    def _ghost_mode(connection, irc_text, sending_nick):
+    def _ghost_mode(connection, nick):
         if self.ghost == False:
             self.ghost = True
             logger.info("Ghost mode now activated.")
@@ -506,7 +506,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             return
 
     # Send the user online help for ghost mode.
-    def _ghost_help(connection, irc_text, sending_nick):
+    def _ghost_help(connection, nick):
         connection.privmsg(nick, "Ghost mode lets you interact with any channel I'm sitting in remotely so you don't have to join it.")
         connection.privmsg(nick, "This is ideal if you want to maintain a certain degree of stealth.")
         connection.privmsg(nick, "I can join the channel from one server and interact with everyone like a bot, and you can connect from another server without joining any channels, !auth to me, and communiate through me.")
