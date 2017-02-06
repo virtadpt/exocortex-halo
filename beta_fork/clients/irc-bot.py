@@ -494,7 +494,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
     def _ghost_help(self, connection, nick):
         connection.privmsg(nick, "Ghost mode lets you interact with any channel I'm sitting in remotely so you don't have to join it.")
         connection.privmsg(nick, "This is ideal if you want to maintain a certain degree of stealth.")
-        connection.privmsg(nick, "I can join the channel from one server and interact with everyone like a bot, and you can connect from another server without joining any channels, !auth to me, and communiate through me.")
+        connection.privmsg(nick, "I can join the channel from one server and interact with everyone like a bot, and you can connect from another server without joining any channels, !auth to me, and communicate through me.")
         connection.privmsg(nick, "If I get rumbled, I get bounced and your disposable server can be banned, and all you have to do is get a copy of my conversation engine to preserve me.  You should be okay.")
         connection.privmsg(nick, "Please note that if you have me join a number of busy channels you may not be able to keep up with all the traffic, so choose the channels I join wisely.  Keep the number small for best results.")
         connection.privmsg(nick, "Put the name of the channel you want me to send text to at the front of a private message, like this:")
@@ -519,7 +519,7 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             connection.privmsg(nick, "Ghost mode deactivated.")
             return
 
-   # This method fires every time a public message is posted to an IRC
+    # This method fires every time a public message is posted to an IRC
     # channel.  Technically, 'line' should be 'event' but I'm just now getting
     # this module figured out...
     def on_pubmsg(self, connection, line):
