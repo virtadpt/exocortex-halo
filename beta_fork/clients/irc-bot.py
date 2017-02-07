@@ -30,11 +30,10 @@
 #      - Added multi-channel support, which is surprisingly difficult to do.
 # v1.2 - Added a respond/don't respond feature to the bot so the user can turn
 #        decide whether or not the bot will respond to users on the server.
+#      - Added ghost mode, which lets the user interact with any channel the
+#        bot is sitting in through private messages.
 
 # TO-DO:
-# - Add 'ghost' support to the bot - once authenticated, the bot's owner can
-#   send text to the channel the bot is sitting in (@Some message here...) and
-#   get replies back via private messages.  !ghost on/off
 # - Other things to add to the bot:
 #   listen for/stop listening for a particular regular expression
 #   message a particular nick (for authenticating with an IRC service)
@@ -467,6 +466,10 @@ class DixieBot(irc.bot.SingleServerIRCBot):
             connection.privmsg(nick, "I respond to people talking to me.")
         else:
             connection.privmsg(nick, "I don't respond to people talking to me.")
+        if self.ghost:
+            connection.privmsg(nick, "I am monitoring IRC channels in ghost mode.")
+        else:
+            connection.privmsg(nick, "I am not in ghost mode.")
         return
 
     # Helper method that pings the bot's conversation engine.  I realize that
