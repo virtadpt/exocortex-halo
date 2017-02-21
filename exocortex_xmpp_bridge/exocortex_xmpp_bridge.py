@@ -251,7 +251,7 @@ class XMPPClient(ClientXMPP):
         if ',' in message_body:
             command = message_body.split(',')[1]
         else:
-            command = message_body.split(' ')[1]
+            command = ' '.join(message_body.split(' ')[1:])
         command = command.strip()
         command = command.strip('.')
         logger.debug("Received request: " + command)

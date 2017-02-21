@@ -148,7 +148,7 @@ send_command = (pp.CaselessLiteral("send") | pp.CaselessLiteral("e-mail") |
                 pp.CaselessLiteral("email") | pp.CaselessLiteral("mail"))
 me = pp.CaselessLiteral("me")
 email = pp.Regex(r"(?P<user>[A-Za-z0-9._%+-]+)@(?P<hostname>[A-Za-z0-9.-]+)\.(?P<domain>[A-Za-z]{2,4})")
-destination = pp.Optional(me | email).setResultsName("dest")
+destination = pp.Optional(me ^ email).setResultsName("dest")
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
