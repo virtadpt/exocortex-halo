@@ -1,0 +1,19 @@
+# Top level configuration for System Bot.
+[DEFAULT]
+
+# URL of the message queue to poll.
+queue = http://localhost:8003/
+
+# Name the bot should answer to.  I suggest using the hostname the bot's
+# running on.
+bot_name = Hyperactive
+
+# Default e-mail address to send search results to.
+default_email = me@example.com
+
+# Set the default loglevel of the bot.
+loglevel = info
+
+# How often to poll the message queue for orders.  Defaults to 60 seconds.
+# polling_time = 60
+
