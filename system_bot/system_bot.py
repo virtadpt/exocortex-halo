@@ -16,18 +16,26 @@
 # TO-DO:
 # - Make it possible to specify arbitrary commands in the config file that the
 #   bot can be ordered to execute.
-# - Put the full paths into /proc for the various system state variables into
-#   the configuration file, and not hardcoded.
 # - Make it possible to monitor specific processes running on the system, and
 #   potentially manipulate them with commands sent by the bot's owner.  Use
 #   the method psutil.test() to dump the process list and pick through it
 #   looking for the stuff in question.
+# - Make it possible to specify system stat thresholds in the config file
+#   rather than hardcoding them.
+# - Make it so that the bot stores previous system system values so that it
+#   can compute standard deviations and alert if things change for the worse
+#   too much.
+# - Add an "alert acknowledged" command that stops the bot from sending the
+#   same alert every couple of seconds.  When the system state changes back to
+#   normal, automatically flip the "alert acknowledged" flag back.
 
 # Load modules.
 import argparse
+import json
 import logging
 import os
 import psutil
+import requests
 import statvfs
 import sys
 
@@ -70,6 +78,15 @@ status_polling = 0
 # Configuration for the logger.
 loglevel = None
 
+# Used to determine when to poll the message queue.
+loop_counter = 0
+
+# Handle to a requests object.
+request = None
+
+# Command from the message queue.
+command = ""
+
 # Classes.
 
 # Functions.
@@ -82,6 +99,22 @@ def sysload():
     sysload['five_minute'] = system_load[1]
     sysload['fifteen_minute'] = system_load[2]
     return sysload
+
+# check_sysload: Function that pulls the current system load and tests the
+#   load averages to see if they're too high.  Sends a message to the bot's
+#   owner if an average is too high.
+def check_sysload():
+    message = ""
+    current_load_avg = sysload()
+    if current_load_avg['one_minute'] >= 1.5:
+        message = message + "The current system load is " + str(current_load_avg['one_minute']) + "."
+    if current_load_avg['five_minute'] >= 2.0:
+        message = message + "The five minute system load is " + str(current_load_avg['one_minute']) + ".  What's running that's doing this?"
+    if current_load_avg['fifteen_minute'] >= 2.0:
+        message = message + "The fifteen minute system load is " + str(current_load_avg['one_minute']) + ".  I think something's wrong"
+    if message:
+        send_message_to_user(message)
+    return
 
 # uname(): Function that calls os.uname(), extracts a few things, and returns
 #   them as a hash table.  This should only be called upon request by the user,
@@ -104,6 +137,16 @@ def cpus():
 #   CPUs are idle as a floating point number.
 def cpu_idle_time():
     return psutil.cpu_times_percent()[3]
+
+# check_cpu_idle_time(): Takes no arguments.  Sends an alert to the bot's owner
+#   if the CPU idle time is too low.
+def check_cpu_idle_time():
+    message = ""
+    idle_time = cpu_idle_time()
+    if idle_time < 15.0:
+        message = "The current CPU idle time is sitting at " + str(idle_time) + ".  What's keeping it so busy?"
+        send_message_to_user(message)
+    return
 
 # disk_usage(): Takes no arguments.  Returns a hash table containing the disk
 #   device name as the key and percentage used as the value.
@@ -134,10 +177,33 @@ def disk_usage():
 
     return disk_free
 
+# check_disk_usage(): Pull the amount of free storage for each disk device on
+#   the system and send the bot's owner an alert if one of the disks gets too
+#   full.
+def check_disk_usage():
+    message = ""
+    disk_space_free = disk_usage()
+    for disk in disk_space_free.keys():
+        if disk_space_free[disk] < 20.0:
+            message = message + "Disk device " + disk + " has " + str(disk_space_free[disk]) + "% of its capacity left."
+    if message:
+        send_message_to_user(message)
+    return
+
 # memory_utilization(): Function that returns the amount of memory free as a
 #   floating point value (a percentage).  Takes no arguments.
 def memory_utilization():
     return psutil.virtual_memory().percent
+
+# check_memory_utilization(): Function that checks how much memory is free on
+#   the system and alerts the bot's owner if it's below a certain amount.
+def check_memory_utilization():
+    message = ""
+    memory_free = memory_utilization()
+    if memory_free < 20.0:
+        message = "The amount of free memory has reached the critical point of " + str(memory_free) + "% free.  You'll want to see to this before the OOM killer starts reaping processes."
+        send_message_to_user(message)
+    return
 
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -154,6 +220,32 @@ def set_loglevel(loglevel):
         return 10
     if loglevel == "notset":
         return 0
+
+# send_message_to_user(): Function that does the work of sending messages back
+# to the user by way of the XMPP bridge.  Takes one argument, the message to
+#   send to the user.  Returns a True or False which delineates whether or not
+#   it worked.
+def send_message_to_user(message):
+    logger.debug("Entered function send_message_to_user().")
+
+    # Headers the XMPP bridge looks for for the message to be valid.
+    headers = {'Content-type': 'application/json'}
+
+    # Set up a hash table of stuff that is used to build the HTTP request to
+    # the XMPP bridge.
+    reply = {}
+    reply['name'] = bot_name
+    reply['reply'] = message
+
+    # Send an HTTP request to the XMPP bridge containing the message for the
+    # user.
+    request = requests.put(server + "replies", headers=headers,
+        data=json.dumps(reply))
+
+# parse_command(): Function that parses commands from the message bus.
+#   Commands are of the form MOOF MOOF MOOF.
+def parse_command(command):
+    return
 
 # Core code...
 # Allocate a command-line argument parser.
@@ -239,8 +331,51 @@ logger.debug("Time in seconds for polling the system status: " +
 # if it has any HTTP requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
 while True:
+    # Reset the command from the message bus, just in case.
+    command = ""
 
-    # If loop counter 
+    # Start checking the system runtime stats.  If anything is too far out of
+    # whack, send an alert to the XMPP bridge's response queue.
+
+    # Add status_polling to loop counter.
+    loop_counter = loop_counter + status_polling
+
+    # If loop_counter is equal to polling_time, check the message queue for
+    # commands.
+    if loop_counter >= polling_time:
+        try:
+            logger.debug("Contacting message queue: " + message_queue)
+            request = requests.get(message_queue)
+            logger.debug("Response from server: " + request.text)
+        except:
+            logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+            time.sleep(float(polling_time))
+            continue
+
+        # Test the HTTP response code.
+        # Success.
+        if request.status_code == 200:
+            logger.debug("Message queue " + bot_name + " found.")
+
+            # Extract the command.
+            command = json.loads(request.text)
+            logger.debug("Command from user: " + str(command))
+
+            # Parse the command.
+            command = parse_command(command)
+            logger.debug("Parsed command: " + str(page_request))
+
+            # If there was no page request, go back to sleep.
+            if not page_request:
+                time.sleep(float(polling_time))
+                continue
+        
+
+        # Reset loop counter.
+        loop_counter = 0
+
+    # Bottom of loop.  Go to sleep for a while before running again.
+    time.sleep(float(status_polling))
 
 
 
