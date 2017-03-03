@@ -28,6 +28,8 @@
 # - Add an "alert acknowledged" command that stops the bot from sending the
 #   same alert every couple of seconds.  When the system state changes back to
 #   normal, automatically flip the "alert acknowledged" flag back.
+# - Make the delay in between warning messages (which is currently polling_time
+#   x20) configurable in the config file.
 
 # Load modules.
 import argparse
@@ -87,7 +89,15 @@ request = None
 # Command from the message queue.
 command = ""
 
-# Classes.
+# Multiple of polling_time that must pass between sending alerts.
+time_between_alerts = 0
+
+# Counters used to keep the bot from sending alerts too often.
+sysload_counter = 0
+cpu_idle_time_counter = 0
+disk_usage_counter = 0
+memory_utilization_counter = 0
+memory_free_counter = 0
 
 # Functions.
 # sysload(): Function that takes a snapshot of the current system load averages
@@ -106,14 +116,29 @@ def sysload():
 def check_sysload():
     message = ""
     current_load_avg = sysload()
+
+    # Check the average system loads and construct a message for the bot's
+    # owner.
     if current_load_avg['one_minute'] >= 1.5:
         message = message + "The current system load is " + str(current_load_avg['one_minute']) + "."
+
     if current_load_avg['five_minute'] >= 2.0:
         message = message + "The five minute system load is " + str(current_load_avg['one_minute']) + ".  What's running that's doing this?"
+
     if current_load_avg['fifteen_minute'] >= 2.0:
         message = message + "The fifteen minute system load is " + str(current_load_avg['one_minute']) + ".  I think something's wrong"
+
+    # If a message has been constructed, check to see if it's been longer than
+    # the last time a message was sent.  If so, send it and reset the counter.
     if message:
-        send_message_to_user(message)
+        if sysload_counter >= time_between_alerts:
+            send_message_to_user(message)
+            sysload_counter = 0
+            return
+
+        # If enough time between alerts hasn't passed yet, just increment the
+        # counter.
+        sysload_counter = sysload_counter + status_polling
     return
 
 # uname(): Function that calls os.uname(), extracts a few things, and returns
@@ -143,9 +168,22 @@ def cpu_idle_time():
 def check_cpu_idle_time():
     message = ""
     idle_time = cpu_idle_time()
+
+    # Check the percentage of CPU idle time and construct a message for the
+    # bot's owner if it's too low.
     if idle_time < 15.0:
         message = "The current CPU idle time is sitting at " + str(idle_time) + ".  What's keeping it so busy?"
-        send_message_to_user(message)
+
+    # If a message has been built, check to see if enough time in between
+    # messages has passed.  If so, send the message.
+    if message:
+        if cpu_idle_time_counter >= time_between_alerts:
+            send_message_to_user(message)
+            cpu_idle_time_counter = 0
+            return
+
+        # If not enough time has passed yet, just increment the counter.
+        cpu_idle_time_counter = cpu_idle_time_counter + status_polling
     return
 
 # disk_usage(): Takes no arguments.  Returns a hash table containing the disk
@@ -183,11 +221,24 @@ def disk_usage():
 def check_disk_usage():
     message = ""
     disk_space_free = disk_usage()
+
+    # Check the amount of space free on each disk device.  For each disk that's
+    # running low on space construct a line of the message.
     for disk in disk_space_free.keys():
         if disk_space_free[disk] < 20.0:
             message = message + "Disk device " + disk + " has " + str(disk_space_free[disk]) + "% of its capacity left."
+
+    # If a message has been constructed, check how much time has passed since
+    # the last message was sent.  If enough time has, sent the bot's owner
+    # the message.
     if message:
-        send_message_to_user(message)
+        if disk_usage_counter >= time_between_alerts:
+            send_message_to_user(message)
+            disk_usage_counter = 0
+            return
+
+        # Not enough time has passed.  Increment the counter and move on.
+        disk_usage_counter = disk_usage_counter + status_polling
     return
 
 # memory_utilization(): Function that returns the amount of memory free as a
@@ -200,9 +251,23 @@ def memory_utilization():
 def check_memory_utilization():
     message = ""
     memory_free = memory_utilization()
-    if memory_free < 20.0:
+
+    # Check the amount of memory free.  If it's below a critical threshold
+    # construct a message for the bot's owner.
+    if memory_free <= 20.0:
         message = "The amount of free memory has reached the critical point of " + str(memory_free) + "% free.  You'll want to see to this before the OOM killer starts reaping processes."
-        send_message_to_user(message)
+
+    # If a message has been constructed, check how much time has passed since
+    # the last message was sent.  If enough time has, send the bot's owner the
+    # message.
+    if message:
+        if memory_free_counter >= time_between_alerts:
+            send_message_to_user(message)
+            memory_free_counter = 0
+            return
+
+        # Not enough time has passed.  Increment the counter and move on.
+        memory_free_counter = memory_free_counter + status_polling
     return
 
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -315,6 +380,10 @@ if args.polling:
 # main loop runs.
 status_polling = polling_time / 4
 
+# Calculate the period of time that should pass in between sending alerts to
+# the user to keep from inundating them.
+time_between_alerts = polling_time * 20
+
 # In debugging mode, dump the bot'd configuration.
 logger.info("Everything is configured.")
 logger.debug("Values of configuration variables as of right now:")
@@ -376,34 +445,6 @@ while True:
 
     # Bottom of loop.  Go to sleep for a while before running again.
     time.sleep(float(status_polling))
-
-
-
-
-
-
-
-
-load = sysload()
-print "One minute system load: " + str(load['one_minute'])
-print "Five minute system load: " + str(load['five_minute'])
-print "Fifteen minute system load: " + str(load['fifteen_minute'])
-print
-system_info = uname()
-print "Hostname: " + system_info['hostname']
-print "System architecture: " + system_info['arch']
-print "System version: " + system_info['version']
-print
-print "Number of CPUs: " + str(cpus())
-print
-print "CPU idle percentage: " + str(cpu_idle_time())
-print
-disk_space = disk_usage()
-for i in disk_space.keys():
-    print "File system " + i + ": {:.2f}".format(disk_space[i]) + "% free"
-print
-print "Memory free: " + str(memory_utilization()) + "%"
-print
 
 # Fin.
 sys.exit(0)
