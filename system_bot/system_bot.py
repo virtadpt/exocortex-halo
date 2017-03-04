@@ -33,6 +33,7 @@
 
 # Load modules.
 import argparse
+import ConfigParser
 import json
 import logging
 import os
@@ -40,6 +41,7 @@ import psutil
 import requests
 import statvfs
 import sys
+import time
 
 # Constants.
 
@@ -103,30 +105,43 @@ memory_free_counter = 0
 # sysload(): Function that takes a snapshot of the current system load averages
 #   and returns them as a hash table.  Takes no arguments.
 def sysload():
+    logger.debug("Entered method sysload().")
     sysload = {}
     system_load = os.getloadavg()
     sysload['one_minute'] = system_load[0]
     sysload['five_minute'] = system_load[1]
     sysload['fifteen_minute'] = system_load[2]
+    logger.debug("Current sysload values: " + str(sysload))
     return sysload
 
 # check_sysload: Function that pulls the current system load and tests the
 #   load averages to see if they're too high.  Sends a message to the bot's
 #   owner if an average is too high.
-def check_sysload():
+def check_sysload(test=False):
+    logger.debug("Entered method check_sysload().")
+
     message = ""
-    current_load_avg = sysload()
+    if test:
+        current_load_avg = {}
+        current_load_avg['one_minute'] = 5.0
+        current_load_avg['five_minute'] = 5.0
+        current_load_avg['fifteen_minute'] = 5.0
+    else:
+        current_load_avg = sysload()
 
     # Check the average system loads and construct a message for the bot's
     # owner.
     if current_load_avg['one_minute'] >= 1.5:
-        message = message + "The current system load is " + str(current_load_avg['one_minute']) + "."
+        message = message + "WARNING: The current system load is " + str(current_load_avg['one_minute']) + ".\n"
 
     if current_load_avg['five_minute'] >= 2.0:
-        message = message + "The five minute system load is " + str(current_load_avg['one_minute']) + ".  What's running that's doing this?"
+        message = message + "WARNING: The five minute system load is " + str(current_load_avg['one_minute']) + ".  What's running that's doing this?\n"
 
     if current_load_avg['fifteen_minute'] >= 2.0:
-        message = message + "The fifteen minute system load is " + str(current_load_avg['one_minute']) + ".  I think something's wrong"
+        message = message + "WARNING: The fifteen minute system load is " + str(current_load_avg['one_minute']) + ".  I think something's wrong.\n"
+
+    # In test mode, just return the message.
+    return message
 
     # If a message has been constructed, check to see if it's been longer than
     # the last time a message was sent.  If so, send it and reset the counter.
@@ -165,14 +180,24 @@ def cpu_idle_time():
 
 # check_cpu_idle_time(): Takes no arguments.  Sends an alert to the bot's owner
 #   if the CPU idle time is too low.
-def check_cpu_idle_time():
+def check_cpu_idle_time(test=False):
+    logger.debug("Entered method check_cpu_idle_time().")
+
     message = ""
     idle_time = cpu_idle_time()
+
+    # If the bot is in self-test mode, set idle_time to a critical value.
+    if test:
+        idle_time = 0.01
 
     # Check the percentage of CPU idle time and construct a message for the
     # bot's owner if it's too low.
     if idle_time < 15.0:
-        message = "The current CPU idle time is sitting at " + str(idle_time) + ".  What's keeping it so busy?"
+        message = "WARNING: The current CPU idle time is sitting at " + str(idle_time) + ".  What's keeping it so busy?"
+
+    # In self-test mode, return the message.
+    if test:
+        return message
 
     # If a message has been built, check to see if enough time in between
     # messages has passed.  If so, send the message.
@@ -218,15 +243,27 @@ def disk_usage():
 # check_disk_usage(): Pull the amount of free storage for each disk device on
 #   the system and send the bot's owner an alert if one of the disks gets too
 #   full.
-def check_disk_usage():
+def check_disk_usage(test=False):
+    logger.debug("Entered method check_disk_usage().")
     message = ""
     disk_space_free = disk_usage()
+
+    # If bot is in self-test mode, set the value of disk_space_free to a
+    # critical value.
+    if test:
+        disk_space_free = {}
+        disk_space_free['/boot'] = 0.01
+        disk_space_free['/'] = 0.01
 
     # Check the amount of space free on each disk device.  For each disk that's
     # running low on space construct a line of the message.
     for disk in disk_space_free.keys():
         if disk_space_free[disk] < 20.0:
-            message = message + "Disk device " + disk + " has " + str(disk_space_free[disk]) + "% of its capacity left."
+            message = message + "WARNING: Disk device " + disk + " has " + str(disk_space_free[disk]) + "% of its capacity left.\n"
+
+    # If bot is in self-test mode, return the message.
+    if test:
+        return message
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, sent the bot's owner
@@ -248,14 +285,23 @@ def memory_utilization():
 
 # check_memory_utilization(): Function that checks how much memory is free on
 #   the system and alerts the bot's owner if it's below a certain amount.
-def check_memory_utilization():
+def check_memory_utilization(test=False):
+    logger.debug("Entered method check_memory_utilization().")
     message = ""
     memory_free = memory_utilization()
+
+    # If the bot is in self-test mode, set memory_free to a critical value.
+    if test:
+        memory_free = 0.01
 
     # Check the amount of memory free.  If it's below a critical threshold
     # construct a message for the bot's owner.
     if memory_free <= 20.0:
-        message = "The amount of free memory has reached the critical point of " + str(memory_free) + "% free.  You'll want to see to this before the OOM killer starts reaping processes."
+        message = "WARNING: The amount of free memory has reached the critical point of " + str(memory_free) + "% free.  You'll want to see to this before the OOM killer starts reaping processes."
+
+    # If the bot is in self-test mode, return the message.
+    if test:
+        return message
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, send the bot's owner the
@@ -306,10 +352,44 @@ def send_message_to_user(message):
     # user.
     request = requests.put(server + "replies", headers=headers,
         data=json.dumps(reply))
+    return
 
 # parse_command(): Function that parses commands from the message bus.
 #   Commands are of the form MOOF MOOF MOOF.
 def parse_command(command):
+    logger.debug("Entered method parse_command().")
+    return
+
+# run_self_tests(): Function that calls each check function in succession and
+#   prints the output.  It then calls each check function and deliberately
+#   triggers the warning conditions to make sure they work.
+def run_self_tests():
+    print "Exercising sysload functions."
+    print sysload()
+    print check_sysload(test=True)
+
+    print "Exercising uname()."
+    print uname()
+    print
+
+    print "Exercising cpus()."
+    print cpus()
+    print
+
+    print "Exercising cpu_idle_time() functions."
+    print cpu_idle_time()
+    print check_cpu_idle_time(test=True)
+    print
+
+    print "Exercising disk_usage() functions."
+    print disk_usage()
+    print check_disk_usage(test=True)
+
+    print "Exercising memory_utilization() functions."
+    print memory_utilization()
+    print check_memory_utilization(test=True)
+    print
+
     return
 
 # Core code...
@@ -317,16 +397,20 @@ def parse_command(command):
 argparser = argparse.ArgumentParser(description="A construct that monitors system statistics and sends alerts via the XMPP bridge in the event that things get too far out of whack.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument('--config', action='store', 
-    default='./system_bot.conf')
+argparser.add_argument("--config", action="store", 
+    default="./system_bot.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
-argparser.add_argument('--loglevel', action='store',
-    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
+argparser.add_argument("--loglevel", action="store",
+    help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument('--polling', action='store', default=60,
-    help='Default: 60 seconds')
+argparser.add_argument("--polling", action="store", default=60,
+    help="Default: 60 seconds")
+
+# Trigger the self-test function?
+argparser.add_argument("--test", action="store_true",
+    help="Perform a self-test of the bot's trigger conditions for testing and debugging.  The bot will terminate afterward.")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -395,6 +479,13 @@ logger.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
 logger.debug("Time in seconds for polling the system status: " +
     str(status_polling))
+
+# Determine if the bot is going into self-test mode, and if so execute the
+# self-tests.
+if args.test:
+    logger.info("Executing bot self-test.")
+    run_self_tests()
+    sys.exit(31337)
 
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
