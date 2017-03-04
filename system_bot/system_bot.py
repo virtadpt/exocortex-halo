@@ -109,7 +109,6 @@ def sysload():
     sysload['one_minute'] = system_load[0]
     sysload['five_minute'] = system_load[1]
     sysload['fifteen_minute'] = system_load[2]
-    logger.debug("Current sysload values: " + str(sysload))
     return sysload
 
 # check_sysload: Function that pulls the current system load and tests the
@@ -512,6 +511,7 @@ while True:
 
     # Add status_polling to loop counter.
     loop_counter = loop_counter + status_polling
+    logger.debug("Value of loop_counter is now " + str(loop_counter) + ".")
 
     # If loop_counter is equal to polling_time, check the message queue for
     # commands.
@@ -522,7 +522,7 @@ while True:
             logger.debug("Response from server: " + request.text)
         except:
             logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
-            time.sleep(float(polling_time))
+            time.sleep(float(status_polling))
             continue
 
         # Test the HTTP response code.
@@ -544,6 +544,7 @@ while True:
                 continue
 
         # Reset loop counter.
+        logger.debug("Resetting loop_counter.")
         loop_counter = 0
 
     # Bottom of loop.  Go to sleep for a while before running again.
