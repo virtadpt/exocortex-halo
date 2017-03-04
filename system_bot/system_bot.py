@@ -43,8 +43,6 @@ import statvfs
 import sys
 import time
 
-# Constants.
-
 # Global variables.
 # Handle to an argument parser object.
 argparser = None
@@ -141,7 +139,8 @@ def check_sysload(test=False):
         message = message + "WARNING: The fifteen minute system load is " + str(current_load_avg['one_minute']) + ".  I think something's wrong.\n"
 
     # In test mode, just return the message.
-    return message
+    if test:
+        return message
 
     # If a message has been constructed, check to see if it's been longer than
     # the last time a message was sent.  If so, send it and reset the counter.
@@ -358,6 +357,16 @@ def send_message_to_user(message):
 #   Commands are of the form MOOF MOOF MOOF.
 def parse_command(command):
     logger.debug("Entered method parse_command().")
+
+    # Clean up the get request.
+    get_request = get_request.strip()
+    get_request = get_request.strip('.')
+
+    # If the get request is empty (i.e., nothing in the queue), bounce.
+    if "no commands" in get_request:
+        logger.debug("Got empty get request.")
+        return
+
     return
 
 # run_self_tests(): Function that calls each check function in succession and
@@ -495,7 +504,11 @@ while True:
     command = ""
 
     # Start checking the system runtime stats.  If anything is too far out of
-    # whack, send an alert to the XMPP bridge's response queue.
+    # whack, send an alert via the XMPP bridge's response queue.
+    check_sysload()
+    check_cpu_idle_time()
+    check_disk_usage()
+    check_memory_utilization()
 
     # Add status_polling to loop counter.
     loop_counter = loop_counter + status_polling
@@ -529,7 +542,6 @@ while True:
             if not page_request:
                 time.sleep(float(polling_time))
                 continue
-        
 
         # Reset loop counter.
         loop_counter = 0
