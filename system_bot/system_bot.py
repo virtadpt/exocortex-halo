@@ -357,13 +357,13 @@ def send_message_to_user(message):
 def parse_command(command):
     logger.debug("Entered method parse_command().")
 
-    # Clean up the get request.
-    get_request = get_request.strip()
-    get_request = get_request.strip('.')
+    # Clean up the incoming command.
+    command = command.strip()
+    command = command.strip('.')
 
     # If the get request is empty (i.e., nothing in the queue), bounce.
-    if "no commands" in get_request:
-        logger.debug("Got empty get request.")
+    if "no commands" in command:
+        logger.debug("Got empty command.")
         return
 
     return
@@ -535,13 +535,17 @@ while True:
             logger.debug("Command from user: " + str(command))
 
             # Parse the command.
-            command = parse_command(command)
-            logger.debug("Parsed command: " + str(page_request))
+            command = parse_command(command['command'])
+            logger.debug("Parsed command: " + str(command))
 
-            # If there was no page request, go back to sleep.
-            if not page_request:
+            # If the command was empty, go back to sleep.
+            if not command:
+                logger.debug("Resetting loop_counter.")
+                loop_counter = 0
                 time.sleep(float(polling_time))
                 continue
+
+            # If the command was not empty...
 
         # Reset loop counter.
         logger.debug("Resetting loop_counter.")
