@@ -103,7 +103,6 @@ memory_free_counter = 0
 # sysload(): Function that takes a snapshot of the current system load averages
 #   and returns them as a hash table.  Takes no arguments.
 def sysload():
-    logger.debug("Entered method sysload().")
     sysload = {}
     system_load = os.getloadavg()
     sysload['one_minute'] = system_load[0]
@@ -360,11 +359,17 @@ def parse_command(command):
     # Clean up the incoming command.
     command = command.strip()
     command = command.strip('.')
+    command = command.lower()
 
     # If the get request is empty (i.e., nothing in the queue), bounce.
     if "no commands" in command:
         logger.debug("Got empty command.")
         return
+
+    # Test for a request for help.
+    if "help" in command:
+        logger.debug("Got a request for help.")
+        return "help"
 
     return
 
@@ -399,6 +404,17 @@ def run_self_tests():
     print
 
     return
+
+# online_help(): Function that returns text - online help - to the user.  Takes
+#   no arguments, returns a complex string.
+def online_help():
+    logger.debug("Entered the function online_help().")
+    message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
+    message = message + """I continually monitor the state of the system I'm running on, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge.  I currently monitor system load, CPU idle time, disk utilization, and memory utilization.  The interactive commands I currently support are:
+
+    help - Display this online help.
+    """
+    return message
 
 # Core code...
 # Allocate a command-line argument parser.
@@ -533,19 +549,21 @@ while True:
             # Extract the command.
             command = json.loads(request.text)
             logger.debug("Command from user: " + str(command))
-
-            # Parse the command.
-            command = parse_command(command['command'])
-            logger.debug("Parsed command: " + str(command))
-
-            # If the command was empty, go back to sleep.
+            command = command['command']
             if not command:
+                logger.debug("Empty command.")
                 logger.debug("Resetting loop_counter.")
                 loop_counter = 0
                 time.sleep(float(polling_time))
                 continue
 
-            # If the command was not empty...
+            # Parse the command.
+            command = parse_command(command)
+            logger.debug("Parsed command: " + str(command))
+
+            # If the user is requesting online help...
+            if command == "help":
+                send_message_to_user(online_help())
 
         # Reset loop counter.
         logger.debug("Resetting loop_counter.")
