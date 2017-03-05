@@ -423,7 +423,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
         # Generate a reply to the bot's owner and add it to the bot's private
         # message queue.
-        reply = "Got a message back from " + response['name'] + ":\n\n"
+        reply = "Got a message from " + response['name'] + ":\n\n"
         reply = reply + response['reply']
         message_queue['replies'].append(reply)
         self.send_response(200)

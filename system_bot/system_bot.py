@@ -31,7 +31,6 @@
 # - Make the delay in between warning messages (which is currently polling_time
 #   x20) configurable in the config file.
 # - Refactor code so it's cleaner.  The main loop's probably too long.
-# - Write a real command parser.
 
 # Load modules.
 import argparse
@@ -40,6 +39,7 @@ import json
 import logging
 import os
 import psutil
+import pyparsing as pp
 import requests
 import statvfs
 import sys
@@ -101,6 +101,20 @@ disk_usage_counter = 0
 memory_utilization_counter = 0
 memory_free_counter = 0
 
+# Parser primitives.
+# We define them up here because they'll be re-used over and over.
+help_command = pp.CaselessLiteral("help")
+load_command = pp.CaselessLiteral("load")
+sysload_command = pp.CaselessLiteral("sysload")
+system_load_command = pp.CaselessLiteral("system load")
+load_or_system_load_command = pp.Or([load_command, sysload_command,
+    system_load_command])
+uname_command = pp.CaselessLiteral("uname")
+info_command = pp.CaselessLiteral("info")
+system_info = pp.CaselessLiteral("system info")
+system_info_command = pp.Or([uname_command, info_command, system_info])
+cpus_command = pp.CaselessLiteral("cpus")
+
 # Functions.
 # sysload(): Function that takes a snapshot of the current system load averages
 #   and returns them as a hash table.  Takes no arguments.
@@ -116,9 +130,8 @@ def sysload():
 #   load averages to see if they're too high.  Sends a message to the bot's
 #   owner if an average is too high.
 def check_sysload(test=False):
-    logger.debug("Entered method check_sysload().")
-
     message = ""
+
     if test:
         current_load_avg = {}
         current_load_avg['one_minute'] = 5.0
@@ -180,8 +193,7 @@ def cpu_idle_time():
 # check_cpu_idle_time(): Takes no arguments.  Sends an alert to the bot's owner
 #   if the CPU idle time is too low.
 def check_cpu_idle_time(test=False):
-    logger.debug("Entered method check_cpu_idle_time().")
-
+    global cpu_idle_time_counter
     message = ""
     idle_time = cpu_idle_time()
 
@@ -243,7 +255,6 @@ def disk_usage():
 #   the system and send the bot's owner an alert if one of the disks gets too
 #   full.
 def check_disk_usage(test=False):
-    logger.debug("Entered method check_disk_usage().")
     message = ""
     disk_space_free = disk_usage()
 
@@ -285,7 +296,6 @@ def memory_utilization():
 # check_memory_utilization(): Function that checks how much memory is free on
 #   the system and alerts the bot's owner if it's below a certain amount.
 def check_memory_utilization(test=False):
-    logger.debug("Entered method check_memory_utilization().")
     message = ""
     memory_free = memory_utilization()
 
@@ -336,7 +346,6 @@ def set_loglevel(loglevel):
 #   send to the user.  Returns a True or False which delineates whether or not
 #   it worked.
 def send_message_to_user(message):
-    logger.debug("Entered function send_message_to_user().")
 
     # Headers the XMPP bridge looks for for the message to be valid.
     headers = {'Content-type': 'application/json'}
@@ -353,38 +362,97 @@ def send_message_to_user(message):
         data=json.dumps(reply))
     return
 
+# parse_help(): Function that matches the word "help" all by itself in an input
+#   string.  Returns the string "help" on a match and None if not.
+def parse_help(command):
+    try:
+        parsed_command = help_command.parseString(command)
+        logger.debug("Matched command 'help'.")
+        return "help"
+    except:
+        return None
+
+# parse_system_load(): Function that matches the strings "load" or "system load"
+#   all by themselves in an input string.  Returns the string "load" on a match
+#   and None if not.
+def parse_system_load(command):
+    try:
+        parsed_command = load_or_system_load_command.parseString(command)
+        logger.debug("Matched command 'load'.")
+        return "load"
+    except:
+        return None
+
+# parse_system_info(): Function that matches the strings "uname" or "system
+#   info" or "info" all by themselves in an input string.  Returns the string
+#   "info" on a match and None if not.
+def parse_system_info(command):
+    try:
+        parsed_command = system_info_command.parseString(command)
+        logger.debug("Matched command 'info'.")
+        return "info"
+    except:
+        return None
+
+# parse_cpus(): Function that matches the strings "cpus" or "CPUs" all by
+#   themselves in an input string.  Returns the string "cpus" on a match and
+#   None if not.
+def parse_cpus(command):
+    try:
+        parsed_command = cpus_command.parseString(command)
+        logger.debug("Matched command 'cpus'.")
+        return "cpus"
+    except:
+        return None
+
 # parse_command(): Function that parses commands from the message bus.
-#   Commands are of the form MOOF MOOF MOOF.
+#   Commands come as strings and are run through PyParsing to figure out what
+#   they are.  A single-word string is returned as a match or None on no match.
+#   Conditionals are short-circuited to speed up execution.
 def parse_command(command):
     logger.debug("Entered method parse_command().")
+
+    parsed_command = None
 
     # Clean up the incoming command.
     command = command.strip()
     command = command.strip('.')
+    command = command.strip(',')
     command = command.lower()
     logger.debug("Local value of command: " + str(command))
 
     # If the get request is empty (i.e., nothing in the queue), bounce.
     if "no commands" in command:
         logger.debug("Got empty command.")
-        return
+        return None
 
-    # Test for a request for help.
-    if "help" in command:
+    # Online help?
+    parsed_command = parse_help(command)
+    if parsed_command == "help":
         logger.debug("Got a request for help.")
-        return "help"
+        return parsed_command
 
     # System load?
-    if "sysload" or "load" in command:
+    parsed_command = parse_system_load(command)
+    if parsed_command == "load":
         logger.debug("Got a request for system load.")
-        return "load"
+        return parsed_command
 
     # System info?
-    if "uname" or "info" in command:
+    parsed_command = parse_system_info(command)
+    if parsed_command == "info":
         logger.debug("Got a request for system info.")
-        return "info"
+        return parsed_command
 
-    return
+    # CPUs?
+    parsed_command = parse_cpus(command)
+    if parsed_command == "cpus":
+        logger.debug("Got a request for a CPU count.")
+        return parsed_command
+
+    # Fall-through: Nothing matched.
+    logger.debug("Fell through - nothing matched..")
+    return None
 
 # run_self_tests(): Function that calls each check function in succession and
 #   prints the output.  It then calls each check function and deliberately
@@ -423,11 +491,13 @@ def run_self_tests():
 def online_help():
     logger.debug("Entered the function online_help().")
     message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
-    message = message + """I continually monitor the state of the system I'm running on, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge.  I currently monitor system load, CPU idle time, disk utilization, and memory utilization.  The interactive commands I currently support are:
+    message = message + """
+    I continually monitor the state of the system I'm running on, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge.  I currently monitor system load, CPU idle time, disk utilization, and memory utilization.  The interactive commands I currently support are:
 
     help - Display this online help.
-    sysload/system load - Get current system load.
-    uname/system info - Get system info.
+    load/sysload/system load - Get current system load.
+    uname/info/system info - Get system info.
+    cpus/CPUs - Get number of CPUs in the system.
     """
     return message
 
@@ -444,8 +514,7 @@ argparser.add_argument("--loglevel", action="store",
     help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument("--polling", action="store", default=60,
-    help="Default: 60 seconds")
+argparser.add_argument("--polling", action="store", help="Default: 60 seconds")
 
 # Trigger the self-test function?
 argparser.add_argument("--test", action="store_true",
@@ -501,7 +570,7 @@ if args.polling:
 
 # Calculate how often the bot checks the system stats.  This is how often the
 # main loop runs.
-status_polling = polling_time / 4
+status_polling = int(polling_time) / 4
 
 # Calculate the period of time that should pass in between sending alerts to
 # the user to keep from inundating them.
@@ -514,10 +583,8 @@ logger.debug("Configuration file: " + config_file)
 logger.debug("Server to report to: " + server)
 logger.debug("Message queue to report to: " + message_queue)
 logger.debug("Bot name to respond to search requests with: " + bot_name)
-logger.debug("Time in seconds for polling the message queue: " +
-    str(polling_time))
-logger.debug("Time in seconds for polling the system status: " +
-    str(status_polling))
+logger.debug("Value of polling_time (in seconds): " + str(polling_time))
+logger.debug("Value of loop_counter (in seconds): " + str(status_polling))
 
 # Determine if the bot is going into self-test mode, and if so execute the
 # self-tests.
@@ -531,6 +598,7 @@ if args.test:
 logger.debug("Entering main loop to handle requests.")
 send_message_to_user(bot_name + " now online.")
 while True:
+
     # Reset the command from the message bus, just in case.
     command = ""
 
@@ -541,13 +609,15 @@ while True:
     check_disk_usage()
     check_memory_utilization()
 
-    # Add status_polling to loop counter.
+    # Increment loop_counter by status_polling.  Seems obvious, but this makes
+    # it easy to grep for.
     loop_counter = loop_counter + status_polling
+    logger.debug("Value of polling_time is " + str(polling_time) + ".")
     logger.debug("Value of loop_counter is now " + str(loop_counter) + ".")
 
     # If loop_counter is equal to polling_time, check the message queue for
     # commands.
-    if loop_counter >= polling_time:
+    if int(loop_counter) >= int(polling_time):
         try:
             logger.debug("Contacting message queue: " + message_queue)
             request = requests.get(message_queue)
@@ -589,7 +659,12 @@ while True:
 
             if command == "info":
                 info = uname()
-                message = "System " + info['hostname'] + " in running kernel version " + info['version'] + " compiled for " + info['buildinfo'] + " on the " + info['arch'] + " processor architecture."
+                message = "System " + info['hostname'] + " in running kernel version " + info['version'] + " compiled by " + info['buildinfo'] + " on the " + info['arch'] + " processor architecture."
+                send_message_to_user(message)
+
+            if command == "cpus":
+                info = cpus()
+                message = "The system has " + str(info) + " CPUs available to it."
                 send_message_to_user(message)
 
         # Reset loop counter.
