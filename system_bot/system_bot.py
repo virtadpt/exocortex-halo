@@ -30,6 +30,8 @@
 #   normal, automatically flip the "alert acknowledged" flag back.
 # - Make the delay in between warning messages (which is currently polling_time
 #   x20) configurable in the config file.
+# - Refactor code so it's cleaner.  The main loop's probably too long.
+# - Write a real command parser.
 
 # Load modules.
 import argparse
@@ -360,6 +362,7 @@ def parse_command(command):
     command = command.strip()
     command = command.strip('.')
     command = command.lower()
+    logger.debug("Local value of command: " + str(command))
 
     # If the get request is empty (i.e., nothing in the queue), bounce.
     if "no commands" in command:
@@ -370,6 +373,16 @@ def parse_command(command):
     if "help" in command:
         logger.debug("Got a request for help.")
         return "help"
+
+    # System load?
+    if "sysload" or "load" in command:
+        logger.debug("Got a request for system load.")
+        return "load"
+
+    # System info?
+    if "uname" or "info" in command:
+        logger.debug("Got a request for system info.")
+        return "info"
 
     return
 
@@ -413,6 +426,8 @@ def online_help():
     message = message + """I continually monitor the state of the system I'm running on, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge.  I currently monitor system load, CPU idle time, disk utilization, and memory utilization.  The interactive commands I currently support are:
 
     help - Display this online help.
+    sysload/system load - Get current system load.
+    uname/system info - Get system info.
     """
     return message
 
@@ -514,6 +529,7 @@ if args.test:
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
+send_message_to_user(bot_name + " now online.")
 while True:
     # Reset the command from the message bus, just in case.
     command = ""
@@ -564,6 +580,17 @@ while True:
             # If the user is requesting online help...
             if command == "help":
                 send_message_to_user(online_help())
+
+            # If the user is requesting system load...
+            if command == "load":
+                load = sysload()
+                message = "The current system load is " + str(load['one_minute']) + " on the one minute average and " + str(load['five_minute']) + " on the five minute average."
+                send_message_to_user(message)
+
+            if command == "info":
+                info = uname()
+                message = "System " + info['hostname'] + " in running kernel version " + info['version'] + " compiled for " + info['buildinfo'] + " on the " + info['arch'] + " processor architecture."
+                send_message_to_user(message)
 
         # Reset loop counter.
         logger.debug("Resetting loop_counter.")
