@@ -267,6 +267,7 @@ def disk_usage():
 #   full.
 def check_disk_usage(test=False):
     message = ""
+    global disk_usage_counter
     disk_space_free = disk_usage()
 
     # If bot is in self-test mode, set the value of disk_space_free to a
@@ -308,6 +309,7 @@ def memory_utilization():
 #   the system and alerts the bot's owner if it's below a certain amount.
 def check_memory_utilization(test=False):
     message = ""
+    global memory_free_counter
     memory_free = memory_utilization()
 
     # If the bot is in self-test mode, set memory_free to a critical value.
