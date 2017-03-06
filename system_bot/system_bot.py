@@ -722,7 +722,7 @@ while True:
                 info = disk_usage()
                 message = "The system has the following amounts of disk space free:\n"
                 for key in info.keys():
-                    message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "%"
+                    message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "%\n"
                 send_message_to_user(message)
 
             if command == "memory":
