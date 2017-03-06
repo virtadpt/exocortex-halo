@@ -114,6 +114,11 @@ info_command = pp.CaselessLiteral("info")
 system_info = pp.CaselessLiteral("system info")
 system_info_command = pp.Or([uname_command, info_command, system_info])
 cpus_command = pp.CaselessLiteral("cpus")
+disk_command = pp.CaselessLiteral("disk")
+disk_usage_command = pp.CaselessLiteral("disk usage")
+storage_command = pp.CaselessLiteral("storage")
+free_disk_space_command = pp.Or([disk_command, disk_usage_command,
+    storage_command])
 
 # Functions.
 # sysload(): Function that takes a snapshot of the current system load averages
@@ -244,7 +249,7 @@ def disk_usage():
         max = float(disk_device.f_blocks * disk_device.f_bsize)
 
         # blocks unused * bytes per block
-        free = float(disk_device.f_bavail* disk_device.f_bsize)
+        free = float(disk_device.f_bavail * disk_device.f_bsize)
 
         # Calculate bytes free as a percentage.
         disk_free[i] = (free / max) * 100
@@ -405,6 +410,17 @@ def parse_cpus(command):
     except:
         return None
 
+# parse_disk_space(): Function that matches the strings "disk", "disk usage",
+#   or "storage" all by themselves in an input string.  Returns the string
+#   "disk" on a match and None if not.
+def parse_disk_space(command):
+    try:
+        parsed_command = free_disk_space_command.parseString(command)
+        logger.debug("Matched command 'disk'.")
+        return "disk"
+    except:
+        return None
+
 # parse_command(): Function that parses commands from the message bus.
 #   Commands come as strings and are run through PyParsing to figure out what
 #   they are.  A single-word string is returned as a match or None on no match.
@@ -448,6 +464,12 @@ def parse_command(command):
     parsed_command = parse_cpus(command)
     if parsed_command == "cpus":
         logger.debug("Got a request for a CPU count.")
+        return parsed_command
+
+    # Free disk space?
+    parsed_command = parse_disk_space(command)
+    if parsed_command == "disk":
+        logger.debug("Got a request for free disk space.")
         return parsed_command
 
     # Fall-through: Nothing matched.
@@ -498,6 +520,7 @@ def online_help():
     load/sysload/system load - Get current system load.
     uname/info/system info - Get system info.
     cpus/CPUs - Get number of CPUs in the system.
+    disk/disk usage/storage - Enumerate disk devices on the system and amount of storage free.
     """
     return message
 
@@ -665,6 +688,13 @@ while True:
             if command == "cpus":
                 info = cpus()
                 message = "The system has " + str(info) + " CPUs available to it."
+                send_message_to_user(message)
+
+            if command == "disk":
+                info = disk_usage()
+                message = "The system has the following amounts of disk space free:\n"
+                for key in info.keys():
+                    message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "%"
                 send_message_to_user(message)
 
         # Reset loop counter.
