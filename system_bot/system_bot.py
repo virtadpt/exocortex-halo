@@ -119,6 +119,12 @@ disk_usage_command = pp.CaselessLiteral("disk usage")
 storage_command = pp.CaselessLiteral("storage")
 free_disk_space_command = pp.Or([disk_command, disk_usage_command,
     storage_command])
+memory_command = pp.CaselessLiteral("memory")
+free_memory_command = pp.CaselessLiteral("free memory")
+ram_command = pp.CaselessLiteral("ram")
+free_ram_command = pp.CaselessLiteral("free ram")
+unused_memory_command = pp.Or([memory_command, free_memory_command, ram_command,
+    free_ram_command])
 
 # Functions.
 # sysload(): Function that takes a snapshot of the current system load averages
@@ -421,6 +427,17 @@ def parse_disk_space(command):
     except:
         return None
 
+# parse_free_memory(): Function that matches the strings "memory", "free
+#   memory", "ram", or "free ram" all by themselves in an input string.
+#   Returns the string "memory" on a match and None if not.
+def parse_free_memory(command):
+    try:
+        parsed_command = unused_memory_command.parseString(command)
+        logger.debug("Matched command 'memory'.")
+        return "memory"
+    except:
+        return None
+
 # parse_command(): Function that parses commands from the message bus.
 #   Commands come as strings and are run through PyParsing to figure out what
 #   they are.  A single-word string is returned as a match or None on no match.
@@ -472,6 +489,12 @@ def parse_command(command):
         logger.debug("Got a request for free disk space.")
         return parsed_command
 
+    # Free memory?
+    parsed_command = parse_free_memory(command)
+    if parsed_command == "memory":
+        logger.debug("Got a request for free system memory.")
+        return parsed_command
+
     # Fall-through: Nothing matched.
     logger.debug("Fell through - nothing matched..")
     return None
@@ -521,6 +544,9 @@ def online_help():
     uname/info/system info - Get system info.
     cpus/CPUs - Get number of CPUs in the system.
     disk/disk usage/storage - Enumerate disk devices on the system and amount of storage free.
+    memory/free memory/RAM/free ram - Amount of free memory.
+
+    All commands are case-insensitive.
     """
     return message
 
@@ -695,6 +721,11 @@ while True:
                 message = "The system has the following amounts of disk space free:\n"
                 for key in info.keys():
                     message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "%"
+                send_message_to_user(message)
+
+            if command == "memory":
+                info = memory_utilization()
+                message = str(info) + "% of the system memory is free"
                 send_message_to_user(message)
 
         # Reset loop counter.
