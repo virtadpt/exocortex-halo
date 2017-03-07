@@ -142,6 +142,7 @@ def sysload():
 #   owner if an average is too high.
 def check_sysload(test=False):
     message = ""
+    global sysload_counter
 
     if test:
         current_load_avg = {}
