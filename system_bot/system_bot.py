@@ -45,6 +45,8 @@ import statvfs
 import sys
 import time
 
+import parser
+
 # Global variables.
 # Handle to an argument parser object.
 argparser = None
@@ -696,7 +698,7 @@ while True:
                 continue
 
             # Parse the command.
-            command = parse_command(command)
+            command = parser.parse_command(command)
             logger.debug("Parsed command: " + str(command))
 
             # If the user is requesting online help...
