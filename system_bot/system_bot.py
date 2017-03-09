@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
-# systembot.py - Bot that periodically polls the state of the system it's
+# system_bot.py - Bot that periodically polls the state of the system it's
 #   running on to see how healthy it is and alerts the owner via the XMPP
 #   bridge if something's wrong.
 
@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -30,7 +31,6 @@
 #   normal, automatically flip the "alert acknowledged" flag back.
 # - Make the delay in between warning messages (which is currently polling_time
 #   x20) configurable in the config file.
-# - Refactor code so it's cleaner.  The main loop's probably too long.
 
 # Load modules.
 import argparse
@@ -41,11 +41,11 @@ import os
 import psutil
 import pyparsing as pp
 import requests
-import statvfs
 import sys
 import time
 
 import parser
+import system_stats
 
 # Global variables.
 # Handle to an argument parser object.
@@ -104,217 +104,6 @@ memory_utilization_counter = 0
 memory_free_counter = 0
 
 # Functions.
-# sysload(): Function that takes a snapshot of the current system load averages
-#   and returns them as a hash table.  Takes no arguments.
-def sysload():
-    sysload = {}
-    system_load = os.getloadavg()
-    sysload['one_minute'] = system_load[0]
-    sysload['five_minute'] = system_load[1]
-    sysload['fifteen_minute'] = system_load[2]
-    return sysload
-
-# check_sysload: Function that pulls the current system load and tests the
-#   load averages to see if they're too high.  Sends a message to the bot's
-#   owner if an average is too high.
-def check_sysload(test=False):
-    message = ""
-    global sysload_counter
-
-    if test:
-        current_load_avg = {}
-        current_load_avg['one_minute'] = 5.0
-        current_load_avg['five_minute'] = 5.0
-        current_load_avg['fifteen_minute'] = 5.0
-    else:
-        current_load_avg = sysload()
-
-    # Check the average system loads and construct a message for the bot's
-    # owner.
-    if current_load_avg['one_minute'] >= 1.5:
-        message = message + "WARNING: The current system load is " + str(current_load_avg['one_minute']) + ".\n"
-
-    if current_load_avg['five_minute'] >= 2.0:
-        message = message + "WARNING: The five minute system load is " + str(current_load_avg['one_minute']) + ".  What's running that's doing this?\n"
-
-    if current_load_avg['fifteen_minute'] >= 2.0:
-        message = message + "WARNING: The fifteen minute system load is " + str(current_load_avg['one_minute']) + ".  I think something's wrong.\n"
-
-    # In test mode, just return the message.
-    if test:
-        return message
-
-    # If a message has been constructed, check to see if it's been longer than
-    # the last time a message was sent.  If so, send it and reset the counter.
-    if message:
-        if sysload_counter >= time_between_alerts:
-            send_message_to_user(message)
-            sysload_counter = 0
-            return
-
-        # If enough time between alerts hasn't passed yet, just increment the
-        # counter.
-        sysload_counter = sysload_counter + status_polling
-    return
-
-# uname(): Function that calls os.uname(), extracts a few things, and returns
-#   them as a hash table.  This should only be called upon request by the user,
-#   or maybe when the bot starts up.  There's no sense in having it run every
-#   time it loops because it changes so little.  Takes no arguments.
-def uname():
-    system_info = {}
-    sysinfo = os.uname()
-    system_info['hostname'] = sysinfo[1]
-    system_info['version'] = sysinfo[2]
-    system_info['buildinfo'] = sysinfo[3]
-    system_info['arch'] = sysinfo[4]
-    return system_info
-
-# cpus(): Takes no arguments.  Returns the number of CPUs on the system.
-def cpus():
-    return psutil.cpu_count()
-
-# cpu_idle_time(): Takes no arguments.  Returns the percentage of runtime the
-#   CPUs are idle as a floating point number.
-def cpu_idle_time():
-    return psutil.cpu_times_percent()[3]
-
-# check_cpu_idle_time(): Takes no arguments.  Sends an alert to the bot's owner
-#   if the CPU idle time is too low.
-def check_cpu_idle_time(test=False):
-    global cpu_idle_time_counter
-    message = ""
-    idle_time = cpu_idle_time()
-
-    # If the bot is in self-test mode, set idle_time to a critical value.
-    if test:
-        idle_time = 0.01
-
-    # Check the percentage of CPU idle time and construct a message for the
-    # bot's owner if it's too low.
-    if idle_time < 15.0:
-        message = "WARNING: The current CPU idle time is sitting at " + str(idle_time) + ".  What's keeping it so busy?"
-
-    # In self-test mode, return the message.
-    if test:
-        return message
-
-    # If a message has been built, check to see if enough time in between
-    # messages has passed.  If so, send the message.
-    if message:
-        if cpu_idle_time_counter >= time_between_alerts:
-            send_message_to_user(message)
-            cpu_idle_time_counter = 0
-            return
-
-        # If not enough time has passed yet, just increment the counter.
-        cpu_idle_time_counter = cpu_idle_time_counter + status_polling
-    return
-
-# disk_usage(): Takes no arguments.  Returns a hash table containing the disk
-#   device name as the key and percentage used as the value.
-def disk_usage():
-    disk_free = {}
-    disk_partitions = None
-    disk_device = None
-    max = 0.0
-    free = 0.0
-
-    # Prime the hash with the names of the mounted disk partitions.
-    disk_partitions = psutil.disk_partitions()
-    for i in disk_partitions:
-        disk_free[i.mountpoint] = ""
-
-    # Calculate the maximum and free bytes of each disk device.
-    for i in disk_free.keys():
-        disk_device = os.statvfs(i)
-
-        # blocks * bytes per block
-        max = float(disk_device.f_blocks * disk_device.f_bsize)
-
-        # blocks unused * bytes per block
-        free = float(disk_device.f_bavail * disk_device.f_bsize)
-
-        # Calculate bytes free as a percentage.
-        disk_free[i] = (free / max) * 100
-
-    return disk_free
-
-# check_disk_usage(): Pull the amount of free storage for each disk device on
-#   the system and send the bot's owner an alert if one of the disks gets too
-#   full.
-def check_disk_usage(test=False):
-    message = ""
-    global disk_usage_counter
-    disk_space_free = disk_usage()
-
-    # If bot is in self-test mode, set the value of disk_space_free to a
-    # critical value.
-    if test:
-        disk_space_free = {}
-        disk_space_free['/boot'] = 0.01
-        disk_space_free['/'] = 0.01
-
-    # Check the amount of space free on each disk device.  For each disk that's
-    # running low on space construct a line of the message.
-    for disk in disk_space_free.keys():
-        if disk_space_free[disk] < 20.0:
-            message = message + "WARNING: Disk device " + disk + " has " + str(disk_space_free[disk]) + "% of its capacity left.\n"
-
-    # If bot is in self-test mode, return the message.
-    if test:
-        return message
-
-    # If a message has been constructed, check how much time has passed since
-    # the last message was sent.  If enough time has, sent the bot's owner
-    # the message.
-    if message:
-        if disk_usage_counter >= time_between_alerts:
-            send_message_to_user(message)
-            disk_usage_counter = 0
-            return
-
-        # Not enough time has passed.  Increment the counter and move on.
-        disk_usage_counter = disk_usage_counter + status_polling
-    return
-
-# memory_utilization(): Function that returns the amount of memory free as a
-#   floating point value (a percentage).  Takes no arguments.
-def memory_utilization():
-    return psutil.virtual_memory().percent
-
-# check_memory_utilization(): Function that checks how much memory is free on
-#   the system and alerts the bot's owner if it's below a certain amount.
-def check_memory_utilization(test=False):
-    message = ""
-    global memory_free_counter
-    memory_free = memory_utilization()
-
-    # If the bot is in self-test mode, set memory_free to a critical value.
-    if test:
-        memory_free = 0.01
-
-    # Check the amount of memory free.  If it's below a critical threshold
-    # construct a message for the bot's owner.
-    if memory_free <= 20.0:
-        message = "WARNING: The amount of free memory has reached the critical point of " + str(memory_free) + "% free.  You'll want to see to this before the OOM killer starts reaping processes."
-
-    # If the bot is in self-test mode, return the message.
-    if test:
-        return message
-
-    # If a message has been constructed, check how much time has passed since
-    # the last message was sent.  If enough time has, send the bot's owner the
-    # message.
-    if message:
-        if memory_free_counter >= time_between_alerts:
-            send_message_to_user(message)
-            memory_free_counter = 0
-            return
-
-        # Not enough time has passed.  Increment the counter and move on.
-        memory_free_counter = memory_free_counter + status_polling
-    return
 
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -351,38 +140,6 @@ def send_message_to_user(message):
     # user.
     request = requests.put(server + "replies", headers=headers,
         data=json.dumps(reply))
-    return
-
-# run_self_tests(): Function that calls each check function in succession and
-#   prints the output.  It then calls each check function and deliberately
-#   triggers the warning conditions to make sure they work.
-def run_self_tests():
-    print "Exercising sysload functions."
-    print sysload()
-    print check_sysload(test=True)
-
-    print "Exercising uname()."
-    print uname()
-    print
-
-    print "Exercising cpus()."
-    print cpus()
-    print
-
-    print "Exercising cpu_idle_time() functions."
-    print cpu_idle_time()
-    print check_cpu_idle_time(test=True)
-    print
-
-    print "Exercising disk_usage() functions."
-    print disk_usage()
-    print check_disk_usage(test=True)
-
-    print "Exercising memory_utilization() functions."
-    print memory_utilization()
-    print check_memory_utilization(test=True)
-    print
-
     return
 
 # online_help(): Function that returns text - online help - to the user.  Takes
@@ -507,10 +264,14 @@ while True:
 
     # Start checking the system runtime stats.  If anything is too far out of
     # whack, send an alert via the XMPP bridge's response queue.
-    check_sysload()
-    check_cpu_idle_time()
-    check_disk_usage()
-    check_memory_utilization()
+    sysload_counter = system_stats.check_sysload(sysload_counter,
+        time_between_alerts, status_polling)
+    cpu_idle_time_counter = system_stats.check_cpu_idle_time(
+        cpu_idle_time_counter, time_between_alerts, status_polling)
+    disk_usage_counter = system_stats.check_disk_usage(disk_usage_counter,
+        time_between_alerts, status_polling)
+    memory_free_counter = system_stats.check_memory_utilization(
+        memory_free_counter, time_between_alerts, status_polling)
 
     # Increment loop_counter by status_polling.  Seems obvious, but this makes
     # it easy to grep for.
@@ -556,30 +317,34 @@ while True:
 
             # If the user is requesting system load...
             if command == "load":
-                load = sysload()
+                load = system_stats.sysload()
                 message = "The current system load is " + str(load['one_minute']) + " on the one minute average and " + str(load['five_minute']) + " on the five minute average."
                 send_message_to_user(message)
 
             if command == "info":
-                info = uname()
+                info = system_stats.uname()
                 message = "System " + info['hostname'] + " in running kernel version " + info['version'] + " compiled by " + info['buildinfo'] + " on the " + info['arch'] + " processor architecture."
                 send_message_to_user(message)
 
             if command == "cpus":
-                info = cpus()
+                info = system_stats.cpus()
                 message = "The system has " + str(info) + " CPUs available to it."
                 send_message_to_user(message)
 
             if command == "disk":
-                info = disk_usage()
+                info = system_stats.disk_usage()
                 message = "The system has the following amounts of disk space free:\n"
                 for key in info.keys():
                     message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "%\n"
                 send_message_to_user(message)
 
             if command == "memory":
-                info = memory_utilization()
+                info = system_stats.memory_utilization()
                 message = str(info) + "% of the system memory is free"
+                send_message_to_user(message)
+
+            if command == "unknown":
+                message = "I didn't recognize that command."
                 send_message_to_user(message)
 
         # Reset loop counter.

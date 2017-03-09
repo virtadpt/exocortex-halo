@@ -152,7 +152,7 @@ def parse_command(command):
         return parsed_command
 
     # Fall-through: Nothing matched.
-    return None
+    return "unknown"
 
 if "__name__" == "__main__":
     pass
