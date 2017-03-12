@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v2.1 - Added system uptime.
 # v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.
 
@@ -21,9 +22,11 @@ import psutil
 import statvfs
 import sys
 
+from datetime import timedelta
+
 # Functions.
-# sysload(): Function that takes a snapshot of the current system load averages
-#   and returns them as a hash table.  Takes no arguments.
+# sysload(): Function that takes a snapshot of the current system load
+#   averages.  Takes no arguments.  Returns system loads as a hash table.
 def sysload():
     sysload = {}
     system_load = os.getloadavg()
@@ -33,9 +36,9 @@ def sysload():
     return sysload
 
 # check_sysload: Function that pulls the current system load and tests the
-#   load averages to see if they're too high.  Takes two arguments, the
-#   sysload counter and the time between alerts.  Sends a message to the bot's
-#   owner if an average is too high.
+#   load averages to see if they're too high.  Takes three arguments, the
+#   sysload counter, the time between alerts, and the value of status_polling.
+#   Sends a message to the user, returns an updated value for sysload_counter.
 def check_sysload(sysload_counter, time_between_alerts, status_polling):
     message = ""
     current_load_avg = sysload()
@@ -63,10 +66,10 @@ def check_sysload(sysload_counter, time_between_alerts, status_polling):
         sysload_counter = sysload_counter + status_polling
     return sysload_counter
 
-# uname(): Function that calls os.uname(), extracts a few things, and returns
-#   them as a hash table.  This should only be called upon request by the user,
-#   or maybe when the bot starts up.  There's no sense in having it run every
-#   time it loops because it changes so little.  Takes no arguments.
+# uname(): Function that calls os.uname(), extracts a few things.  This should
+#   only be called upon request by the user, or maybe when the bot starts up.
+#   There's no sense in having it run every time it loops.  Takes no arguments.
+#   Returns a hash table containing the information.
 def uname():
     system_info = {}
     sysinfo = os.uname()
@@ -86,7 +89,8 @@ def cpu_idle_time():
     return psutil.cpu_times_percent()[3]
 
 # check_cpu_idle_time(): Takes no arguments.  Sends an alert to the bot's owner
-#   if the CPU idle time is too low.
+#   if the CPU idle time is too low.  Returns an updated value for
+#   cpu_idle_time_counter.
 def check_cpu_idle_time(cpu_idle_time_counter, time_between_alerts,
         status_polling):
     message = ""
@@ -139,7 +143,9 @@ def disk_usage():
 
 # check_disk_usage(): Pull the amount of free storage for each disk device on
 #   the system and send the bot's owner an alert if one of the disks gets too
-#   full.
+#   full.  Takes as arguments the values of disk_usage_counter,
+#   time_between_alerts, and status polling.  Returns an updated value for
+#   disk_usage_counter.
 def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling):
     message = ""
     disk_space_free = disk_usage()
@@ -169,6 +175,9 @@ def memory_utilization():
 
 # check_memory_utilization(): Function that checks how much memory is free on
 #   the system and alerts the bot's owner if it's below a certain amount.
+#   Takes three arguments, the current values of memory_free_counter and
+#   time_between_alerts, and the value of status_polling.  Returns an updated
+#   value for memory_free_counter.
 def check_memory_utilization(memory_free_counter, time_between_alerts,
         status_polling):
     message = ""
@@ -190,6 +199,22 @@ def check_memory_utilization(memory_free_counter, time_between_alerts,
         # Not enough time has passed.  Increment the counter and move on.
         memory_free_counter = memory_free_counter + status_polling
     return memory_free_counter
+
+# uptime(): Function that returns the length of time the system has been
+#   online from /proc/uptime.  Takes no arguments, returns a string.
+def uptime():
+    uptime_seconds = None
+    uptime_string = None
+
+    try:
+        file = open("/proc/uptime", "r")
+        uptime_seconds = float(file.readline().split()[0])
+        file.close()
+    except:
+        return None
+    uptime_string = str(timedelta(seconds = uptime_seconds))
+
+    return uptime_string
 
 if "__name__" == "__main__":
     pass

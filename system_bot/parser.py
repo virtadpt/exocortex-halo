@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v2.1 - Added system uptime.
 # v2.0 - Split all the code up into separate modules.
 # v1.0 - Initial release.
 
@@ -43,6 +44,7 @@ ram_command = pp.CaselessLiteral("ram")
 free_ram_command = pp.CaselessLiteral("free ram")
 unused_memory_command = pp.Or([memory_command, free_memory_command, ram_command,
     free_ram_command])
+uptime_command = pp.CaselessLiteral("uptime")
 
 # parse_help(): Function that matches the word "help" all by itself in an input
 #   string.  Returns the string "help" on a match and None if not.
@@ -103,6 +105,15 @@ def parse_free_memory(command):
     except:
         return None
 
+# parse_uptime(): Function that matches the string "uptime" in an input
+#   string.  Returns the string "uptime" on a match and None if not.
+def parse_uptime(command):
+    try:
+        parsed_command = uptime_command.parseString(command)
+        return "uptime"
+    except:
+        return None
+
 # parse_command(): Function that parses commands from the message bus.
 #   Commands come as strings and are run through PyParsing to figure out what
 #   they are.  A single-word string is returned as a match or None on no match.
@@ -149,6 +160,11 @@ def parse_command(command):
     # Free memory?
     parsed_command = parse_free_memory(command)
     if parsed_command == "memory":
+        return parsed_command
+
+    # System uptime?
+    parsed_command = parse_uptime(command)
+    if parsed_command == "uptime":
         return parsed_command
 
     # Fall-through: Nothing matched.

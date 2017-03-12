@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v2.1 - Added uptime.
 # v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.
 
@@ -156,6 +157,7 @@ def online_help():
     cpus/CPUs - Get number of CPUs in the system.
     disk/disk usage/storage - Enumerate disk devices on the system and amount of storage free.
     memory/free memory/RAM/free ram - Amount of free memory.
+    uptime - How long the system has been online, in days, hours, minutes, and seconds.
 
     All commands are case-insensitive.
     """
@@ -276,7 +278,6 @@ while True:
     # Increment loop_counter by status_polling.  Seems obvious, but this makes
     # it easy to grep for.
     loop_counter = loop_counter + status_polling
-    logger.debug("Value of polling_time is " + str(polling_time) + ".")
     logger.debug("Value of loop_counter is now " + str(loop_counter) + ".")
 
     # If loop_counter is equal to polling_time, check the message queue for
@@ -340,7 +341,12 @@ while True:
 
             if command == "memory":
                 info = system_stats.memory_utilization()
-                message = str(info) + "% of the system memory is free"
+                message = str(info) + "% of the system memory is free."
+                send_message_to_user(message)
+
+            if command == "uptime":
+                info = system_stats.uptime()
+                message = "The system has been online for " + info + "."
                 send_message_to_user(message)
 
             if command == "unknown":
