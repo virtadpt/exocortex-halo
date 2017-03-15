@@ -68,23 +68,9 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 import json
 import logging
 
+import message_queue
+
 # Globals.
-
-# This hash table's keys are the names of agents, the associated values are
-# lists which implement the message queues.
-message_queue = {}
-
-# Add the message queue so this bot's agents can send replies.
-message_queue['replies'] = []
-
-# Handle for the command line argument parser.
-args = ""
-
-# Path to and name of the configuration file.
-config_file = ""
-
-# Logging for the XMPP bridge.  Defaults to INFO.
-loglevel = ""
 
 # RESTRequestHandler: Subclass that implements a REST API service.  The main
 #   rails are the names of agents or constructs that will poll message queues
@@ -104,13 +90,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-type:", "application/json")
             self.wfile.write('\n')
-            json.dump({"active agents": message_queue.keys()}, self.wfile)
+            json.dump({ "active agents": message_queue.message_queue.keys() },
+                self.wfile)
             return
 
         # Figure out if the base API rail contacted is one of the agents
         # pulling requests from this bot.  If not, return a 404.
         agent = self.path.strip('/')
-        if agent not in message_queue.keys():
+        if agent not in message_queue.message_queue.keys():
             logging.debug("Message queue for agent " + agent + " not found.")
             self.send_response(404)
             self.send_header("Content-type:", "application/json")
@@ -119,7 +106,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             return
 
         # If the message queue is empty, return an error JSON document.
-        if not len(message_queue[agent]):
+        if not len(message_queue.message_queue[agent]):
             logging.debug("Message queue for agent " + agent + " is empty.")
             self.send_response(200)
             self.send_header("Content-Type:", "application/json")
@@ -128,7 +115,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             return
 
         # Extract the earliest command from the agent's message queue.
-        command = message_queue[agent].pop(0)
+        command = message_queue.message_queue[agent].pop(0)
 
         # Assemble a JSON document of the earliest pending command.  Then send
         # the JSON document to the agent.  Multiple hits will be required to
@@ -199,7 +186,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # message queue.
         reply = "Got a message from " + response['name'] + ":\n\n"
         reply = reply + response['reply']
-        message_queue['replies'].append(reply)
+        message_queue.message_queue['replies'].append(reply)
         self.send_response(200)
         return
 
@@ -277,5 +264,6 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             return True
 
 if "__name__" == "__main__":
-    pass
+    print "No self tests yet."
+    sys.exit(0)
 

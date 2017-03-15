@@ -69,14 +69,12 @@ from sleekxmpp.xmlstream import scheduler
 import logging
 import threading
 
+import message_queue
 
 # XMPPClient: XMPP client class.  Implemented using threading.Thread because
 #   it'll spin out on its own to connect to the XMPP server, while the custom
 #   REST API server handles the distribution of requests to other agents.
 class XMPPClient(ClientXMPP):
-
-    # Message queue implemented by the bot.
-    message_queue = None
 
     # Bot's friendly nickname.
     nickname = ""
@@ -89,7 +87,7 @@ class XMPPClient(ClientXMPP):
     replies_processor = None
 
     # Initialize new instances of the class.
-    def __init__(self, username, password, owner, message_queue):
+    def __init__(self, username, password, owner):
 
         # Store the username, password and nickname as local attributes.
         self.nickname = username.split('@')[0].capitalize()
@@ -115,9 +113,6 @@ class XMPPClient(ClientXMPP):
         self.add_event_handler("message", self.message, threaded=True)
         self.add_event_handler("disconnected", self.on_disconnect,
             threaded=True)
-
-        # Attach the message queue.
-        self.message_queue = message_queue
 
         # Start the /replies processing thread.
         self.schedule("replies_processor", 20, self.process_replies_queue,
@@ -146,18 +141,18 @@ class XMPPClient(ClientXMPP):
         # Construct a message for the bot's owner that consists of the list of
         # bots that access the message bridge, along with appropriate
         # plurality of nouns.
-        if len(self.message_queue.keys()) == 1:
+        if len(message_queue.message_queue.keys()) == 1:
             now_online_message = "The bot "
         else:
             now_online_message = "The bots "
 
-        for key in self.message_queue.keys():
+        for key in message_queue.message_queue.keys():
             if key == 'replies':
                 continue
             now_online_message = now_online_message + key + ", "
         now_online_message = now_online_message.strip(", ")
 
-        if len(self.message_queue.keys()) == 1:
+        if len(message_queue.message_queue.keys()) == 1:
             now_online_message = now_online_message + " is now online."
         else:
             now_online_message = now_online_message + " are now online."
@@ -211,7 +206,7 @@ class XMPPClient(ClientXMPP):
             agent_name = message_body.split(' ')[0]
         logging.debug("Agent name: " + agent_name)
 
-        if agent_name not in self.message_queue.keys():
+        if agent_name not in message_queue.message_queue.keys():
             logging.debug("Command sent to agent " + agent_name + ", which doesn't exist on this bot.")
             response = "Request sent to agent " + agent_name + ", which doesn't exist on this bot.  Please check your spelling."
             self.send_message(mto=self.owner, mbody=response)
@@ -227,7 +222,7 @@ class XMPPClient(ClientXMPP):
         logging.debug("Received request: " + command)
 
         # Push the request into the appropriate message queue.
-        self.message_queue[agent_name].append(command)
+        message_queue.message_queue[agent_name].append(command)
         logging.debug("Added request to " + agent_name + "'s message queue.")
 
         # Tell the bot's owner that the request has been added to the agent's
@@ -258,11 +253,11 @@ Individual constructs may have their own online help, so try sending the command
     def _status_report(self):
         logging.debug("Entering XMPPClient._status_report().")
         response = "Contents of message queues are as follows:\n\n"
-        for key in self.message_queue.keys():
+        for key in message_queue.message_queue.keys():
             if key == 'replies':
                 continue
             response = response + "Agent " + key + ": "
-            response = response + str(self.message_queue[key]) + "\n"
+            response = response + str(message_queue.message_queue[key]) + "\n"
         self.send_message(mto=self.owner, mbody=response)
         return
 
@@ -271,8 +266,8 @@ Individual constructs may have their own online help, so try sending the command
     # used one out and sends it to the bot's owner.
     def process_replies_queue(self):
         logging.debug("Entering XMPPClient.process_replies_queue().")
-        if len(self.message_queue['replies']):
-            reply = self.message_queue['replies'].pop(0)
+        if len(message_queue.message_queue['replies']):
+            reply = message_queue.message_queue['replies'].pop(0)
             self.send_message(mto=self.owner, mbody=reply)
         return
 
@@ -283,5 +278,6 @@ Individual constructs may have their own online help, so try sending the command
         return
 
 if "__name__" == "__main__":
-    pass
+    print "No self tests yet."
+    sys.exit(0)
 

@@ -88,19 +88,13 @@ import os
 import sys
 import threading
 
+import message_queue
 import rest
 import xmppclient
 
 # Globals.
 # Handle for the XMPP client.
 xmpp_client = None
-
-# This hash table's keys are the names of agents, the associated values are
-# lists which implement the message queues.
-message_queue = {}
-
-# Add the message queue so this bot's agents can send replies.
-message_queue['replies'] = []
 
 # Handle for the command line argument parser.
 args = ""
@@ -169,7 +163,7 @@ agents = config.get("DEFAULT", "agents")
 
 # Get the names of the agents to set up queues for from the config file.
 for i in agents.split(','):
-    message_queue[i] = []
+    message_queue.message_queue[i] = []
 
 # Figure out how to configure the logger.  Start by reading from the config
 # file.
@@ -187,7 +181,7 @@ logger = logging.getLogger(__name__)
 
 # Instantiate the XMPP client thread.
 logger.debug("Initializing the XMPP client thread.")
-xmpp_client = xmppclient.XMPPClient(username, password, owner, message_queue)
+xmpp_client = xmppclient.XMPPClient(username, password, owner)
 
 # Register some XEP plugins.
 xmpp_client.register_plugin('xep_0030') # Service discovery
