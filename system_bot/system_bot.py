@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v2.2 - Added function to get public IP address of host.
 # v2.1 - Added uptime.
 # v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.
@@ -104,6 +105,9 @@ disk_usage_counter = 0
 memory_utilization_counter = 0
 memory_free_counter = 0
 
+# URL of web service that just returns the IP address of the host.
+ip_addr_web_service = ""
+
 # Functions.
 
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -158,6 +162,7 @@ def online_help():
     disk/disk usage/storage - Enumerate disk devices on the system and amount of storage free.
     memory/free memory/RAM/free ram - Amount of free memory.
     uptime - How long the system has been online, in days, hours, minutes, and seconds.
+    IP/IP address/public IP/IP addr/public IP address/addr - Current publically routable IP address of this host.
 
     All commands are case-insensitive.
     """
@@ -218,6 +223,13 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
+# Get the URL of the web service that just returns an IP address.
+try:
+    ip_addr_web_service = config.get("DEFAULT", "ip_addr_site")
+except:
+    logging.error("You need to specify a URL to a web service that only returns an IP address when you hit it.  There should be one in the configuration file.  If not, you might need a new copy of the config file because a directive is missing.")
+    sys.exit(1)
+
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
@@ -247,6 +259,7 @@ logger.debug("Message queue to report to: " + message_queue)
 logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Value of polling_time (in seconds): " + str(polling_time))
 logger.debug("Value of loop_counter (in seconds): " + str(status_polling))
+logger.debug("URL of web service that returns public IP address: " + ip_addr_web_service)
 
 # Determine if the bot is going into self-test mode, and if so execute the
 # self-tests.
@@ -347,6 +360,11 @@ while True:
             if command == "uptime":
                 info = system_stats.uptime()
                 message = "The system has been online for " + info + "."
+                send_message_to_user(message)
+
+            if command == "ip":
+                info = system_stats.current_ip_address(ip_addr_web_service)
+                message = "The system's current public IP address is " + info + "."
                 send_message_to_user(message)
 
             if command == "unknown":

@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v2.2 - Added function to get public IP address of host.
 # v2.1 - Added system uptime.
 # v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.
@@ -17,8 +18,10 @@
 # TO-DO:
 
 # Load modules.
+import logging
 import os
 import psutil
+import requests
 import statvfs
 import sys
 
@@ -215,6 +218,32 @@ def uptime():
     uptime_string = str(timedelta(seconds = uptime_seconds))
 
     return uptime_string
+
+# current_ip_address: Function that returns the current non-RFC 1989 IP address
+#   of the system using an external HTTP(S) service or REST API.  Takes one
+#   argument, a string containing the URL to the service.  Returns the IP
+#   address as a string or None if it didn't work.
+def current_ip_address(ip_addr_service):
+    request = None
+
+    # Attempt to make an HTTP(S) request to the service that returns the
+    # public IP of the host.
+    request = requests.get(ip_addr_service)
+
+    # Handle catastrophic failure.
+    if not request:
+        logging.err("Failed to contact HTTP(S) service " + str(ip_addr_service) + " to get host's IP address.")
+        return None
+
+    # Handle HTTP error codes.
+    if request.status_code != requests.codes.ok:
+        logging.err("HTTP(S) request to IP address service " + str(ip_addr_service) + "failed, returned HTTP error code " + str(request.status_code) + ".")
+        return None
+
+    # Got the host's public IP address.  Explicitly cast to a string to make
+    # life easier in other modules.
+    logging.debug("Got current IP address of host: " + str(request.text))
+    return str(request.text)
 
 if "__name__" == "__main__":
     pass

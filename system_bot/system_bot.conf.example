@@ -14,3 +14,6 @@ loglevel = info
 # How often to poll the message queue for orders.  Defaults to 60 seconds.
 # polling_time = 60
 
+# URL to hit for public IP address of this system.
+ip_addr_site = https://api.ipify.org/
+

@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v2.2 - Added function to get public IP address of host.
 # v2.1 - Added system uptime.
 # v2.0 - Split all the code up into separate modules.
 # v1.0 - Initial release.
@@ -18,6 +19,7 @@
 # - 
 
 # Load modules.
+import logging
 import pyparsing as pp
 
 # Parser primitives.
@@ -45,6 +47,16 @@ free_ram_command = pp.CaselessLiteral("free ram")
 unused_memory_command = pp.Or([memory_command, free_memory_command, ram_command,
     free_ram_command])
 uptime_command = pp.CaselessLiteral("uptime")
+public_command = pp.CaselessLiteral("public")
+ip_command = pp.CaselessLiteral("ip")
+address_command = pp.CaselessLiteral("address")
+ip_address_command = ip_command + address_command
+public_ip_command = public_command + ip_command
+addr_command = pp.CaselessLiteral("addr")
+ip_addr_command = ip_command + addr_command
+public_ip_address_command = public_command + ip_command + address_command
+ip_address_commands = pp.Or([ip_command, ip_address_command, public_ip_command,
+    ip_addr_command, public_ip_address_command, addr_command])
 
 # parse_help(): Function that matches the word "help" all by itself in an input
 #   string.  Returns the string "help" on a match and None if not.
@@ -114,6 +126,16 @@ def parse_uptime(command):
     except:
         return None
 
+# parse_ip_address(): Function that matches the strings "ip", "ip address",
+#   "public ip", "ip addr", "public ip address", "addr".  Returns the string
+#   "ip" on a match and None if not.
+def parse_ip_address(command):
+    try:
+        parsed_command = ip_address_commands.parseString(command)
+        return "ip"
+    except:
+        return None
+
 # parse_command(): Function that parses commands from the message bus.
 #   Commands come as strings and are run through PyParsing to figure out what
 #   they are.  A single-word string is returned as a match or None on no match.
@@ -165,6 +187,11 @@ def parse_command(command):
     # System uptime?
     parsed_command = parse_uptime(command)
     if parsed_command == "uptime":
+        return parsed_command
+
+    # IP address?
+    parsed_command = parse_ip_address(command)
+    if parsed_command == "ip":
         return parsed_command
 
     # Fall-through: Nothing matched.
