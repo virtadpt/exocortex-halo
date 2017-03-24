@@ -164,7 +164,7 @@ def parse_ip_address(command):
 #   Returns the string "traffic" on a match and None if not.
 def parse_network_traffic(command):
     try:
-        parsed_command = ip_address_commands.parseString(command)
+        parsed_command = network_traffic_stats_command.parseString(command)
         return "traffic"
     except:
         return None

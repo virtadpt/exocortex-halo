@@ -376,7 +376,7 @@ while True:
                     message = "I was unable to get network traffic statistics."
                 else:
                     for i in info.keys():
-                        message = message + "Network interface " + i + ":"
+                        message = message + "Network interface " + i + ":\n"
                         message = message + info[i]["sent"] + " sent.\n"
                         message = message + info[i]["received"] + " received.\n"
                         message = message + "\n"
