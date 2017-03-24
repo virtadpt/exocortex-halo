@@ -12,6 +12,7 @@
 # License: GPLv3
 
 # v2.2 - Added function to get public IP address of host.
+#      - Added function that gets network traffic stats.
 # v2.1 - Added uptime.
 # v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.
@@ -163,6 +164,7 @@ def online_help():
     memory/free memory/RAM/free ram - Amount of free memory.
     uptime - How long the system has been online, in days, hours, minutes, and seconds.
     IP/IP address/public IP/IP addr/public IP address/addr - Current publically routable IP address of this host.
+    network traffic/traffic volume/network stats/traffic stats/traffic count - Bytes sent and received per network interface.
 
     All commands are case-insensitive.
     """
@@ -365,6 +367,19 @@ while True:
             if command == "ip":
                 info = system_stats.current_ip_address(ip_addr_web_service)
                 message = "The system's current public IP address is " + info + "."
+                send_message_to_user(message)
+
+            if command == "traffic":
+                info = system_stats.network_traffic()
+                message = ""
+                if not info:
+                    message = "I was unable to get network traffic statistics."
+                else:
+                    for i in info.keys():
+                        message = message + "Network interface " + i + ":"
+                        message = message + info[i]["sent"] + " sent.\n"
+                        message = message + info[i]["received"] + " received.\n"
+                        message = message + "\n"
                 send_message_to_user(message)
 
             if command == "unknown":

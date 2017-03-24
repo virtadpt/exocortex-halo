@@ -11,6 +11,7 @@
 # License: GPLv3
 
 # v2.2 - Added function to get public IP address of host.
+#      - Added function that gets network traffic stats.
 # v2.1 - Added system uptime.
 # v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.
@@ -19,6 +20,7 @@
 
 # Load modules.
 import logging
+import math
 import os
 import psutil
 import requests
@@ -219,10 +221,10 @@ def uptime():
 
     return uptime_string
 
-# current_ip_address: Function that returns the current non-RFC 1989 IP address
-#   of the system using an external HTTP(S) service or REST API.  Takes one
-#   argument, a string containing the URL to the service.  Returns the IP
-#   address as a string or None if it didn't work.
+# current_ip_address(): Function that returns the current non-RFC 1989 IP
+#   address of the system using an external HTTP(S) service or REST API.
+#   Takes one argument, a string containing the URL to the service.  Returns
+#   the IP address as a string or None if it didn't work.
 def current_ip_address(ip_addr_service):
     request = None
 
@@ -244,6 +246,55 @@ def current_ip_address(ip_addr_service):
     # life easier in other modules.
     logging.debug("Got current IP address of host: " + str(request.text))
     return str(request.text)
+
+# convert_bytes(): Function that takes an arbitrary number of bytes and
+#   converts them to kilobytes, megabytes, gigabytes... taken from here:
+# https://stackoverflow.com/questions/5194057/better-way-to-convert-file-sizes-in-python
+#   Written by user James Sapam, cleaned up a bit by me.  He did a better job
+#   than I could.  Returns a string containing the appropriate suffix.
+def convert_bytes(bytes):
+    size_name = ("Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+
+    # Catch the inactive interface case.
+    if (bytes == 0):
+        return "0B"
+
+    # Extract the whole number part of the traffic volume.  This is the index
+    # into size_name above.
+    i = int(math.floor(math.log(bytes, 1024)))
+
+    # 1024^i
+    p = math.pow(1024, i)
+
+    # Generate the fractional part of the traffic volume.
+    s = round(bytes/p, 2)
+
+    # return the number and the appropriate label for the number.
+    return "%s %s" % (s, size_name[i])
+
+# network_traffic(): Function that uses the psutil module to extract stats for
+#   every network interface on the system (except for the loopback) and returns
+#   them to the calling function.
+def network_traffic():
+    stats = {}
+    nics = psutil.net_io_counters(pernic=True)
+
+    # Get rid of the loopback interface.
+    del nics['lo']
+
+    # Prime the network stats hash table with the remaining network interfaces.
+    for i in nics.keys():
+        stats[i] = None
+
+    # For each network interface on the system, convert bytes_sent and
+    # bytes_recv into human-readable strings.
+    for i in nics.keys():
+        stats[i] = {}
+        stats[i]["sent"] = convert_bytes(nics[i].bytes_sent)
+        stats[i]["received"] = convert_bytes(nics[i].bytes_recv)
+        logging.debug("Traffic volume to date for " + i + ": " + str(stats[i]))
+
+    return stats
 
 if "__name__" == "__main__":
     pass

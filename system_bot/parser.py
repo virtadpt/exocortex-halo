@@ -11,6 +11,7 @@
 # License: GPLv3
 
 # v2.2 - Added function to get public IP address of host.
+#      - Added function that gets network traffic stats.
 # v2.1 - Added system uptime.
 # v2.0 - Split all the code up into separate modules.
 # v1.0 - Initial release.
@@ -25,28 +26,36 @@ import pyparsing as pp
 # Parser primitives.
 # We define them up here because they'll be re-used over and over.
 help_command = pp.CaselessLiteral("help")
+
 load_command = pp.CaselessLiteral("load")
 sysload_command = pp.CaselessLiteral("sysload")
 system_load_command = pp.CaselessLiteral("system load")
 load_or_system_load_command = pp.Or([load_command, sysload_command,
     system_load_command])
+
 uname_command = pp.CaselessLiteral("uname")
 info_command = pp.CaselessLiteral("info")
 system_info = pp.CaselessLiteral("system info")
 system_info_command = pp.Or([uname_command, info_command, system_info])
+
 cpus_command = pp.CaselessLiteral("cpus")
+
 disk_command = pp.CaselessLiteral("disk")
+
 disk_usage_command = pp.CaselessLiteral("disk usage")
 storage_command = pp.CaselessLiteral("storage")
 free_disk_space_command = pp.Or([disk_command, disk_usage_command,
     storage_command])
+
 memory_command = pp.CaselessLiteral("memory")
 free_memory_command = pp.CaselessLiteral("free memory")
 ram_command = pp.CaselessLiteral("ram")
 free_ram_command = pp.CaselessLiteral("free ram")
 unused_memory_command = pp.Or([memory_command, free_memory_command, ram_command,
     free_ram_command])
+
 uptime_command = pp.CaselessLiteral("uptime")
+
 public_command = pp.CaselessLiteral("public")
 ip_command = pp.CaselessLiteral("ip")
 address_command = pp.CaselessLiteral("address")
@@ -57,6 +66,20 @@ ip_addr_command = ip_command + addr_command
 public_ip_address_command = public_command + ip_command + address_command
 ip_address_commands = pp.Or([ip_command, ip_address_command, public_ip_command,
     ip_addr_command, public_ip_address_command, addr_command])
+
+network_command = pp.CaselessLiteral("network")
+traffic_command = pp.CaselessLiteral("traffic")
+volume_command = pp.CaselessLiteral("volume")
+stats_command = pp.CaselessLiteral("stats")
+count_command = pp.CaselessLiteral("count")
+network_traffic_command = network_command + traffic_command
+traffic_volume_command = traffic_command + volume_command
+network_stats_command = network_command + stats_command
+traffic_stats_command = traffic_command + stats_command
+traffic_count_command = traffic_command + count_command
+network_traffic_stats_command = pp.Or([network_traffic_command,
+    traffic_volume_command, network_stats_command, traffic_stats_command,
+    traffic_count_command])
 
 # parse_help(): Function that matches the word "help" all by itself in an input
 #   string.  Returns the string "help" on a match and None if not.
@@ -136,6 +159,16 @@ def parse_ip_address(command):
     except:
         return None
 
+# parse_network_traffic(): Function that matches the strings "network traffic",
+#   "traffic volume", "network stats", "traffic stats", "traffic count".
+#   Returns the string "traffic" on a match and None if not.
+def parse_network_traffic(command):
+    try:
+        parsed_command = ip_address_commands.parseString(command)
+        return "traffic"
+    except:
+        return None
+
 # parse_command(): Function that parses commands from the message bus.
 #   Commands come as strings and are run through PyParsing to figure out what
 #   they are.  A single-word string is returned as a match or None on no match.
@@ -192,6 +225,11 @@ def parse_command(command):
     # IP address?
     parsed_command = parse_ip_address(command)
     if parsed_command == "ip":
+        return parsed_command
+
+    # Network traffic stats?
+    parsed_command = parse_network_traffic(command)
+    if parsed_command == "traffic":
         return parsed_command
 
     # Fall-through: Nothing matched.
