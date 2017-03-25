@@ -489,6 +489,7 @@ while True:
             continue
 
         # Try to download the HTML page the user is asking for.
+        send_message_to_user("Downloading the web page...")
         (title, body) = download_web_page(page_request)
 
         # Did it work?
