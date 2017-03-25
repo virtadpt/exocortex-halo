@@ -430,6 +430,7 @@ logging.debug("User agents that will be spoofed: " + str(user_agents))
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
+send_message_to_user(bot_name + " now online.")
 while True:
 
     # Reset variables that control the archived page and outbound e-mail.

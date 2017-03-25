@@ -284,6 +284,7 @@ for i in search_engines:
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
+send_message_to_user(bot_name + " now online.")
 while True:
     index_request = None
 

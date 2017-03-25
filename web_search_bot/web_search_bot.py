@@ -471,6 +471,7 @@ logger.debug("E-mail address that search results are sent from: " +
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
+send_message_to_user(bot_name + " now online.")
 while True:
 
     # Reset the destination e-mail address and the outbound message.
