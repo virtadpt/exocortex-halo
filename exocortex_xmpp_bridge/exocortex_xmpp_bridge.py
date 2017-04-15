@@ -12,11 +12,6 @@
 #   so they don't get stuck in spurious message queues that nothing can ever
 #   access.
 #
-#   This is a branch of exocortex_xmpp_bridge.py that uses xmpppy
-#   (http://xmpppy.sourceforge.net/) in an attempt to build a more stable
-#   implementation that doesn't tie its threads in knots.  Thus, this is a
-#   substantial rewrite.
-#
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
