@@ -18,6 +18,8 @@
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
 #      - Made the interface and port the REST API listens on configurable.
 #        Defaults to the old localhost:8003.
+#      - Fixed the bug in which the loglevel in the config file was always
+#        ignored in favor of the command line.
 # v3.0 - Rewriting to use SleekXMPP, because I'm tired of XMPPpy's lack of
 #        documentation.  The code is much more sleek, if nothing else.
 #      - Refactored the core message processing method to split out the
@@ -100,7 +102,7 @@ args = ""
 config_file = ""
 
 # Logging for the XMPP bridge.  Defaults to INFO.
-loglevel = ""
+loglevel = None
 
 # IP/hostname and port the REST API server listens on.  Defaults to localhost
 # and port 8003/tcp.
@@ -141,7 +143,7 @@ argparser.add_argument('--config', action='store',
     default='exocortex_xmpp_bridge.conf' )
 
 # Loglevels: critical, error, warning, info, debug, notset.
-argparser.add_argument('--loglevel', action='store', default='logging.INFO',
+argparser.add_argument('--loglevel', action='store',
     help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
 
 # Parse the command line args.
