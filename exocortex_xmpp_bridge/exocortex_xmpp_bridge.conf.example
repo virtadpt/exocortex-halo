@@ -1,6 +1,11 @@
 
 [DEFAULT]
 
+# The hostname or IP address the REST API server will listen for bot
+# connections on.  Without this, the server won't start up.
+hostname = 127.0.0.1
+port = 8003
+
 # The owner field is set up this way because group chat nicks are used instead
 # of JIDs by XMPP.  Rather than do a lot of query juggling, we can do it IRC
 # style and move on to doing interesting things.  Note that the /resource part

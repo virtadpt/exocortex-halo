@@ -16,6 +16,8 @@
 #   (https://github.com/virtadpt/exocortex-halo/).
 
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
+#      - Made the interface and port the REST API listens on configurable.
+#        Defaults to the old localhost:8003.
 # v3.0 - Rewriting to use SleekXMPP, because I'm tired of XMPPpy's lack of
 #        documentation.  The code is much more sleek, if nothing else.
 #      - Refactored the core message processing method to split out the
@@ -100,6 +102,11 @@ config_file = ""
 # Logging for the XMPP bridge.  Defaults to INFO.
 loglevel = ""
 
+# IP/hostname and port the REST API server listens on.  Defaults to localhost
+# and port 8003/tcp.
+listenon_host = "localhost"
+listenon_port = 8003
+
 # Figure out what to set the logging level to.  There isn't a straightforward
 # way of doing this because Python uses constants that are actually integers
 # under the hood, and I'd really like to be able to do something like
@@ -151,6 +158,8 @@ if not os.path.exists(config_file):
 config.read(config_file)
 
 # Get configuration options from the configuration file.
+listenon_host = config.get("DEFAULT", "hostname")
+listenon_port = int(config.get("DEFAULT", "port"))
 owner = config.get("DEFAULT", "owner")
 username = config.get("DEFAULT", "username")
 password = config.get("DEFAULT", "password")
@@ -191,8 +200,8 @@ else:
     sys.exit(1)
 
 # Allocate and start the Simple HTTP Server instance.
-api_server = HTTPServer(("localhost", 8003), rest.RESTRequestHandler)
-logger.debug("REST API server now listening on localhost, port 8003/tcp.")
+api_server = HTTPServer((listenon_host, listenon_port), rest.RESTRequestHandler)
+logger.debug("REST API server now listening on " + str(listenon_host) + ", port " + str(listenon_port) + "/tcp.")
 while True:
     api_server.serve_forever()
 
