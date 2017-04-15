@@ -9,6 +9,8 @@
 #   (https://github.com/virtadpt/exocortex-halo/).
 
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
+#      - Fixed a bug in which I miscounted the number of keys in the message
+#        queue.  Oops.
 # v3.0 - Rewriting to use SleekXMPP, because I'm tired of XMPPpy's lack of
 #        documentation.  The code is much more sleek, if nothing else.
 #      - Refactored the core message processing method to split out the
@@ -141,7 +143,7 @@ class XMPPClient(ClientXMPP):
         # Construct a message for the bot's owner that consists of the list of
         # bots that access the message bridge, along with appropriate
         # plurality of nouns.
-        if len(message_queue.message_queue.keys()) == 1:
+        if len(message_queue.message_queue.keys()) == 2:
             now_online_message = "The bot "
         else:
             now_online_message = "The bots "
@@ -152,7 +154,7 @@ class XMPPClient(ClientXMPP):
             now_online_message = now_online_message + key + ", "
         now_online_message = now_online_message.strip(", ")
 
-        if len(message_queue.message_queue.keys()) == 1:
+        if len(message_queue.message_queue.keys()) == 2:
             now_online_message = now_online_message + " is now online."
         else:
             now_online_message = now_online_message + " are now online."
