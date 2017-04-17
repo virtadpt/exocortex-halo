@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v2.3 - Added capability to monitor and restart processes if they die.
 # v2.2 - Added function to get public IP address of host.
 #      - Added function that gets network traffic stats.
 # v2.1 - Added uptime.
@@ -20,10 +21,6 @@
 # TO-DO:
 # - Make it possible to specify arbitrary commands in the config file that the
 #   bot can be ordered to execute.
-# - Make it possible to monitor specific processes running on the system, and
-#   potentially manipulate them with commands sent by the bot's owner.  Use
-#   the method psutil.test() to dump the process list and pick through it
-#   looking for the stuff in question.
 # - Make it possible to specify system stat thresholds in the config file
 #   rather than hardcoding them.
 # - Make it so that the bot stores previous system system values so that it
@@ -48,6 +45,7 @@ import sys
 import time
 
 import parser
+import processes
 import system_stats
 
 # Global variables.
@@ -293,7 +291,6 @@ while True:
     # Increment loop_counter by status_polling.  Seems obvious, but this makes
     # it easy to grep for.
     loop_counter = loop_counter + status_polling
-    logger.debug("Value of loop_counter is now " + str(loop_counter) + ".")
 
     # If loop_counter is equal to polling_time, check the message queue for
     # commands.

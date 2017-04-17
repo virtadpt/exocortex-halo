@@ -1,0 +1,16 @@
+# Top level configuration for System Bot.
+[DEFAULT]
+
+# URL of the message queue to poll.
+queue = http://localhost:8003/
+
+# Name the bot should answer to.  I suggest using the hostname the bot's
+# running on.
+bot_name = HostnameOfThisBox
+
+# Set the default loglevel of the bot.
+loglevel = info
+
+# How often to poll the message queue for orders.  Defaults to 30 seconds.
+# polling_time = 30
+
