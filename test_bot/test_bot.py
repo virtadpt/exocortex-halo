@@ -116,6 +116,9 @@ argparser.add_argument("--loglevel", action="store",
 # Time (in seconds) between polling the message queues.
 argparser.add_argument("--polling", action="store", help="Default: 30 seconds")
 
+# Name of the bot.  Useful for running multiple instances.
+argparser.add_argument("--name", action="store", help="Name of the bot.  This also defines the name of the message queue it reports to.")
+
 # Parse the command line arguments.
 args = argparser.parse_args()
 if args.config:
@@ -135,6 +138,8 @@ server = config.get("DEFAULT", "queue")
 
 # Get the name of the message queue to report to.
 bot_name = config.get("DEFAULT", "bot_name")
+if args.name:
+    bot_name = args.name
 
 # Construct the full message queue name.
 message_queue = server + bot_name
@@ -167,6 +172,7 @@ if args.polling:
 # In debugging mode, dump the bot'd configuration.
 logger.info("Everything is configured.")
 logger.debug("Values of configuration variables as of right now:")
+logger.debug("Name of bot: " + bot_name)
 logger.debug("Configuration file: " + config_file)
 logger.debug("Server to report to: " + server)
 logger.debug("Message queue to report to: " + message_queue)
