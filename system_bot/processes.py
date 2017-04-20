@@ -18,6 +18,7 @@
 import logging
 import os
 import subprocess
+import sys
 
 # Module-local variables.
 
@@ -59,12 +60,17 @@ def restart_crashed_processes(processes, retries=5):
 
     crashed_processes = []
     command = None
+    pid = None
 
     # Walk the list of processes to restart and try to bring them back up.
     for process in processes:
         for i in range(0, retries):
-            command = process.strip().split()
-            subprocess.call(command)
+            command = process.split()
+
+            # Make the first element of the command a full path to the
+            # executable.
+            command[0] = sys.executable
+            pid = subprocess.Popen(command)
 
             # Check the process list to make sure it came back up.
             if not check_process_list(process):
