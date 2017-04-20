@@ -12,6 +12,7 @@
 # License: GPLv3
 
 # v2.3 - Added capability to monitor and restart processes if they die.
+#      - Removed the self test function.  That didn't do anything, anyway.
 # v2.2 - Added function to get public IP address of host.
 #      - Added function that gets network traffic stats.
 # v2.1 - Added uptime.
@@ -67,6 +68,9 @@ server = ""
 # Name of the construct.
 bot_name = ""
 
+# A list of processes on the system to monitor.  Can be empty.
+processes_to_monitor = []
+
 # URL of the message queue to pull orders from.
 message_queue = ""
 
@@ -103,6 +107,10 @@ cpu_idle_time_counter = 0
 disk_usage_counter = 0
 memory_utilization_counter = 0
 memory_free_counter = 0
+
+# List of dead processes on the system.  If it's ever populated something died
+# and needs to be attended to.
+dead_processes = None
 
 # URL of web service that just returns the IP address of the host.
 ip_addr_web_service = ""
@@ -183,10 +191,6 @@ argparser.add_argument("--loglevel", action="store",
 # Time (in seconds) between polling the message queues.
 argparser.add_argument("--polling", action="store", help="Default: 60 seconds")
 
-# Trigger the self-test function?
-argparser.add_argument("--test", action="store_true",
-    help="Perform a self-test of the bot's trigger conditions for testing and debugging.  The bot will terminate afterward.")
-
 # Parse the command line arguments.
 args = argparser.parse_args()
 if args.config:
@@ -250,6 +254,13 @@ status_polling = int(polling_time) / 4
 # the user to keep from inundating them.
 time_between_alerts = polling_time * 20
 
+# See if there's a list of processes to monitor in the configuration file, and
+# if so read it into the list.
+if config.has_section("processes to monitor"):
+    for i in config.options("processes to monitor"):
+        if "process" in i:
+            processes_to_monitor.append(config.get("processes to monitor", i))
+
 # In debugging mode, dump the bot'd configuration.
 logger.info("Everything is configured.")
 logger.debug("Values of configuration variables as of right now:")
@@ -260,13 +271,10 @@ logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Value of polling_time (in seconds): " + str(polling_time))
 logger.debug("Value of loop_counter (in seconds): " + str(status_polling))
 logger.debug("URL of web service that returns public IP address: " + ip_addr_web_service)
-
-# Determine if the bot is going into self-test mode, and if so execute the
-# self-tests.
-if args.test:
-    logger.info("Executing bot self-test.")
-    run_self_tests()
-    sys.exit(31337)
+if len(processes_to_monitor):
+    logger.debug("There are " + str(len(processes_to_monitor)) + " processes to watch over on the system.")
+    for i in processes_to_monitor:
+        print "    " + i
 
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
@@ -287,6 +295,20 @@ while True:
         time_between_alerts, status_polling)
     memory_free_counter = system_stats.check_memory_utilization(
         memory_free_counter, time_between_alerts, status_polling)
+
+    # If there are any processes to monitor in the list, look for them.
+    if processes_to_monitor:
+        dead_processes = processes.check_process_list(processes_to_monitor)
+        if dead_processes:
+            dead_processes = processes.restart_crashed_processes(dead_processes)
+
+        # At this point in the check, if there are any dead processes, they
+        # didn't restart and something went wrong.
+        if dead_processes:
+            send_message_to_user("WARNING: The following monitored processes died and could not be restarted:")
+            for i in dead_processes:
+                send_message_to_user(i)
+            send_message_to_user("You need to log into the server and restart them manually.")
 
     # Increment loop_counter by status_polling.  Seems obvious, but this makes
     # it easy to grep for.
