@@ -106,8 +106,7 @@ def send_message_to_user(message):
 argparser = argparse.ArgumentParser(description="A construct that does nothing but listen for text from the user and echo it back.  This bot exists to help test certain other kinds of bots.  Maybe it'll be helpful for showing people how to write their own kinds of bots.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument("--config", action="store", 
-    default="./test_bot.conf")
+argparser.add_argument("--config", action="store") 
 
 # Loglevels: critical, error, warning, info, debug, notset.
 argparser.add_argument("--loglevel", action="store",
@@ -123,6 +122,10 @@ argparser.add_argument("--name", action="store", help="Name of the bot.  This al
 args = argparser.parse_args()
 if args.config:
     config_file = args.config
+
+# Check the directory the script is located in for a config file by default.
+if not config_file:
+    config_file = os.path.dirname(os.path.abspath(__file__)) + "/test_bot.conf"
 
 # Read the options in the configuration file before processing overrides on the
 # command line.

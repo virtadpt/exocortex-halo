@@ -259,7 +259,7 @@ time_between_alerts = polling_time * 20
 if config.has_section("processes to monitor"):
     for i in config.options("processes to monitor"):
         if "process" in i:
-            processes_to_monitor.append(config.get("processes to monitor", i))
+            processes_to_monitor.append(config.get("processes to monitor", i).split(','))
 
 # In debugging mode, dump the bot'd configuration.
 logger.info("Everything is configured.")
@@ -274,7 +274,7 @@ logger.debug("URL of web service that returns public IP address: " + ip_addr_web
 if len(processes_to_monitor):
     logger.debug("There are " + str(len(processes_to_monitor)) + " processes to watch over on the system.")
     for i in processes_to_monitor:
-        print "    " + i
+        print "    " + i[0]
 
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
@@ -296,23 +296,30 @@ while True:
     memory_free_counter = system_stats.check_memory_utilization(
         memory_free_counter, time_between_alerts, status_polling)
 
-    # If there are any processes to monitor in the list, look for them.
-    if processes_to_monitor:
+    # Increment loop_counter by status_polling.  Seems obvious, but this makes
+    # it easy to grep for.
+    loop_counter = loop_counter + status_polling
+
+    # If loop_counter is equal to polling_time, and there are any processes to
+    # monitor, look for them.
+    if int(loop_counter) >= int(polling_time) and processes_to_monitor:
         dead_processes = processes.check_process_list(processes_to_monitor)
         if dead_processes:
+            message = "WARNING: The following monitored processes seem to have crashed:\n"
+            for i in dead_processes:
+                message = message + i[0] + "\n"
+            message = message + "I am now attempting to restart them."
+            send_message_to_user(message)
             dead_processes = processes.restart_crashed_processes(dead_processes)
 
         # At this point in the check, if there are any dead processes, they
         # didn't restart and something went wrong.
         if dead_processes:
-            send_message_to_user("WARNING: The following monitored processes died and could not be restarted:")
+            message = "WARNING: The following crashed processes could not be restarted:\n"
             for i in dead_processes:
-                send_message_to_user(i)
-            send_message_to_user("You need to log into the server and restart them manually.")
-
-    # Increment loop_counter by status_polling.  Seems obvious, but this makes
-    # it easy to grep for.
-    loop_counter = loop_counter + status_polling
+                message = message + i[0] + "\n"
+            message = message + "You need to log into the server and restart them manually."
+            send_message_to_user(message)
 
     # If loop_counter is equal to polling_time, check the message queue for
     # commands.

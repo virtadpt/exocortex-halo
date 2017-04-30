@@ -17,3 +17,15 @@ loglevel = info
 # URL to hit for public IP address of this system.
 ip_addr_site = https://api.ipify.org/
 
+# If you have any processes that you want to monitor the health of, list them
+# here.  The part before the comma is the literal string that system_bot.py
+# will scan the process table for to determine liveliness or not.  The latter
+# part after the comma is the exact command line that system_bot.py will
+# execute to try to restart it.  Please remember that you may need to specify
+# full paths to configuration files or other such things for this feature to
+# work.  I suggest experimenting a little before going fully into production
+# because the process checking code is fairly specific.
+#[processes to monitor]
+#process1 = test_bot.py --loglevel,python2 /home/user/exocortex-halo/test_bot/test_bot.py --loglevel debug
+#process2 = test_bot.py --name AnotherTestBot,python2 /home/user/exocortex-halo/test_bot/test_bot.py --name AnotherTestBot
+

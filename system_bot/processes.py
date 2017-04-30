@@ -41,7 +41,7 @@ def check_process_list(processes):
     # Check the list of monitored processes.
     process_list = get_process_list()
     for process in processes:
-        if process not in process_list:
+        if process[0] not in process_list:
             crashed_processes.append(process)
 
     logging.debug("Dead processes : " + str(crashed_processes))
@@ -56,7 +56,7 @@ def check_process_list(processes):
 #   the number of times to try to restart them.  Returns True if it worked, or
 #   False if it didn't.
 def restart_crashed_processes(processes, retries=5):
-    logging.debug("Processes to look for: " + str(processes))
+    logging.debug("Processes to restart: " + str(processes))
 
     crashed_processes = []
     command = None
@@ -65,19 +65,20 @@ def restart_crashed_processes(processes, retries=5):
     # Walk the list of processes to restart and try to bring them back up.
     for process in processes:
         for i in range(0, retries):
-            command = process.split()
+            command = process[1].split()
 
             # Make the first element of the command a full path to the
-            # executable.
+            # executable before caling it.
+            logging.debug("Restarting dead process: " + process[0])
             command[0] = sys.executable
             pid = subprocess.Popen(command)
 
             # Check the process list to make sure it came back up.
             if not check_process_list(process):
-                logging.debug("Success!  Restarted process " + process + "!")
+                logging.debug("Success!  Restarted process " + process[0] + "!")
                 break
         else:
-            logging.debug("Unable to restart crashed process: " + process)
+            logging.debug("Unable to restart crashed process: " + process[0])
             crashed_processes.append(process)
 
     logging.debug("Dead processes : " + str(crashed_processes))
