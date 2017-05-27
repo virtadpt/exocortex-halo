@@ -70,7 +70,7 @@ def process_loglevel(loglevel):
 
 # Core code...
 # Set up the command line argument parser.
-argparser = argparse.ArgumentParser(description="A command line utility which allows the user to send text or data to an instance of the Exocortex XMPP Bridge.  An ideal use case for this tool is to make interactive jobs communicate with the rest of an exocortex.")
+argparser = argparse.ArgumentParser(description="A command line utility which allows the user to send text or data to an instance of the Exocortex XMPP Bridge.  An ideal use case for this tool is to make interactive jobs communicate with the rest of an exocortex.", epilog="If you want to redirect stdout or stderr from something else so this utility can transmit it, make the last argument a - (per UNIX convention) to catch them, like this:\n echo foo | %(prog)s -")
 
 # Set up the hostname of the XMPP bridge to contact.
 argparser.add_argument('--hostname', action='store', default='localhost',
@@ -88,17 +88,14 @@ argparser.add_argument('--queue', action='store', default='replies',
 argparser.add_argument('--loglevel', action='store', default='info',
     help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
 
-# Message to send.
+# Message to send to the XMPP bridge.
 argparser.add_argument('--message', action='store', nargs='*',
-    help='Message to send to the XMPP bridge.')
+    help='Text message to send to the XMPP bridge.')
+argparser.add_argument('infile', nargs='?', type=argparse.FileType('r'),
+    help='Text stream to send to the XMPP bridge.  Give a - to use stdin.')
 
 # Parse the command line args.
 args = argparser.parse_args()
-
-# If there is no message to send, ABEND.
-if not args.message:
-    print "ERROR: You need to supply a message of some kind."
-    sys.exit(1)
 
 # Figure out how to configure the logger.
 if args.loglevel:
@@ -106,18 +103,28 @@ if args.loglevel:
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-# Assemble the URL of the XMPP bridge to contact.
-message_queue = "http://" + args.hostname + ":" + str(args.port) + "/" + args.queue.strip('/')
+if not args.message and not args.infile:
+    print "ERROR: You need to specify either a message on the command line or a - to refer"
+    print "to the utility's stdin."
+    sys.exit(1)
 
 logger.debug("Command line arguments presented to the script:")
 logger.debug(str(args))
+
+# Assemble the URL of the XMPP bridge to contact.
+message_queue = "http://" + args.hostname + ":" + str(args.port) + "/" + args.queue.strip('/')
 
 # Set up custom headers.
 headers = {'Content-type': 'application/json'}
 
 # Build the message to send.
 message['name'] = args.queue.strip('/')
-message['reply'] = " ".join(word for word in args.message)
+if args.message:
+    message['reply'] = " ".join(word for word in args.message)
+if args.infile:
+    # Yeah, this is a little hacky, but it's clear enough to maintain later.
+    message['reply'] = args.infile.readlines()
+    message['reply'] = " ".join(word for word in message['reply'])
 
 # Attempt to contact the message queue and send a message.
 try:
