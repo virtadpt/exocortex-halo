@@ -88,6 +88,10 @@ argparser.add_argument('--queue', action='store', default='replies',
 argparser.add_argument('--loglevel', action='store', default='info',
     help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
 
+# Message to send.
+argparser.add_argument('--message', action='store', nargs='*',
+    help='Message to send to the XMPP bridge.')
+
 # Parse the command line args.
 args = argparser.parse_args()
 
@@ -100,12 +104,15 @@ logger = logging.getLogger(__name__)
 # Assemble the URL of the XMPP bridge to contact.
 message_queue = "http://" + args.hostname + ":" + str(args.port) + "/" + args.queue.strip('/')
 
+logger.debug("Command line arguments presented to the script:")
+logger.debug(str(args))
+
 # Set up custom headers.
 headers = {'Content-type': 'application/json'}
 
 # Build the message to send.
 message['name'] = args.queue.strip('/')
-message['reply'] = "foo bar baz"
+message['reply'] = " ".join(word for word in args.message)
 
 # Attempt to contact the message queue and send a message.
 try:
