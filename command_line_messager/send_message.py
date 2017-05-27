@@ -17,7 +17,9 @@
 
 # Load modules.
 import argparse
+import json
 import logging
+import requests
 import sys
 
 # Constants.
@@ -33,7 +35,16 @@ args = None
 loglevel = None
 
 # URL of XMPP bridge to contact.  Assembled later.
-xmpp_bridge = ""
+message_queue = ""
+
+# Hash table of custom headers that need to be sent to make it a valid request.
+headers = {}
+
+# Hash table that formats the message to send.
+message = {}
+
+# Handle to a requests object.
+request = None
 
 # Classes.
 
@@ -87,10 +98,23 @@ logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Assemble the URL of the XMPP bridge to contact.
-xmpp_bridge = args.hostname + ":" + str(args.port) + "/" + args.queue.strip('/')
+message_queue = "http://" + args.hostname + ":" + str(args.port) + "/" + args.queue.strip('/')
 
-print args
-print xmpp_bridge
+# Set up custom headers.
+headers = {'Content-type': 'application/json'}
+
+# Build the message to send.
+message['name'] = args.queue.strip('/')
+message['reply'] = "foo bar baz"
+
+# Attempt to contact the message queue and send a message.
+try:
+    logger.debug("Sending message to queue: " + message_queue)
+    request = requests.put(message_queue, headers=headers,
+        data=json.dumps(message))
+    logger.debug("Response from server: " + request.text)
+except:
+    logger.warn("Connection attempt to message queue failed.")
 
 # Fin.
 sys.exit(0)
