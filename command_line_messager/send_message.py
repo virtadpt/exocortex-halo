@@ -95,6 +95,11 @@ argparser.add_argument('--message', action='store', nargs='*',
 # Parse the command line args.
 args = argparser.parse_args()
 
+# If there is no message to send, ABEND.
+if not args.message:
+    print "ERROR: You need to supply a message of some kind."
+    sys.exit(1)
+
 # Figure out how to configure the logger.
 if args.loglevel:
     loglevel = process_loglevel(args.loglevel.lower())
