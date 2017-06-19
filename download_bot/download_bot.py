@@ -239,11 +239,20 @@ except:
 download_directory = config.get("DEFAULT", "download_directory")
 
 # Normalize the download directory.
-download_directory = os.path.abspath(download_directory)
+download_directory = os.path.abspath(os.path.expanduser(download_directory))
 
-# Ensure that the user the bot is running as owns the download directory.
+# Ensure the download directory exists.
+if not os.path.exists(download_directory):
+    print "ERROR: Download directory " + download_directory + "does not exist."
+    sys.exit(1)
 
 # Ensure that the bot can write to the download directory.
+if not os.access(download_directory, os.R_OK):
+    print "ERROR: Unable to read contents of directory " + download_directory
+    sys.exit(1)
+if not os.access(download_directory, os.W_OK):
+    print "ERROR: Unable to write to directory " + download_directory
+    sys.exit(1)
 
 # Set the loglevel from the override on the command line.
 if args.loglevel:
@@ -310,6 +319,8 @@ while True:
             reply = reply + """I am capable of accepting URLs for arbitrary files on the web and downloading them.  To download a file, send me a message that looks something like this:\n\n"""
             reply = reply + bot_name + ", [download,get,pull] https://www.example.com/foo.pdf\n\n"
             send_message_to_user(reply)
+            reply = "I will download files into: " + download_directory
+            send_message_to_user(reply)
             continue
 
         # Handle the download request.
@@ -317,11 +328,9 @@ while True:
         send_message_to_user(reply)
         download_request = download_file(download_directory, download_request)
 
-        # If something went wrong...
+        # If something went wrong... the notice is sent earlier, so just
+        # continue at the top of the loop.
         if not download_request:
-            logger.warn("Something went wrong when downloading the file.")
-            reply = "Something went wrong when I tried to download the file."
-            send_message_to_user(reply)
             continue
 
         # Reply that it was successful.
