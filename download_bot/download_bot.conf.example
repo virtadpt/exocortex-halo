@@ -1,0 +1,18 @@
+# Top level configuration for the entire bot.
+[DEFAULT]
+
+# URL of the message queue to poll for search requests.
+queue = http://localhost:8003/
+
+# Name I should answer to.
+bot_name = Snaffle
+
+# Set the default loglevel of the bot.
+loglevel = info
+
+# How often to poll the message queue for orders.  Defaults to 30 seconds.
+# polling_time = 30
+
+# Directory to put all of the downloaded files into.
+download_directory = ~/Downloads
+
