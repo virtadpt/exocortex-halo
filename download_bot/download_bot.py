@@ -156,7 +156,7 @@ def download_file(download_directory, url):
                 if chunk:
                     local_file.write(chunk)
         result = True
-        send_message_to_user("Successfully downloaded file: " + str(url))
+        send_message_to_user("Successfully downloaded file: " + str(full_path))
     except:
         logger.warn("Unable to download from URL " + str(url) + " or write to file " + str(full_path))
         send_message_to_user("I was unable to download from URL " + str(url) + " or write to file " + str(full_path))
