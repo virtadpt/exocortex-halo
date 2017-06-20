@@ -117,7 +117,7 @@ class XMPPClient(ClientXMPP):
             threaded=True)
 
         # Start the /replies processing thread.
-        self.schedule("replies_processor", 20, self.process_replies_queue,
+        self.schedule("replies_processor", 5, self.process_replies_queue,
             repeat=True)
 
     # Fires when the construct isn't able to authenticate with the server.
