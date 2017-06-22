@@ -17,7 +17,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - 
+# - Refactor the bot to split out the file copying stuff.
 
 # Load modules.
 import argparse
@@ -27,6 +27,7 @@ import logging
 import os
 import os.path
 import requests
+import shutil
 import sys
 import time
 
@@ -77,23 +78,167 @@ def set_loglevel(loglevel):
     if loglevel == "notset":
         return 0
 
+# normalize_file_path(): Normalizes a full path in the file system.  Takes one
+#   argument, a string representing a full or partial path to a file.  Returns
+#   a string representing a fully normalized path to a file.
+def normalize_file_path(file):
+    logger.debug("Entered function normalize_file_path().")
+
+    norm_path = os.path.expanduser(file)
+    norm_path = os.path.abspath(norm_path)
+    norm_path = os.path.normpath(norm_path)
+
+    logger.debug("Normalized file path: " + norm_path)
+    return norm_path
+
+# ensure_exists(): Helper function that ensure that a file or directory
+#   actually exists.  Returns a True or False.
+def ensure_exists(file):
+    if not os.path.exists(file):
+        logger.debug("The destination path " + str(file) + " does not exist.")
+        return False
+    else:
+        logger.debug("The destination path " + str(file) + " exists.")
+        return True
+
+# ensure_readable(): Helper function that ensure that a file or directory is
+#   readable (has the +r bit). Returns a True or False.
+def ensure_readable(file):
+    if not os.access(file, os.R_OK):
+        logger.debug("The file path " + str(file) + " cannot be read.")
+        return False
+    else:
+        logger.debug("The file path " + str(file) + " is readable.")
+        return True
+
+# ensure_writable(): Helper function that ensure that a file or directory is
+#   writable (has the +2 bit). Returns a True or False.
+def ensure_writable(file):
+    if not os.access(file, os.W_OK):
+        logger.debug("The file path " + str(file) + " cannot be written to.")
+        return False
+    else:
+        logger.debug("The file path " + str(file) + " is writable.")
+        return True
+
 # single_file_copy(): Function that takes as its argument a hash table
 #   containing two filespecs, one a file to copy from, the other a filename
-#   or directory to copy into.
+#   or directory to copy into.  Returns a message to the user.
 def single_file_copy(filespecs):
-    logger.debug("Entered function copy_files().")
+    logger.debug("Entered function single_file_copy().")
 
-    # Return the result.
-    return result
+    # These make it easier to keep track of what is what.
+    source_path = ""
+    destination_path = ""
+
+    # Message for the user.
+    message = ""
+
+    # Normalize the file paths so they are internally consistent.
+    source_path = normalize_file_path(filespecs['from'])
+    destination_path = normalize_file_path(filespecs['to'])
+
+    # Ensure the source and destination exist.  Bounce if they don't.
+    if not ensure_exists(source_path):
+        message = "ERROR: The source path " + str(source_path) + " does not exist.  I can't do anything."
+        return message
+    if not ensure_exists(destination_path):
+        message = "ERROR: The destination path " + str(destination_path) + " does not exist.  I can't do anything."
+        return message
+
+    # Ensure the source can be read.  Bounce if it isn't.
+    if not ensure_readable(source_path):
+        message = "ERROR: The source path " + str(source_path) + " is not readable."
+        return message
+
+    # Ensure that the destination is writable.  Note that it doesn't have to be
+    # readable.  Bounce if it isn't.
+    if not ensure_writable(destination_path):
+        message = "ERROR: The destination path " + str(destination_path) + " cannot be written to."
+        return message
+
+    # Copy the file.
+    try:
+        logger.debug("Attempting to copy " + str(source_path) + " to " + str(destination_path) + ".")
+        shutil.copy2(source_path, destination_path)
+        message = "File " + str(source_path) + " has been copied to " + str(destination_path) + "."
+    except:
+        message = "I was unable to copy " + str(source_path) + " to " + str(destination_path) + "."
+
+    # Return the message.
+    return message
 
 # multiple_file_copy(): Function that takes as its argument a hash table
 #   containing two filespecs, one a set of files to copy from or a directory
-#   to copy the contents of, the other a directory to copy them into.
+#   to copy the contents of, the other a directory to copy them into.  Returns
+#   a message to the user.
 def multiple_file_copy(filespecs):
     logger.debug("Entered function multiple_file_copy().")
 
-    # Return the result.
-    return result
+    # Message for the user.
+    message = ""
+
+    # List of files in the source directory to copy.
+    source_files = []
+
+    # List of files that could not be copied.
+    uncopied_files = []
+
+    # Normalize the file paths so they are internally consistent.
+    source_path = normalize_file_path(filespecs['from'])
+    destination_path = normalize_file_path(filespecs['to'])
+
+    # Ensure the source directory exists.
+    if not ensure_exists(source_path):
+        message = "ERROR: The source path " + str(source_path) + " does not exist.  I can't do anything."
+        return message
+
+    # Ensure the source can be read.  Bounce if it isn't.
+    if not ensure_readable(source_path):
+        message = "ERROR: The source path " + str(source_path) + " is not readable."
+        return message
+
+    # Ensure the destination directory exists.
+    if not ensure_exists(destination_path):
+        message = "ERROR: The destination path " + str(destination_path) + " does not exist.  I can't do anything."
+        return message
+
+    # Ensure that the destination is writable.  Note that it doesn't have to be
+    # readable.  Bounce if it isn't.
+    if not ensure_writable(destination_path):
+        message = "ERROR: The destination path " + str(destination_path) + " cannot be written to."
+        return message
+
+    # Build a list of files to copy in the source directory.
+    source_files = os.listdir(source_path)
+
+    # Roll through the list of files, test them, and copy them.  If they can't
+    # be copied push them onto the list of files that errored out.  We don't
+    # test if the files exist because we pulled their filenames out of the
+    # directory listing.
+    for file in source_files:
+        source_file = os.path.join(source_path, file)
+        source_file = normalize_file_path(source_file)
+
+        if not ensure_readable(source_file):
+            uncopied_files.append(file)
+            continue
+
+        try:
+            logger.debug("Attempting to copy " + str(file) + " to " + str(destination_path) + ".")
+            shutil.copy2(source_file, destination_path)
+        except:
+            uncopied_files.append(file)
+
+    # Build the message to return to the user.
+    message = "Contents of directory " + source_path + " are as copied as I can make them."
+    if uncopied_files:
+        message = message + "\nI was unable to copy the following files:\n"
+        message = message + str(uncopied_files)
+        logger.debug("Files that could not be copied: " + str(uncopied_files))
+
+    # Return the message.
+    return message
 
 # send_message_to_user(): Function that does the work of sending messages back
 # to the user by way of the XMPP bridge.  Takes one argument, the message to
@@ -194,25 +339,6 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
-# Normalize the download directory.
-# MOOF MOOF MOOF - Re-use this code elsewhere before deleting it!
-download_directory = os.path.abspath(os.path.expanduser(download_directory))
-
-# Ensure the download directory exists.
-# MOOF MOOF MOOF - Re-use this code elsewhere before deleting it!
-if not os.path.exists(download_directory):
-    print "ERROR: Download directory " + download_directory + "does not exist."
-    sys.exit(1)
-
-# Ensure that the bot can write to the download directory.
-# MOOF MOOF MOOF - Re-use this code elsewhere before deleting it!
-if not os.access(download_directory, os.R_OK):
-    print "ERROR: Unable to read contents of directory " + download_directory
-    sys.exit(1)
-if not os.access(download_directory, os.W_OK):
-    print "ERROR: Unable to write to directory " + download_directory
-    sys.exit(1)
-
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
@@ -275,11 +401,13 @@ while True:
 
         # If the user is requesting a single file copy.
         if command['type'] == "single":
-            single_file_copy(command)
+            message = single_file_copy(command)
+            send_message_to_user(message)
 
         # If the user is requesting a multiple file copy.
         if command['type'] == "multiple":
-            multiple_file_copy(command)
+            message = multiple_file_copy(command)
+            send_message_to_user(message)
 
         if command == "unknown":
             message = "I didn't recognize that command."
