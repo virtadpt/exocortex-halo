@@ -265,7 +265,7 @@ def online_help():
     logger.debug("Entered the function online_help().")
     message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
     message = message + """
-    I am designed to remotely copy one or more files from one location on the hot I am running on to another location on the host.  This is a potentially useful thing to do if used in a clever fashion.  The interactive commands I currently suppot are:
+I am designed to remotely copy one or more files from one location on the hot I am running on to another location on the host.  This is a potentially useful thing to do if used in a clever fashion.  The interactive commands I currently suppot are:
 
     help - Display this online help.
 
@@ -294,7 +294,7 @@ argparser = argparse.ArgumentParser(description="A toolbot that accepts two file
 
 # Set the default config file and the option to set a new one.
 argparser.add_argument('--config', action='store', 
-    default='./tool_bot.conf')
+    default='./copy_bot.conf')
 
 # Loglevels: critical, error, warning, info, debug, notset.
 argparser.add_argument('--loglevel', action='store',
@@ -382,36 +382,41 @@ while True:
     if request.status_code == 200:
         logger.debug("Message queue " + bot_name + " found.")
 
-        # Extract the download request.
+        # Extract the command.
         command = json.loads(request.text)
-        logger.debug("Value of command: " + str(command))
         command = command['command']
-        if not command:
-            logger.debug("Empty command.")
-            time.sleep(float(polling_time))
-            continue
 
         # Parse the command.
         command = parser.parse_command(command)
         logger.debug("Parsed command: " + str(command))
 
+        # If the command was empty, return to the top of the loop.
+        if not command:
+            logger.debug("Empty command.")
+            time.sleep(float(polling_time))
+            continue
+
         # If the user is requesting online help...
         if command == "help":
             send_message_to_user(online_help())
+            continue
 
         # If the user is requesting a single file copy.
         if command['type'] == "single":
             message = single_file_copy(command)
             send_message_to_user(message)
+            continue
 
         # If the user is requesting a multiple file copy.
         if command['type'] == "multiple":
             message = multiple_file_copy(command)
             send_message_to_user(message)
+            continue
 
         if command == "unknown":
             message = "I didn't recognize that command."
             send_message_to_user(message)
+            continue
 
     # Message queue not found.
     if request.status_code == 404:
