@@ -396,6 +396,11 @@ while True:
             time.sleep(float(polling_time))
             continue
 
+        if command == "unknown":
+            message = "I didn't recognize that command."
+            send_message_to_user(message)
+            continue
+
         # If the user is requesting online help...
         if command == "help":
             send_message_to_user(online_help())
@@ -410,11 +415,6 @@ while True:
         # If the user is requesting a multiple file copy.
         if command['type'] == "multiple":
             message = multiple_file_copy(command)
-            send_message_to_user(message)
-            continue
-
-        if command == "unknown":
-            message = "I didn't recognize that command."
             send_message_to_user(message)
             continue
 
