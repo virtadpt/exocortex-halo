@@ -18,6 +18,8 @@
 
 # TO-DO:
 # - Refactor the bot to split out the file copying stuff.
+# - Figure out how to specify a destination filename for single file copy.
+#   That take a few more neurons than I have online at the moment.
 
 # Load modules.
 import argparse
@@ -83,27 +85,30 @@ def set_loglevel(loglevel):
 #   a string representing a fully normalized path to a file.
 def normalize_file_path(file):
     logger.debug("Entered function normalize_file_path().")
+    logger.debug("Value of file: " + str(file))
 
     norm_path = os.path.expanduser(file)
     norm_path = os.path.abspath(norm_path)
     norm_path = os.path.normpath(norm_path)
 
-    logger.debug("Normalized file path: " + norm_path)
+    logger.debug("Normalized file path: " + str(norm_path))
     return norm_path
 
 # ensure_exists(): Helper function that ensure that a file or directory
 #   actually exists.  Returns a True or False.
 def ensure_exists(file):
+    logger.debug("Entered function ensure_exists().")
     if not os.path.exists(file):
-        logger.debug("The destination path " + str(file) + " does not exist.")
+        logger.debug("The file path " + str(file) + " does not exist.")
         return False
     else:
-        logger.debug("The destination path " + str(file) + " exists.")
+        logger.debug("The file path " + str(file) + " exists.")
         return True
 
 # ensure_readable(): Helper function that ensure that a file or directory is
 #   readable (has the +r bit). Returns a True or False.
 def ensure_readable(file):
+    logger.debug("Entered function ensure_readable().")
     if not os.access(file, os.R_OK):
         logger.debug("The file path " + str(file) + " cannot be read.")
         return False
@@ -114,6 +119,7 @@ def ensure_readable(file):
 # ensure_writable(): Helper function that ensure that a file or directory is
 #   writable (has the +2 bit). Returns a True or False.
 def ensure_writable(file):
+    logger.debug("Entered function ensure_writable().")
     if not os.access(file, os.W_OK):
         logger.debug("The file path " + str(file) + " cannot be written to.")
         return False
@@ -265,15 +271,16 @@ def online_help():
     logger.debug("Entered the function online_help().")
     message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
     message = message + """
-I am designed to remotely copy one or more files from one location on the hot I am running on to another location on the host.  This is a potentially useful thing to do if used in a clever fashion.  The interactive commands I currently suppot are:
+I am designed to remotely copy one or more files from one location on the hot I am running on to another location on the host.  When specifying files, please ensure that you specify as full a path as possible to the source file, because this bot defaults to its current working directory, which may not be what you want.  This is a potentially useful bot if used in a clever fashion.  The interactive commands I currently suppot are:
 
     help - Display this online help.
 
     Individual files:
-    copy /path/to/foo.txt to /another/path/to(/bar.txt)
-    copy /path/to/foo.txt into /another/path/to(/bar.txt)
-    copy from /path/to/foo.txt to /another/path/to(/bar.txt)
-    copy from /path/to/foo.txt into /another/path/to(/bar.txt)
+    copy /path/to/foo.txt /another/path/to
+    copy /path/to/foo.txt to /another/path/to
+    copy /path/to/foo.txt into /another/path/to
+    copy from /path/to/foo.txt to /another/path/to
+    copy from /path/to/foo.txt into /another/path/to
 
     Contents of a directory:
     copy /path/to/ to /another/path
