@@ -20,6 +20,9 @@
 # - Refactor the bot to split out the file copying stuff.
 # - Figure out how to specify a destination filename for single file copy.
 #   That take a few more neurons than I have online at the moment.
+# - Figure out a better way to detect multiple file copy situations up front.
+#   I've hacked a messy way to go about it but there are undoubtedly better
+#   ways.
 
 # Load modules.
 import argparse
@@ -143,6 +146,14 @@ def single_file_copy(filespecs):
     # Normalize the file paths so they are internally consistent.
     source_path = normalize_file_path(filespecs['from'])
     destination_path = normalize_file_path(filespecs['to'])
+
+    # Detect cases where the source path is a directory and not a file.  If it
+    # is, bounce to multiple_file_copy() and then kick back to the main loop.
+    if os.path.isdir(source_path):
+        logger.debug("Wait a minute, " + str(source_path) + " is a directory, not a file.  Calling multiple_file_copy().")
+        message = multiple_file_copy(filespecs)
+        logger.debug("Back from multiple_file_copy(), now bouncing back to the main loop.")
+        return message
 
     # Ensure the source and destination exist.  Bounce if they don't.
     if not ensure_exists(source_path):
