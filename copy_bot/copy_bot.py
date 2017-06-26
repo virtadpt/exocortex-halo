@@ -20,9 +20,6 @@
 # - Refactor the bot to split out the file copying stuff.
 # - Figure out how to specify a destination filename for single file copy.
 #   That take a few more neurons than I have online at the moment.
-# - Figure out a better way to detect multiple file copy situations up front.
-#   I've hacked a messy way to go about it but there are undoubtedly better
-#   ways.
 
 # Load modules.
 import argparse
@@ -130,67 +127,12 @@ def ensure_writable(file):
         logger.debug("The file path " + str(file) + " is writable.")
         return True
 
-# single_file_copy(): Function that takes as its argument a hash table
-#   containing two filespecs, one a file to copy from, the other a filename
-#   or directory to copy into.  Returns a message to the user.
-def single_file_copy(filespecs):
-    logger.debug("Entered function single_file_copy().")
-
-    # These make it easier to keep track of what is what.
-    source_path = ""
-    destination_path = ""
-
-    # Message for the user.
-    message = ""
-
-    # Normalize the file paths so they are internally consistent.
-    source_path = normalize_file_path(filespecs['from'])
-    destination_path = normalize_file_path(filespecs['to'])
-
-    # Detect cases where the source path is a directory and not a file.  If it
-    # is, bounce to multiple_file_copy() and then kick back to the main loop.
-    if os.path.isdir(source_path):
-        logger.debug("Wait a minute, " + str(source_path) + " is a directory, not a file.  Calling multiple_file_copy().")
-        message = multiple_file_copy(filespecs)
-        logger.debug("Back from multiple_file_copy(), now bouncing back to the main loop.")
-        return message
-
-    # Ensure the source and destination exist.  Bounce if they don't.
-    if not ensure_exists(source_path):
-        message = "ERROR: The source path " + str(source_path) + " does not exist.  I can't do anything."
-        return message
-    if not ensure_exists(destination_path):
-        message = "ERROR: The destination path " + str(destination_path) + " does not exist.  I can't do anything."
-        return message
-
-    # Ensure the source can be read.  Bounce if it isn't.
-    if not ensure_readable(source_path):
-        message = "ERROR: The source path " + str(source_path) + " is not readable."
-        return message
-
-    # Ensure that the destination is writable.  Note that it doesn't have to be
-    # readable.  Bounce if it isn't.
-    if not ensure_writable(destination_path):
-        message = "ERROR: The destination path " + str(destination_path) + " cannot be written to."
-        return message
-
-    # Copy the file.
-    try:
-        logger.debug("Attempting to copy " + str(source_path) + " to " + str(destination_path) + ".")
-        shutil.copy2(source_path, destination_path)
-        message = "File " + str(source_path) + " has been copied to " + str(destination_path) + "."
-    except:
-        message = "I was unable to copy " + str(source_path) + " to " + str(destination_path) + "."
-
-    # Return the message.
-    return message
-
-# multiple_file_copy(): Function that takes as its argument a hash table
-#   containing two filespecs, one a set of files to copy from or a directory
-#   to copy the contents of, the other a directory to copy them into.  Returns
+# copy_files(): Function that takes as its argument a hash table containing two
+#   filespecs, one a set of one or more files to copy (or a directory to copy
+#   the contents of), the other a directory to copy them into.  Returns
 #   a message to the user.
-def multiple_file_copy(filespecs):
-    logger.debug("Entered function multiple_file_copy().")
+def copy_files(filespecs):
+    logger.debug("Entered function copy_files().")
 
     # Message for the user.
     message = ""
@@ -205,7 +147,7 @@ def multiple_file_copy(filespecs):
     source_path = normalize_file_path(filespecs['from'])
     destination_path = normalize_file_path(filespecs['to'])
 
-    # Ensure the source directory exists.
+    # Ensure the source filepath exists.
     if not ensure_exists(source_path):
         message = "ERROR: The source path " + str(source_path) + " does not exist.  I can't do anything."
         return message
@@ -226,8 +168,11 @@ def multiple_file_copy(filespecs):
         message = "ERROR: The destination path " + str(destination_path) + " cannot be written to."
         return message
 
-    # Build a list of files to copy in the source directory.
-    source_files = os.listdir(source_path)
+    # Build a list of one or more files to copy in the source directory.
+    if os.path.isfile(source_path):
+        source_files.append(source_path)
+    else:
+        source_files = os.listdir(source_path)
 
     # Roll through the list of files, test them, and copy them.  If they can't
     # be copied push them onto the list of files that errored out.  We don't
@@ -235,7 +180,7 @@ def multiple_file_copy(filespecs):
     # directory listing.
     for file in source_files:
         source_file = os.path.join(source_path, file)
-        source_file = normalize_file_path(source_file)
+        #source_file = normalize_file_path(source_file)
 
         if not ensure_readable(source_file):
             uncopied_files.append(file)
@@ -424,15 +369,9 @@ while True:
             send_message_to_user(online_help())
             continue
 
-        # If the user is requesting a single file copy.
-        if command['type'] == "single":
-            message = single_file_copy(command)
-            send_message_to_user(message)
-            continue
-
         # If the user is requesting a multiple file copy.
-        if command['type'] == "multiple":
-            message = multiple_file_copy(command)
+        if command['type'] == "copy":
+            message = copy_files(command)
             send_message_to_user(message)
             continue
 
