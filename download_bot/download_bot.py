@@ -333,10 +333,6 @@ while True:
         if not download_request:
             continue
 
-        # Reply that it was successful.
-        reply = "The file has been successfully downloaded into " + download_directory
-        send_message_to_user(reply)
-
     # Message queue not found.
     if request.status_code == 404:
         logger.info("Message queue " + bot_name + " does not exist.")
