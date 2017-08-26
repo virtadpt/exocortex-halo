@@ -468,7 +468,8 @@ while True:
 
         # Parse the page request.
         page_request = parse_get_request(page_request)
-        logger.debug("Parsed page get request: " + page_request.encode("utf-8"))
+        if page_request:
+            logger.debug("Parsed page get request: " + page_request.encode("utf-8"))
 
         # If there was no page request, go back to sleep.
         if not page_request:
