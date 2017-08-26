@@ -253,9 +253,13 @@ def download_web_page(url):
         return (None, None)
 
     # Some web server that get into a bad state throw invalid HTTP error
-    # codes (such as "'" (yes, a single quote)).  Trap such a situation.
+    # codes (such as "'" (yes, a single quote) or an empty string).  Trap such
+    # situations.
     if type(request.status_code) != int:
         logger.warn("Got something that isn't an HTTP status code.  WTF?")
+        return (None, None)
+    if not request.status_code:
+        logger.warn("Got an empty HTTP status code.  WTF?")
         return (None, None)
 
     if request.status_code >= 500:
