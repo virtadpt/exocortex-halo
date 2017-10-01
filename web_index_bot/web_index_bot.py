@@ -129,7 +129,8 @@ def parse_index_request(index_request):
 
     # User asked the construct to submit the URL for indexing.
     if (words[0] == "index") or (words[0] == "spider") or \
-            (words[0] == "submit"):
+            (words[0] == "submit" or words[0] == "store" or \
+            words[0] == "archive" or words[0] == "get"):
         logger.info("Got a token that suggests that this is an index request.")
     del words[0]
 
@@ -344,7 +345,7 @@ while True:
         if index_request.lower() == "help":
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + """I am capable of accepting URLs for arbitrary websites and submitting them for indexing by the search engines and online archives specified in my configuration file (some of which you may control, of course).  To index a website, send me a message that looks something like this:\n\n"""
-            reply = reply + bot_name + ", [index,spider] https://www.example.com/foo.html\n\n"
+            reply = reply + bot_name + ", [index,spider,submit,store,archive,get] https://www.example.com/foo.html\n\n"
             reply = reply + """The search engines I am configured for are:\n"""
             for engine in search_engines:
                 reply = reply + """* """ + engine.split(',')[2] + "\n"
