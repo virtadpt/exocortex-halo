@@ -172,7 +172,12 @@ def submit_for_indexing(index_term):
             if method == "post":
                 request = requests.post(url)
             result = True
-            send_message_to_user("Successfully submitted link " + url + ".")
+
+            # If debugging is turned on, notify the user.
+            # I don't like that this is a magick number but the logger class
+            # only works with numbers, not so much with symbols.
+            if loglevel == 10:
+                send_message_to_user("Successfully submitted link " + url + ".")
         except:
             logger.warn("Unable to submit URL: " + str(url))
             send_message_to_user("ERROR: Unable to submit link " + url + ".")
