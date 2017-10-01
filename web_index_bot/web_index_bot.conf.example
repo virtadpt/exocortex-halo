@@ -13,9 +13,12 @@ loglevel = info
 # How often to poll the message queue for orders.  Defaults to 60 seconds.
 # polling_time = 60
 
+# Format:
+# URL encode? (yes/no), HTTP method, URL to send link to
 [search engines]
-engine1 = post,http://localhost:8090/Crawler_p.html?crawlingMode=url&crawlingDepth=0&range=domain&indexText=on&crawlingURL=
-engine2 = get,http://www.gigablast.com/addurl?c=main&urls=
-engine3 = get,https://web.archive.org/save/+
-engine4 = get,http://www.webcitation.org/archive?url=
+engine1 = no,post,http://localhost:8090/Crawler_p.html?crawlingMode=url&crawlingDepth=0&range=domain&indexText=on&crawlingURL=
+engine2 = no,get,http://www.gigablast.com/addurl?c=main&urls=
+engine3 = no,get,https://web.archive.org/save/
+engine4 = no,get,http://www.webcitation.org/archive?url=
+engine5 = yes,get,https://archive.fo/?run=1&url=
 

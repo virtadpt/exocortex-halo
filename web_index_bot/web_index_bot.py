@@ -14,6 +14,10 @@
 
 # License: GPLv3
 
+# v1.2 - Made the overly chatty status reports contingent upon the bot running
+#        in loglevel.DEBUG.
+#      - Added the ability to URL encode URLs to index or archive because some
+#        online archives require it (e.g., archive.fo).
 # v1.1 - Added some code to send a notification of a successful submission back
 #        to the user through the XMPP bridge.
 #      - Added some code to warn of an unsuccessful submission of a URL.
@@ -32,6 +36,7 @@ import re
 import requests
 import sys
 import time
+import urllib
 
 # Constants.
 
@@ -146,6 +151,9 @@ def parse_index_request(index_request):
 def submit_for_indexing(index_term):
     logger.debug("Entered function submit_for_indexing().")
 
+    # URL encode the indexing request?
+    urlencode = "no"
+
     # Method that should be used to send the URL to the search engine.
     method = ""
 
@@ -160,10 +168,17 @@ def submit_for_indexing(index_term):
 
     for url in search_engines:
         # Split the method and the submission URL.
-        (method, url) = url.split(',')
+        (urlencode, method, url) = url.split(',')
+        logger.debug("Value of urlencode: " + urlencode)
 
         # Build the full submission URL.
-        url = url + index_term
+        # If the urlencode flag is set, it means that the archive requires the
+        # URLs sent to it to be URL encoded.
+        if urlencode == "yes":
+            url = url + urllib.quote_plus(index_term)
+            logger.debug("URL encoding requested: " + str(index_term))
+        else:
+            url = url + index_term
         try:
             if method == "get":
                 request = requests.get(url)
@@ -181,6 +196,9 @@ def submit_for_indexing(index_term):
         except:
             logger.warn("Unable to submit URL: " + str(url))
             send_message_to_user("ERROR: Unable to submit link " + url + ".")
+
+        # Reset the urlencode flag to keep from breaking the other engines.
+        urlencode = "no"
 
     # Return the list of search results.
     return result
@@ -329,7 +347,7 @@ while True:
             reply = reply + bot_name + ", [index,spider] https://www.example.com/foo.html\n\n"
             reply = reply + """The search engines I am configured for are:\n"""
             for engine in search_engines:
-                reply = reply + """* """ + engine.split(',')[1] + "\n"
+                reply = reply + """* """ + engine.split(',')[2] + "\n"
             send_message_to_user(reply)
             continue
 
