@@ -17,6 +17,11 @@
 
 # v4.0 - Added the ability to tell the bot to run a search on a particular
 #        search engine that Searx has enabled.
+#      - Added a function that pulls a list of search engines the configured
+#        Searx instance has enabled and stores them locally so they can be used
+#        to run specific, targeted searches.
+#      - Updated online help.
+#      - Added the ability to list the search engines Searx has enabled.
 # v3.0 - Rewrote the bot's command parser using PyParsing
 #        (http://pyparsing.wikispaces.com/) because I got tired of trying
 #        to maintain my own parser.  This is much more robust.
@@ -161,6 +166,10 @@ search_command = pp.CaselessLiteral("search")
 shortcut_command = pp.Word(pp.alphanums).setResultsName("shortcode")
 for_command = pp.Optional(pp.CaselessLiteral("for"))
 
+# (list) (search) engines
+list_command = pp.CaselessLiteral("list")
+engines_command = pp.CaselessLiteral("engines")
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -211,6 +220,23 @@ def parse_help(request):
     try:
         parsed_command = help_command.parseString(request)
         return ("help", None, None)
+    except pp.ParseException as x:
+        logger.info("No match: {0}".format(str(x)))
+        return (None, None, None)
+
+# This function matches whenever it encounters the phrase "(list) (search)
+# engines" in an input string.  Returns "list" for the number of search terms,
+# None for the search string, and None for the destination e-mail.
+def parse_list(request):
+
+    # Build the parser out of predeclared primitives.  To make this code easier
+    # to maintain in the future I moved the pp.Optional() modifiers down here.
+    command = pp.Optional(list_command) + pp.Optional(search_command)
+    command = command + engines_command
+
+    try:
+        parsed_command = command.parseString(request)
+        return("list", None, None)
     except pp.ParseException as x:
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
@@ -273,7 +299,7 @@ def parse_and_email_results(request):
         return (None, None, None)
 
 # This function matches on commands of the form "search <shortcode> for
-# <search terms>".  Returns a default number of search results (20) until I can
+# <search terms>".  Returns a default number of search results (10) until I can
 # make the parser more sophisticated, a URL encoded search string which
 # includes the shortcode for the search engine ("!foo"), and "XMPP", because
 # this is really only useful for mobile requests right now.
@@ -283,14 +309,14 @@ def parse_specific_search(request):
     command = search_command + shortcut_command + for_command
     command = command + pp.Group(search_terms).setResultsName("searchterms")
 
-    number_of_search_results = 20
+    number_of_search_results = 10
     engine = ""
-    search_terms = []
+    searchterms = []
 
     try:
         parsed_command = command.parseString(request)
         engine = parsed_command["shortcode"]
-        search_terms = parsed_command["searchterms"]
+        searchterms = parsed_command["searchterms"]
 
         # Check to see if the search engine is enabled.  We do this in a
         # circuitous fashion because we want either the shortcode or a failure,
@@ -302,14 +328,14 @@ def parse_specific_search(request):
 
         # Create a search term that includes the shortcode for the search
         # engine.
-        search_terms.insert(0, engine)
-        search_terms = make_search_term(search_term)
+        searchterms.insert(0, engine)
+        searchterms = make_search_term(searchterms)
 
     except pp.ParseException as x:
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
-    return (number_of_search_results, search_term, "XMPP")
+    return (number_of_search_results, searchterms, "XMPP")
 
 # This function scans the list of enabled search engines and returns the
 # shortcode for the search engine ("!foo") or None.
@@ -358,6 +384,12 @@ def parse_search_request(search_request):
     if number_of_search_results == "help":
         logger.info("The user is asking for online help.")
         return ("help", None, None)
+
+    # Attempt to parse a "list search engines" request.
+    (number_of_search_results, search_term, email_address) = parse_list(search_request)
+    if number_of_search_results == "list":
+        logger.info("The user has requested a list of search engines.")
+        return ("list", None, None)
 
     # Attempt to parse a "get" request.
     (number_of_search_results, search_term, email_address) = parse_get_request(search_request)
@@ -612,13 +644,25 @@ while True:
         # send it back to the user, and restart the loop.
         if (str(number_of_results).lower() == "help"):
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
-            reply = reply + "I am an interface to the Searx meta-search engine with very limited conversational capability.  At this time I can accept search requests and e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n\n"
+            reply = reply + "I am an interface to the Searx meta-search engine with a limited conversational user interface.  At this time I can accept search requests and e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n\n"
             reply = reply + bot_name + ", (send/e-mail/email/mail) (me/<e-mail address>) top <number> hits for <search request...>\n\n"
             reply = reply + "By default, I will e-mail results to the address " + default_email + ".\n\n"
             reply = reply + "I can return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
             reply = reply + bot_name + ", (get) top <number> hits for <search request...>\n\n"
+            reply = reply + "I can list the search engines I'm configured to contact:\n\n"
+            reply = reply + bot_name + ", (list (search)) engines\n\n"
             reply = reply + "I can run searches using specific search engines I'm configured for:\n\n"
             reply = reply + bot_name + ", search <search engine shortcode> for <search request...>\n\n"
+            send_message_to_user(reply)
+            continue
+
+        # Test to see if the user requested a list of search engines.  If so,
+        # assemble a response, send it back to the user, and restart the loop.
+        if (str(number_of_results).lower() == "list"):
+            reply = "These are the search engines I am configured to use:\n"
+            reply = reply + "Shortcode\t\tSearch engine name\n"
+            for i in search_engines:
+                reply = reply + i["shortcut"] + "\t\t" + i["name"].title() + "\n"
             send_message_to_user(reply)
             continue
 
