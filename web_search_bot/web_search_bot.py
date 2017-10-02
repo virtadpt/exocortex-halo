@@ -150,6 +150,11 @@ me = pp.CaselessLiteral("me")
 email = pp.Regex(r"(?P<user>[A-Za-z0-9._%+-]+)@(?P<hostname>[A-Za-z0-9.-]+)\.(?P<domain>[A-Za-z]{2,4})")
 destination = pp.Optional(me) + pp.Optional(email).setResultsName("dest")
 
+# search <engine or shortcut> (for) <search terms>
+search_command = pp.CaselessLiteral("search")
+shortcut_command = pp.Word(pp.alphanums).setResultsName("shortcode")
+for_command = pp.Optional(pp.CaselessLiteral("for"))
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -172,7 +177,6 @@ def set_loglevel(loglevel):
 # method.
 def make_search_term(search_terms):
     return "+".join(term for term in search_terms)
-    return
 
 # This function takes a number represented as a word ("twenty") or a number
 # ("20") and turns it into a number (20) if it's the former.  Returns a number
@@ -232,7 +236,7 @@ def parse_get_request(request):
 
 # This function matches on commands of the form "send/e-mail/email/mail top
 # <foo> hits for <search terms>".  Returns an integer number of search results
-# (up to 40), a URL encoded search string, and an e-mail address.
+# (up to 50), a URL encoded search string, and an e-mail address.
 def parse_and_email_results(request):
 
     # Build the parser out of predeclared primitives.
@@ -262,6 +266,61 @@ def parse_and_email_results(request):
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
+# This function matches on commands of the form "search <shortcode> for
+# <search terms>".  Returns a default number of search results (20) until I can
+# make the parser more sophisticated, a URL encoded search string which
+# includes the shortcode for the search engine ("!foo"), and "XMPP", because
+# this is really only useful for mobile requests right now.
+def parse_specific_search(request):
+
+    # Build the parser out of predeclared primitives.
+    command = search_command + shortcut_command + for_command
+    command = command + pp.Group(search_terms).setResultsName("searchterms")
+
+    number_of_search_results = 20
+    engine = ""
+    search_terms = []
+
+    try:
+        parsed_command = command.parseString(request)
+        engine = parsed_command["shortcode"]
+        search_terms = parsed_command["searchterms"]
+
+        # Check to see if the search engine is enabled.  We do this in a
+        # circuitous fashion because we want either the shortcode or a failure,
+        # while at the same time making it possible for the user to use the
+        # name of the search engine.
+        engine = is_enabled_engine(engine)
+        if not engine:
+            return(0, "", "")
+
+        # Create a search term that includes the shortcode for the search
+        # engine.
+        search_terms.insert(0, engine)
+        search_terms = make_search_term(search_term)
+
+    except pp.ParseException as x:
+        logger.info("No match: {0}".format(str(x)))
+        return (None, None, None)
+
+    return (number_of_search_results, search_term, "XMPP")
+
+# This function scans the list of enabled search engines and returns the
+# shortcode for the search engine ("!foo") or None.
+def is_enabled_engine(engine):
+
+    # Test to see if the shortcode given (which could be either the name of the
+    # search engine or the actual shortcode) are in the list.  We append a bang
+    # (!) to the shortcode so that Searx knows to use it as a specific search.
+    for i in search_engines:
+        if i["name"] == engine.lower():
+            logger.debug("Search engine " + str(engine) + " enabled.")
+            return "!" + i["shortcut"]
+        if i["shortcut"] == engine.lower():
+            logger.debug("Search engine " + str(engine) + " enabled.")
+            return "!" + i["shortcut"]
+    return None
+
 # parse_search_request(): Takes a string and figures out what kind of search
 #   request the user wants.  Requests are something along the form of "top ten
 #   hits for foo" or "search Tor for bar".  Returns the number of results to
@@ -273,6 +332,7 @@ def parse_search_request(search_request):
     number_of_search_results = 0
     search_term = ""
     email_address = ""
+    engine = ""
 
     # Clean up the search request.
     search_request = search_request.strip()
@@ -304,6 +364,14 @@ def parse_search_request(search_request):
     if number_of_search_results and ("@" in email_address):
         logger.info("The user has requested that search results for " + str(search_term) + " be e-mailed to " + email_address + ".")
         return (number_of_search_results, search_term, email_address)
+
+    # Attempt to parse a search for a specific engine.  If it works, prepend
+    # the string "!<search shortcode>" so that Searx knows to search on one
+    # search engine only.
+    (number_of_search_results, search_term, email_address) = parse_specific_search(search_request)
+    if number_of_search_results and (email_address == "XMPP"):
+        logger.info("The user has requested a specific search: " + str(search_term))
+        return (number_of_search_results, search_term, "XMPP")
 
     # Fall-through - this should happen only if nothing at all matches.
     logger.info("Fell all the way through in parse_search_request().  Telling the user I didn't understand what they said.")
