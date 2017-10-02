@@ -15,6 +15,8 @@
 
 # License: GPLv3
 
+# v4.0 - Added the ability to tell the bot to run a search on a particular
+#        search engine that Searx has enabled.
 # v3.0 - Rewrote the bot's command parser using PyParsing
 #        (http://pyparsing.wikispaces.com/) because I got tired of trying
 #        to maintain my own parser.  This is much more robust.
@@ -47,6 +49,7 @@
 #   the effect of "I don't know what you just said."
 # - Break out the "handle HTTP result code" handler into a function.
 # - Break up the main loop into a few functions to make it easier to read.
+# - Move online help into a separate function.
 
 # Load modules.
 from email.message import Message
@@ -117,6 +120,9 @@ bot_name = ""
 
 # How often to poll the message queues for orders.
 polling_time = 60
+
+# List of search engines the configured Searx instance has enabled.
+search_engines = []
 
 # Search request sent from the user.
 search_request = ""
@@ -521,6 +527,19 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
+# Query the Searx instance and get its list of enabled search engines.
+try:
+    request = requests.get(searx + "/config")
+    search_engines = request.json()["engines"]
+except:
+    logger.error("Unable to contact Searx instance!  Terminating.")
+    sys.exit(1)
+
+# Remove all of the disabled search engines from the list.
+for i in search_engines:
+    if not bool(i["enabled"]):
+        search_engines.remove(i)
+
 # Debugging output, if required.
 logger.info("Everything is set up.")
 logger.debug("Values of configuration variables as of right now:")
@@ -535,6 +554,7 @@ logger.debug("Time in seconds for polling the message queue: " +
 logger.debug("SMTP server to send search results through: " + smtp_server)
 logger.debug("E-mail address that search results are sent from: " +
     origin_email_address)
+logger.debug("Number of search engines enabled: " + str(len(search_engines)))
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -590,8 +610,10 @@ while True:
             reply = reply + "I am an interface to the Searx meta-search engine with very limited conversational capability.  At this time I can accept search requests and e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n\n"
             reply = reply + bot_name + ", (send/e-mail/email/mail) (me/<e-mail address>) top <number> hits for <search request...>\n\n"
             reply = reply + "By default, I will e-mail results to the address " + default_email + ".\n\n"
-            reply = reply + "I can also return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
+            reply = reply + "I can return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
             reply = reply + bot_name + ", (get) top <number> hits for <search request...>\n\n"
+            reply = reply + "I can run searches using specific search engines I'm configured for:\n\n"
+            reply = reply + bot_name + ", search <search engine shortcode> for <search request...>\n\n"
             send_message_to_user(reply)
             continue
 
