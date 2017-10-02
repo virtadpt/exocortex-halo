@@ -527,12 +527,17 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
-# Query the Searx instance and get its list of enabled search engines.
+# Query the Searx instance and get its list of enabled search engines.  I don't
+# particularly like this kind of jiggery-pokery but I also have the JSON API
+# URI in the default configuration file to make life easier for people.  This
+# is probably the least bad of all possible worlds.
 try:
-    request = requests.get(searx + "/config")
+    temp_searx = "/".join(searx.split('/')[0:-1]) + "/config"
+    request = requests.get(temp_searx)
     search_engines = request.json()["engines"]
 except:
-    logger.error("Unable to contact Searx instance!  Terminating.")
+    logger.error("Unable to contact Searx instance! Tried to contact configuration URL " + str(temp_searx))
+    logger.error("Terminating.")
     sys.exit(1)
 
 # Remove all of the disabled search engines from the list.
