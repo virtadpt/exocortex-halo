@@ -7,13 +7,7 @@
 
 # by: The Doctor [412/724/301/703/415] <drwho at virtadpt dot net>
 
-# Variables
-# Full path to where beta_fork/ is installed.
-BETA_FORK_DIR="/path/to/beta_fork"
-
 # Core code.
-cd $BETA_FORK_DIR
-
 # Activate in the virtualenv.  Imagine whatever sci-fi sound effects you wish
 # as this happens.
 source env/bin/activate

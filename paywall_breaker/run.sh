@@ -7,12 +7,7 @@
 
 # by: The Doctor [412/724/301/703/415][ZS] <drwho at virtadpt dot net>
 
-# Variables
-# Full path to where exocortex_sip_client.py is installed.
-BOT_DIR="/path/to/paywall_breaker"
-
 # Core code.
-cd $BOT_DIR
 
 # Bring in the virtualenv.  Imagine whatever sci-fi sound effects you wish
 # as this happens.
