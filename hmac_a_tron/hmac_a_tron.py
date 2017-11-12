@@ -218,7 +218,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
     # containing an appropriate response.
     def _send_http_response(self, code, text):
         self.send_response(code)
-        self.send_header("Content-Type", "text/plain")
+        self.send_header("Content-Type", "application/json")
         self.end_headers()
         self.wfile.write(text)
         return
