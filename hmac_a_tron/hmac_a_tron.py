@@ -6,7 +6,7 @@
 #   contianing an arbitrary string of some kind (read: secret key) and runs an
 #   HMAC (https://en.wikipedia.org/wiki/Hash-based_message_authentication_code)
 #   on it.  The HMAC'd data is then returned to the client as a JSON document
-#   of the form { "result": "<HMAC here>" }.
+#   of the form { "result": "<HMAC here>" }.  The HMAC will be base64 encoded.
 #
 #   The use case for this should be pretty obvious: You want to interact with
 #   an API programmatically but it requires that your requests be HMAC'd for
@@ -22,19 +22,21 @@
 # v1.0 - Initial release.
 
 # TO-DO:
+# - Refactor this code to split the GET and PUT verbs' code into separate
+#   files, and move the _helper_methods() into their own library file.
+# - Add other options than base64 for output encoding.
 
 # Load modules.
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
 import argparse
+import base64
 import hashlib
 import hmac
 import json
 import logging
 import sys
-
-# Constants.
 
 # Global variables.
 # Handles to a command line parser and parsed argument vector.
@@ -93,6 +95,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         }
         </code></p>
 
+        <p>The Content-type header must be "application/json" or you'll get an HTTP 400 error.</p>
+
         <p>The name of the HMAC algorithm is used as the URI.</p>
 
         <p>Supported HMAC algorithms:</p>
@@ -138,6 +142,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         hash = ""
         content = ""
         content_length = 0
+        arguments = {}
+        hasher = None
+        response = {}
 
         # Parse the URI to see if it's one of the supported hashes.
         logger.debug("URI requested by the client: " + str(self.path))
@@ -156,7 +163,55 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             self._send_http_response(400, "You sent no content in that request.")
             return
 
+        # Ensure that the client sent JSON and not something else.
+        if not self._ensure_json():
+            logger.debug("Client didn't send JSON in the payload.")
+            self._send_http_response(400, "You need to send JSON.")
+            return
+
+        # Try to deserialize the JSON sent from the client.  If we can't,
+        # pitch a fit.
+        arguments = self._deserialize_content(content)
+        if not arguments:
+            logger.debug("A required key is missing in the payload.")
+            self._send_http_response(400, "You need to send valid JSON.  That was not valid.")
+            return
+        logger.debug("Value of arguments: " + str(arguments))
+        
+        # Ensure that all of the required keys are in the JSON document.
+        if not self._ensure_all_keys(arguments):
+            logger.debug("A required key is missing in the payload.")
+            self._send_http_response(400, "All required keys were not found in the JSON document.  Look at the online help.")
+            return
+        
+        # Determine which hash to use with the HMAC and run it on the data.
+        if hash == "md5":
+            logger.debug("Picked hash MD5.")
+            hasher = hmac.new(str(arguments["secret"]), "", hashlib.md5)
+        if hash == "sha1":
+            logger.debug("Picked hash SHA-1.")
+            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha1)
+        if hash == "sha224":
+            logger.debug("Picked hash SHA-224.")
+            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha224)
+        if hash == "sha256":
+            logger.debug("Picked hash SHA-256.")
+            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha256)
+        if hash == "sha384":
+            logger.debug("Picked hash SHA-384.")
+            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha384)
+        if hash == "sha512":
+            logger.debug("Picked hash SHA-512.")
+            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha512)
+        hasher.update(arguments["data"])
+
+        # Return the HMAC'd data to the client.
+        response["result"] = base64.encodestring(hasher.digest()).strip()
+        logger.debug("Value of response: " + str(response))
+        self._send_http_response(200, json.dumps(response))
         return
+
+    # Helper methods start here.
 
     # Send an HTTP response, consisting of the status code, headers and
     # payload.  Takes two arguments, the HTTP status code and a JSON document
@@ -173,17 +228,42 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
     def _read_content(self):
         content = ""
         content_length = 0
-
         try:
-            content_length = int(self.headers['Content-Length'])
+            content_length = int(self.headers["Content-Length"])
             content = self.rfile.read(content_length)
             logger.debug("Content sent by client: " + content)
         except:
-            logger.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
-            self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
             return None
+        return content
 
-        return content    
+    # Ensure that the content from the client is JSON.
+    def _ensure_json(self):
+        if "application/json" not in self.headers["Content-Type"]:
+            return False
+        else:
+            return True
+
+    # Try to deserialize content from the client.  Return the hash table
+    # containing the deserialized JSON if it exists.
+    def _deserialize_content(self, content):
+        arguments = {}
+        try:
+            arguments = json.loads(content)
+        except:
+            return None
+        return arguments
+
+    # Ensure that all of the keys required to carry out an HMAC are in the
+    # hash table.
+    def _ensure_all_keys(self, arguments):
+        all_keys_found = True
+        for key in self.required_keys:
+            if key not in arguments.keys():
+                all_keys_found = False
+        if not all_keys_found:
+            return False
+        else:
+            return True
 
 # Functions.
 # Figure out what to set the logging level to.  There isn't a straightforward
