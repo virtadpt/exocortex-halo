@@ -26,20 +26,21 @@
 from BaseHTTPServer import HTTPServer
 from BaseHTTPServer import BaseHTTPRequestHandler
 
+import argparse
 import hashlib
 import hmac
 import logging
 import sys
 
 # Constants.
-# IP/hostname and port the REST API server listens on.  Defaults to localhost
-# and port 8003/tcp.
-listenon_host = "localhost"
-listenon_port = 10000
 
 # Global variables.
-# Loglevel.  Defaults to INFO.
-loglevel = logging.INFO
+# Handles to a command line parser and parsed argument vector.
+argparser = None
+args = None
+
+# Default log level for the microservice.
+loglevel = None
 
 # Handle to an HTTP server object.
 api_server = None
@@ -54,6 +55,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Process HTTP/1.1 GET requests.
     def do_GET(self):
+        logger.debug("Entered RESTRequestHandler.do_GET().")
+
         # HTTP GETs only return online documentation, regardless of the payload.
         self.send_response(200)
         self.send_header("Content-type", "text/html")
@@ -109,19 +112,59 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Process HTTP/1.1 POST requests.
     def do_POST(self):
+        logger.debug("Entered RESTRequestHandler.do_POST().")
+
         pass
 
 # Functions.
+# Figure out what to set the logging level to.  There isn't a straightforward
+# way of doing this because Python uses constants that are actually integers
+# under the hood, and I'd really like to be able to do something like
+# loglevel = 'logging.' + loglevel
+# I can't have a pony, either.  Takes a string, returns a Python loglevel.
+def process_loglevel(loglevel):
+    if loglevel == "critical":
+        return 50
+    if loglevel == "error":
+        return 40
+    if loglevel == "warning":
+        return 30
+    if loglevel == "info":
+        return 20
+    if loglevel == "debug":
+        return 10
+    if loglevel == "notset":
+        return 0
 
 # Core code...
+# Set up the command line argument parser.
+argparser = argparse.ArgumentParser(description="A microservice that implements a service for HMAC'ing arbitrary data when supplied with a secret key of some kind.  It presents a REST API which just about any HTTP client can access.")
+
+# Loglevels: critical, error, warning, info, debug, notset.
+argparser.add_argument('--loglevel', action='store', default=logging.INFO,
+    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
+
+# IP address the server listens on.  Defaults to 127.0.0.1 (localhost).
+argparser.add_argument('--host', action='store', default="127.0.0.1",
+    help='Local IP the server listens on.  Defaults to 127.0.0.1 (all local IPs).')
+
+# Port the server listens on.  Default 10000/tcp.
+argparser.add_argument('--port', action='store', default=10000,
+    help='Port the server listens on.  Default 10000/tcp.')
+
+# Parse the command line args.
+args = argparser.parse_args()
+if args.loglevel:
+    loglevel = process_loglevel(args.loglevel)
+
 # Configure the logger with the base loglevel.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Instantiate a copy of the HTTP server.
-api_server = HTTPServer((listenon_host, listenon_port), RESTRequestHandler)
-logger.debug("REST API server now listening on " + str(listenon_host) +
-    ", port " + str(listenon_port) + "/tcp.")
+api_server = HTTPServer((args.host, args.port), RESTRequestHandler)
+logger.debug("REST API server now listening on " + str(args.host) +
+    ", port " + str(args.port) + "/tcp.")
 while True:
     api_server.serve_forever()
 
