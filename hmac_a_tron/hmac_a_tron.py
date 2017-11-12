@@ -206,9 +206,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         hasher.update(arguments["data"])
 
         # Return the HMAC'd data to the client.
-        response["result"] = hasher.hexdigest()
-        logger.debug("Value of response: " + str(response))
-        self._send_http_response(200, json.dumps(response))
+        logger.debug("Value of response: " + str(hasher.hexdigest()))
+        self._send_http_response(200, hasher.hexdigest())
         return
 
     # Helper methods start here.
