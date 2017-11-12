@@ -311,7 +311,7 @@ logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 # Instantiate a copy of the HTTP server.
-api_server = HTTPServer((args.host, args.port), RESTRequestHandler)
+api_server = HTTPServer((args.host, int(args.port)), RESTRequestHandler)
 logger.debug("REST API server now listening on " + str(args.host) +
     ", port " + str(args.port) + "/tcp.")
 while True:
