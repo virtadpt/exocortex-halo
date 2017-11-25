@@ -21,6 +21,8 @@
 # - Write a better command parser, because this is getting bad.
 
 # Load modules.
+# Needed for youtube-dl support, if it exists.  I'd like to make it conditional
+# but Python2 doesn't let you do it that way.
 from __future__ import unicode_literals
 
 import argparse
@@ -136,10 +138,10 @@ def parse_download_request(download_request):
         if video_enabled:
             download_video = True
             logger.info("Enabling media stream download.")
+            del words[0]
         else:
             logger.error("User wants to download a media stream but that capability isn't enabled.")
             return None
-    del words[0]
 
     # If the parsed search term is now empty, return an error.
     if not len(words):
@@ -151,8 +153,8 @@ def parse_download_request(download_request):
     logger.debug("Download URL: " + download_url)
     return download_url
 
-# download_file(): Function that takes as its argument a URL to download a
-#   file from.
+# download_file(): Function that takes as its arguments a directory to put
+#   files into and a URL to download a file from.
 def download_file(download_directory, url):
     logger.debug("Entered function download_file().")
 
@@ -161,26 +163,6 @@ def download_file(download_directory, url):
 
     # Generic flag that determines whether or not the process worked.
     result = False
-
-    # Reference the "Is this a video or not?" flag.
-    global download_video
-
-    # Catch the quick case: Media stream download.
-    if download_video:
-        logger.info("Attempting to download a media stream.")
-        options = {}
-
-        # youtube-dl has an unusual way of specifying the destination
-        # directory: It has to go in a template specifying what the filename
-        # will look like when the download is complete.
-        options["outtmpl"] = download_directory + "/%(title)s-%(id)s.%(ext)s"
-        options["outtmpl"] = os.path.normpath(options["outtmpl"])
-        download = [ url ]
-        with youtube_dl.YoutubeDL(options) as ydl:
-            ydl.download(download)
-        download_video = False
-        send_message_to_user("Successfully downloaded media stream: " + url)
-        return True
 
     # Local filename to write the file to.
     local_filename = url.split('/')[-1]
@@ -202,6 +184,45 @@ def download_file(download_directory, url):
     except:
         logger.warn("Unable to download from URL " + str(url) + " or write to file " + str(full_path))
         send_message_to_user("I was unable to download from URL " + str(url) + " or write to file " + str(full_path))
+
+    # Return the result.
+    return result
+
+# download_media(): Function that takes as its arguments a directory to store
+#   the downloaded media file into and a URL to download a stream from.
+def download_media(download_directory, url):
+    logger.debug("Entered function download_media().")
+
+    # Make the "download a media stream" flag accessible.
+    global download_video
+
+    # Generic flag that determines whether or not the process worked.
+    result = False
+
+    # Hash contianing options used by youtube_dl.
+    options = {}
+
+    # youtube-dl has an unusual way of specifying the destination
+    # directory: It has to go in a template specifying what the filename
+    # will look like when the download is complete.  I've hardcoded the
+    # template here because it's basically the default anyway.
+    options["outtmpl"] = download_directory + "/%(title)s-%(id)s.%(ext)s"
+    options["outtmpl"] = os.path.normpath(options["outtmpl"])
+
+    # The .download() method takes as its argument an array of strings.
+    download = [ url ]
+
+    # This is kinda clunky but it's in the official docs...
+    try:
+        with youtube_dl.YoutubeDL(options) as ydl:
+            ydl.download(download)
+        Result = True
+        send_message_to_user("Successfully downloaded media stream: " + str(url))
+    except:
+        send_message_to_user("Something went wrong - I wasn't able to download the media stream at " + str(url))
+
+    # Reset this flag anyway because we don't want it to get stuck.
+    download_video = False
 
     # Return the result.
     return result
@@ -379,9 +400,16 @@ while True:
             continue
 
         # Handle the download request.
-        reply = "Downloading file now.  Please stand by."
-        send_message_to_user(reply)
-        download_request = download_file(download_directory, download_request)
+        if download_video:
+            reply = "Downloading media stream."
+            send_message_to_user(reply)
+            download_request = download_media(download_directory,
+                download_request)
+        else:
+            reply = "Downloading file now.  Please stand by."
+            send_message_to_user(reply)
+            download_request = download_file(download_directory,
+                download_request)
 
         # If something went wrong... the notice is sent earlier, so just
         # continue at the top of the loop.
