@@ -10,5 +10,8 @@ virtualenv2 env
 . env/bin/activate
 pip install youtube-dl
 pip install requests
+python ./download_bot.py
 ```
+
+Includes is a `run.sh` shell script which automates starting up download_bot.py somewhat if you're using a virtualenv.  It requires that you called your virtualenv `env` and you created it inside of the download_bot/ directory.  Please see the contents of the shell script for more details (of which there are few - I tried to keep it as short and simple as I could).
 
