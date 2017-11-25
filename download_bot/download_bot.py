@@ -14,12 +14,15 @@
 
 # License: GPLv3
 
+# v1.1 - Added youtube-dl support.
 # v1.0 - Initial release.
 
 # TO-DO:
-# - 
+# - Write a better command parser, because this is getting bad.
 
 # Load modules.
+from __future__ import unicode_literals
+
 import argparse
 import ConfigParser
 import json
@@ -32,7 +35,6 @@ import sys
 import time
 
 # Global variables.
-
 # Handle to a logging object.
 logger = ""
 
@@ -62,6 +64,12 @@ download_directory = ""
 # Handle to an download request from the user.
 download_request = None
 
+# Flag that determines if youtube-dl is available as a module.
+video_enabled = False
+
+# Flag that determines if a media stream will be downloaded.
+download_video = False
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -87,6 +95,9 @@ def parse_download_request(download_request):
     logger.debug("Entered function parse_download_request().")
     download_url = ""
     words = []
+
+    # Make the download_video flag available from the top level.
+    global download_video
 
     # Clean up the download request.
     download_request = download_request.strip()
@@ -119,6 +130,17 @@ def parse_download_request(download_request):
         logger.info("Got a token that suggests that this is a download request.")
     del words[0]
 
+    # User asked the construct to download a media stream with youtube-dl.
+    if (words[0] == "stream") or (words[0] == "video"):
+        logger.info("Got a token that suggests that this is a media download request.")
+        if video_enabled:
+            download_video = True
+            logger.info("Enabling media stream download.")
+        else:
+            logger.error("User wants to download a media stream but that capability isn't enabled.")
+            return None
+    del words[0]
+
     # If the parsed search term is now empty, return an error.
     if not len(words):
         logger.error("The download request appears to be empty.")
@@ -134,6 +156,32 @@ def parse_download_request(download_request):
 def download_file(download_directory, url):
     logger.debug("Entered function download_file().")
 
+    # Handle to an HTTP(S) request.
+    request = None
+
+    # Generic flag that determines whether or not the process worked.
+    result = False
+
+    # Reference the "Is this a video or not?" flag.
+    global download_video
+
+    # Catch the quick case: Media stream download.
+    if download_video:
+        logger.info("Attempting to download a media stream.")
+        options = {}
+
+        # youtube-dl has an unusual way of specifying the destination
+        # directory: It has to go in a template specifying what the filename
+        # will look like when the download is complete.
+        options["outtmpl"] = download_directory + "/%(title)s-%(id)s.%(ext)s"
+        options["outtmpl"] = os.path.normpath(options["outtmpl"])
+        download = [ url ]
+        with youtube_dl.YoutubeDL(options) as ydl:
+            ydl.download(download)
+        download_video = False
+        send_message_to_user("Successfully downloaded media stream: " + url)
+        return True
+
     # Local filename to write the file to.
     local_filename = url.split('/')[-1]
 
@@ -141,12 +189,6 @@ def download_file(download_directory, url):
     full_path = os.path.join(download_directory, local_filename)
     full_path = os.path.normpath(full_path)
     logger.info("I will attempt to store the downloaded file as: " + str(full_path))
-
-    # Handle to an HTTP(S) request.
-    request = None
-
-    # Generic flag that determines whether or not the process worked.
-    result = False
 
     # Download the file.
     try:
@@ -266,6 +308,13 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
+# Try to import youtube_dl if it's available.
+try:
+    import youtube_dl
+    video_enabled = True
+except:
+    pass
+
 # Debugging output, if required.
 logger.info("Everything is set up.")
 logger.debug("Values of configuration variables as of right now:")
@@ -276,6 +325,8 @@ logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
 logger.debug("Download directory: " + download_directory)
+if video_enabled:
+    logger.debug("This instance of download_bot.py is youtube-dl enabled.")
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any download requests waiting for it.
@@ -321,6 +372,10 @@ while True:
             send_message_to_user(reply)
             reply = "I will download files into: " + download_directory
             send_message_to_user(reply)
+            if video_enabled:
+                reply = "I am youtube-dl enabled, and so can download any media stream this module is capable of.  To download a supported media, stream, send me a message that looks like this:\n\n"
+                reply = reply + bot_name + ", [download,get] [stream,video] https://youtube.com/foo"
+                send_message_to_user(reply)
             continue
 
         # Handle the download request.
