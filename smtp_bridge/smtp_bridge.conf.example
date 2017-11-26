@@ -1,0 +1,25 @@
+# Top level configuration for the entire bot.
+[DEFAULT]
+
+# URL of the message queue to send messages to.
+queue = http://localhost:8003/
+
+# Name I should answer to.
+bot_name = SMTP
+
+# Set the default loglevel of the bot.
+loglevel = info
+
+# IP address to listen on (defaults to localhost).
+address = 127.0.0.1
+
+# Port to listen on (defaults to 25/tcp).
+port = 25
+
+# Username to drop privileges to.
+username = nobody
+
+# Group to drop privileges to.
+group = nogroup
+
+
