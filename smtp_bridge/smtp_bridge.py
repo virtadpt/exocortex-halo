@@ -24,12 +24,15 @@
 
 # Load modules.
 import argparse
+import asyncore
 import ConfigParser
+import json
 import logging
 import os.path
+import requests
 import sys
 
-# Constants.
+from smtpd import SMTPServer
 
 # Global variables.
 # Handles to a command line argument parser and the parsed args.
@@ -50,7 +53,42 @@ queue = ""
 username = ""
 group = ""
 
+# Handle to an SMTP server object.
+smtpd = None
+
 # Classes.
+class smtp_bridge(SMTPServer):
+    headers = {'Content-type': 'application/json'}
+
+    # process_message(): Method that does the work of processing SMTP messages
+    #   from the server.  It's overridden to take apart the message and
+    #   send it to an XMPP bridge server.
+    def process_message(self, peer, mailfrom, rcpttos, data):
+        logger.debug("Entered smtp_bridge.process_message().")
+        logger.debug("Value of peer: " + str(peer))
+        logger.debug("Value of mailfrom: " + str(mailfrom))
+        logger.debug("Value of rcpttos: " + str(rcpttos))
+        logger.debug("Value of data: " + str(data))
+
+        # Hash table that forms the message to send.
+        message = {}
+
+        # Handle to a Request object.
+        request = None
+
+        # Build the message to send.
+        message["name"] = queue.split("/")[-1]
+        message["reply"] = data.strip()
+
+        # Attempt to send the message to the XMPP bridge.
+        try:
+            logger.debug("Sending message to queue: " + queue)
+            request = requests.put(queue, headers=self.headers,
+                data=json.dumps(message))
+            logger.debug("Response from server: " + request.text)
+        except:
+            logger.warn("Connection attempt to message queue " + queue + " failed.")
+        return
 
 # Functions.
 # Figure out what to set the logging level to.  There isn't a straightforward
@@ -119,6 +157,13 @@ logger.debug("SMTP host: " + str(smtphost))
 logger.debug("SMTP port: " + str(smtpport) + "/tcp")
 logger.debug("Username to drop privileges to: " + str(username))
 logger.debug("Group to drop privileges to: " + str(group))
+
+# Stand up an SMTP server.
+smtpd = smtp_bridge((smtphost, int(smtpport)), None)
+try:
+    asyncore.loop()
+except KeyboardInterrupt:
+    print "Got a keyboard interrupt.  Terminating"
 
 # Fin.
 sys.exit(0)
