@@ -172,7 +172,7 @@ argparser = argparse.ArgumentParser(description="A bot that implements an SMTP s
 argparser.add_argument("--config", action="store", default="./smtp_bridge.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
-argparser.add_argument("--loglevel", action="store", default="info",
+argparser.add_argument("--loglevel", action="store",
     help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
 # Parse the command line arguments.
@@ -196,9 +196,8 @@ group = config.get("DEFAULT", "group")
 
 # Figure out how to configure the logger.
 if args.loglevel:
-    loglevel = process_loglevel(args.loglevel.lower())
-else:
-    loglevel = process_loglevel(loglevel.lower())
+    loglevel = args.loglevel
+loglevel = process_loglevel(loglevel.lower())
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
