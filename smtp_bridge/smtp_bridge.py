@@ -10,6 +10,9 @@
 #   will automatically drop its privileges to nobody/nobody or nobody/nogroup
 #   (also configurable because different distros use different UIDs and GIDs
 #   for this).
+#
+#   Put all of your configuration options into a config file.  Treat this bot
+#   just like any other SMTP server you might set up.
 
 # By: The Doctor [412/724/301/703/415] <drwho at virtadpt dot net>
 
@@ -21,7 +24,9 @@
 
 # Load modules.
 import argparse
+import ConfigParser
 import logging
+import os.path
 import sys
 
 # Constants.
@@ -31,9 +36,19 @@ import sys
 argparser = None
 args = None
 
-# Handles to logger object and configuration.
-loglevel = None
+# Handle to logger object.
 logger = None
+
+# Handle to a configuration file parser.
+config = None
+
+# Server-level configuration options.
+loglevel = ""
+smtphost = ""
+smtpport = 0
+queue = ""
+username = ""
+group = ""
 
 # Classes.
 
@@ -68,44 +83,42 @@ argparser.add_argument("--config", action="store", default="./smtp_bridge.conf")
 argparser.add_argument("--loglevel", action="store", default="info",
     help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
-# Set up the hostname to listen for SMTP connections on.
-argparser.add_argument("--listenhost", action="store", default="localhost",
-    help="Specify the hostname to listen on for SMTP connections.  Defaults to localhost.")
-
-# Set up the port to listen on for SMTP traffic.
-argparser.add_argument("--listenport", action="store", default=25,
-    help="Specify the network port to listen on for SMTP traffic.  Defaults to 25/tcp.")
-
-# Set up the hostname of the XMPP bridge to contact.
-argparser.add_argument("--hostname", action="store", default="localhost",
-    help="Specify the hostname of an XMPP bridge to contact.  Defaults to localhost.")
-
-# Set up the port of the XMPP bridge to contact.
-argparser.add_argument("--port", action="store", default=8003,
-    help="Specify the network port of an XMPP bridge to contact.  Defaults to 8003/tcp.")
-
-# Define the name of a message queue to send messages to.
-argparser.add_argument("--queue", action="store", default="replies",
-    help="Specify a message queue of an XMPP bridge to contact.  Defaults to /replies.")
-
-# Define the name of the user to drop privileges to.
-argparser.add_argument("--username", action="store", default="nobody",
-    help="Specify a username to drop privileges to.  Defaults to 'nobody'.")
-
-# Define the name of the group to drop privileges to.
-argparser.add_argument("--group", action="store", default="nogroup",
-    help="Specify a group name to drop privileges to.  Defaults to 'nogroup'.")
-
 # Parse the command line arguments.
 args = argparser.parse_args()
+
+# Read and parse the configuration file.
+config = ConfigParser.ConfigParser()
+if not os.path.exists(args.config):
+    logging.error("Unable to find or open configuration file " +
+        args.config + ".")
+    sys.exit(1)
+config.read(args.config)
+
+# Set global config options.
+queue = config.get("DEFAULT", "queue")
+loglevel = config.get("DEFAULT", "loglevel")
+smtphost = config.get("DEFAULT", "smtphost")
+smtpport = config.get("DEFAULT", "smtpport")
+username = config.get("DEFAULT", "username")
+group = config.get("DEFAULT", "group")
 
 # Figure out how to configure the logger.
 if args.loglevel:
     loglevel = process_loglevel(args.loglevel.lower())
+else:
+    loglevel = process_loglevel(loglevel.lower())
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-print args
+# Print debugging output.
+logger.info("SMTP bridge is configured and running.")
+logger.debug("Runtime configuration settings:")
+logger.debug("Configuration file: " + args.config)
+logger.debug("Message queue: " + queue)
+logger.debug("SMTP host: " + str(smtphost))
+logger.debug("SMTP port: " + str(smtpport) + "/tcp")
+logger.debug("Username to drop privileges to: " + str(username))
+logger.debug("Group to drop privileges to: " + str(group))
 
 # Fin.
 sys.exit(0)
