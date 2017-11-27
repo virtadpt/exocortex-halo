@@ -26,9 +26,12 @@
 import argparse
 import asyncore
 import ConfigParser
+import grp
 import json
 import logging
+import os
 import os.path
+import pwd
 import requests
 import sys
 
@@ -110,6 +113,57 @@ def process_loglevel(loglevel):
     if loglevel == "notset":
         return 0
 
+# drop_privileges(): Function that drops the effective UID and GID of this
+#   bot to something that isn't root for security's sake.  Takes two arguments,
+#   the username and groupname as strings.  Returns True (it worked) or False
+#   (it didn't).
+def drop_privileges(username, group):
+    logger.debug("Entered function drop_privileges().")
+
+    # Current UID and GID.
+    current_uid = os.getuid()
+    current_gid = os.getgid()
+    current_uid_name = pwd.getpwuid(current_uid)[0]
+    current_gid_name = grp.getgrgid(current_gid)[0]
+    logger.debug("Starting UID: " + str(current_uid) + " (" + current_uid_name + ")")
+    logger.debug("Starting GID: " + str(current_gid) + " (" + current_gid_name + ")")
+
+    # The effective UID and GID is what we want to switch to.
+    effective_uid = pwd.getpwnam(username)[2]
+    effective_gid = grp.getgrnam(group)[2]
+    logger.debug("UID to switch to: " + str(effective_uid) + " (" + username + ")")
+    logger.debug("GID to switch to: " + str(effective_gid) + " (" + group + ")")
+
+    # Check for the obvious corner case - not running as root (say, we're
+    # debugging or developing.)
+    if current_uid != 0:
+        logger.info("We're not running as root, we're already running as UID " + str(os.getuid()) + ".")
+        return True
+
+    if current_uid == 0:
+
+        # Try to change the group ID first, so we'll still have permission to
+        # do the root user ID later.
+        try:
+            logger.debug("Trying to drop group privileges...")
+            os.setgid(effective_gid)
+            logger.debug("Success!")
+        except OSError, e:
+            logger.error("Unable to drop group privileges! %s" % e)
+            return False
+
+        # Try to change the user ID.
+        try:
+            logger.debug("Trying to drop user privileges...")
+            os.setuid(effective_uid)
+            logger.debug("Success!")
+        except OSError, e:
+            logger.error("Unable to drop user privileges! %s" % e)
+            return False
+
+    # It worked.
+    return True
+
 # Core code...
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that implements an SMTP server for other processes on the system to relay mail through, but instead forwards those messages to the bot's owner via an instance of the Exocortex XMPP Bridge.")
@@ -160,7 +214,11 @@ logger.debug("Group to drop privileges to: " + str(group))
 
 # Stand up an SMTP server.
 smtpd = smtp_bridge((smtphost, int(smtpport)), None)
+if not drop_privileges(username, group):
+    print "ERROR: Unable to drop elevated privileges.  This isn't good!"
+    sys.exit(1)
 try:
+    logger.info("Starting SMTP server daemon.")
     asyncore.loop()
 except KeyboardInterrupt:
     print "Got a keyboard interrupt.  Terminating"
