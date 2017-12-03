@@ -306,7 +306,7 @@ download_directory = os.path.abspath(os.path.expanduser(download_directory))
 
 # Ensure the download directory exists.
 if not os.path.exists(download_directory):
-    print "ERROR: Download directory " + download_directory + "does not exist."
+    print "ERROR: Download directory " + download_directory + " does not exist."
     sys.exit(1)
 
 # Ensure that the bot can write to the download directory.
