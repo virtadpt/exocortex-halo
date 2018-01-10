@@ -187,27 +187,32 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # Determine which hash to use with the HMAC and run it on the data.
         if hash == "md5":
             logger.debug("Picked hash MD5.")
-            hasher = hmac.new(str(arguments["secret"]), "", hashlib.md5)
+            hasher = hmac.new(str(arguments["secret"]), arguments["data"],
+                hashlib.md5)
         if hash == "sha1":
             logger.debug("Picked hash SHA-1.")
-            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha1)
+            hasher = hmac.new(str(arguments["secret"]), arguments["data"],
+                hashlib.sha1)
         if hash == "sha224":
             logger.debug("Picked hash SHA-224.")
-            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha224)
+            hasher = hmac.new(str(arguments["secret"]), arguments["data"],
+                hashlib.sha224)
         if hash == "sha256":
             logger.debug("Picked hash SHA-256.")
-            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha256)
+            hasher = hmac.new(str(arguments["secret"]), arguments["data"],
+                hashlib.sha256)
         if hash == "sha384":
             logger.debug("Picked hash SHA-384.")
-            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha384)
+            hasher = hmac.new(str(arguments["secret"]), arguments["data"],
+                hashlib.sha384)
         if hash == "sha512":
             logger.debug("Picked hash SHA-512.")
-            hasher = hmac.new(str(arguments["secret"]), "", hashlib.sha512)
-        hasher.update(arguments["data"])
+            hasher = hmac.new(str(arguments["secret"]), arguments["data"],
+                hashlib.sha512)
 
         # Return the HMAC'd data to the client.
         logger.debug("Value of response: " + str(hasher.hexdigest()))
-        self._send_http_response(200, hasher.hexdigest())
+        self._send_http_response(200, hasher.hexdigest().upper())
         return
 
     # Helper methods start here.
