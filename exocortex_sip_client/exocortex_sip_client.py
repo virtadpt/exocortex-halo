@@ -260,8 +260,7 @@ else:
 # If a configuration file has been specified on the command line, parse it.
 config = ConfigParser.ConfigParser()
 if not os.path.exists(args.config):
-    logging.error("Unable to find or open configuration file " +
-        args.config + ".")
+    print "Unable to find or open configuration file " + args.config + "."
     sys.exit(1)
 config.read(args.config)
 
@@ -327,24 +326,21 @@ try:
     account_callback.wait()
 
     # Display registration status.
-    print "\n"
-    print "SIP registration complete, status=", account.info().reg_status,
-    print account.info().reg_reason
-    print "\n"
+    logger.info("SIP registration complete, status: " + str(account.info().reg_status))
 
     # Create a SIP URI for the destination to call.
-    call_destination = 'sip:' + args.phone_number + '@' + sip_registrar
+    call_destination = "sip:" + args.phone_number + "@" + sip_registrar
 
     # Allocate a .wav playback object.
     wav_player = lib.create_player(args.message)
     wav_player_slot = lib.player_get_slot(wav_player)
 
     # Try to place a call to the generated SIP URI.
-    print "Placing call to ", call_destination, "..."
+    logger.info("Placing call to " + call_destination + "...")
     try:
         account.make_call(call_destination, cb=MyCallCallback())
     except pjsua.Error, call_error:
-        print "ERROR: Unable to place call: ", call_error
+        logger.error("ERROR: Unable to place call: " + str(call_error))
 
     # Calculate the duration of the .wav file to play into the call.
     with contextlib.closing(wave.open(args.message, 'r')) as wav_file:
@@ -354,17 +350,21 @@ try:
 
         # Oh gods, this is an ugly hack.
         wav_duration = (int(round(wav_duration)) + 1) * 2
+        logger.debug("Duration of audio message: " + str(wav_duration) + " seconds")
 
-    # Sleep that long to wait for the .wav file to finish.
+    # Wait for the .wav file to finish.
+    logger.debug("Waiting for audio message to finish playing...")
     time.sleep(wav_duration)
 
 except pjsua.Error, err:
-    print "ERROR: Unable to initalize PJSUA interface: ", err
+    logger.error("ERROR: Unable to initalize PJSUA interface: " + str(err))
 
 # Tear down the library interface objects.
+logger.debug("Deallocating account.")
 account.delete()
 account = None
 
+logger.debug("Destroying VoIP engine instance.")
 lib.destroy()
 lib = None
 
