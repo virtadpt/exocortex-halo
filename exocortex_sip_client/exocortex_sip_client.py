@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v2.0 - I've reworked so much stuff, this is effectively a new version.
 # v1.2 - Updated to take into account the latest version of pjsip (v2.7.2).
 #      - Reworked the code a little, in part to refamiliarize myself with it
 #        and in part to make it match the rest of my code more closely, because
@@ -76,10 +77,6 @@ import wave
 argparser = None
 args = None
 
-# Full path to a config file which contains, among other things, the account
-# credentials for the VoIP provider.
-#config_file = ""
-
 # Handle to a configuration file parser.
 config = None
 
@@ -99,25 +96,15 @@ account = None
 # Global handle for the current SIP call.
 current_call = None
 
-# Phone number of the call's destination and SIP URI to call.
-#phone_number = ""
+# Phone number to call.
 call_destination = ""
 
 # Handle to a configuration file parser.
 config = None
 
-# Path of a .wav file to play back into the call.
-#outbound_message = ""
-
-# Flag that specifies whether or not it's being run on an Exocortex server.
-#production_mode = False
-
 # Handles for the media engine and the .wav player.
 wav_player = ""
 wav_player_slot = 0
-
-# Outbound username to spoof.
-#outbound_username = ""
 
 # File specifics on the .wav file to play back.
 wav_frames = 0
@@ -208,7 +195,7 @@ class MyCallCallback(pjsua.CallCallback):
 
             # Sleep for a little while to give the callee a chance to pick
             # up the phone.
-            time.sleep(DELAY_BEFORE_PLAYBACK)
+            time.sleep(float(delay))
 
             # Connect the media player to the call and vice versa.
             pjsua.Lib.instance().conf_connect(wav_player_slot, call_slot)
@@ -253,28 +240,22 @@ argparser.add_argument('--loglevel', action='store',
 # Parse the command line args, if any.
 args = argparser.parse_args()
 if args.production:
-    #production_mode = True
-    logger.info("Production mode enabled.  No sound hardware enabled.")
+    print "Production mode enabled.  No sound hardware enabled."
 
 # If no number to call was given, ABEND because we can't place a call.
 if not args.phone_number:
-    logger.critical("No phone number given - can't call anyone!")
+    print "No phone number given - can't call anyone!"
     sys.exit(1)
 
 # Ensure that there is a media file of some kind to play into the call.
 if not args.message:
-    logger.critical("ERROR: You must specify a path to a .wav file to play into your call.")
+    print "ERROR: You must specify a path to a .wav file to play into your call."
     sys.exit(1)
 else:
     # Make sure the file exists.  ABEND if not.
     if not os.path.exists(args.message):
-        logger.critical("ERROR: That file doesn't exist.  Did you get the path right?")
+        print "ERROR: That file doesn't exist.  Did you get the path right?"
         sys.exit(1)
-    #else:
-    #    outbound_message = args.message
-
-#if args.username:
-#    outbound_username = args.username
 
 # If a configuration file has been specified on the command line, parse it.
 config = ConfigParser.ConfigParser()
@@ -305,6 +286,19 @@ if args.loglevel:
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
+# Debugging output, if required.
+logger.info("Everything is configured.")
+logger.debug("Values of configuration variables as of right now:")
+logger.debug("Production mode: " + str(args.production))
+logger.debug("Phone number to call: " + str(args.phone_number))
+logger.debug("Audio file to play: " + str(args.message))
+logger.debug("Outbound username: " + str(args.username))
+logger.debug("Configuration file: " + str(args.config))
+logger.debug("SIP username: " + str(sip_username))
+logger.debug("SIP registrar: " + str(sip_registrar))
+logger.debug("SIP password: " + str(sip_password))
+logger.debug("Delay (in seconds): " + str(delay))
+
 # Allocate an instance of the PJSUA library interface.
 lib = pjsua.Lib()
 
@@ -321,8 +315,6 @@ try:
         lib.set_null_snd_dev()
 
     # Register with the SIP provider.
-    # MOOF MOOF MOOF - I may have to migrate this to a keyword-based arglist.
-    # http://www.pjsip.org/python/pjsua.htm#AccountConfig
     account = lib.create_account(pjsua.AccountConfig(sip_registrar,
         sip_username, sip_password, args.username))
 
