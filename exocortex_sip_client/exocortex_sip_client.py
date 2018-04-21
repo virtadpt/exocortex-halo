@@ -2,38 +2,44 @@
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
-# test_sip_client.py - Registers itself with a SIP provider (like voip.ms)
-#   as a SIP client so that VoIP calls can be placed with it.  This application
-#   takes arbitrary text through an interface of some kind that I haven't
-#   figured out yet, runs it through a text-to-speech application, and then
-#   places a SIP call.
+# exocortex_sip_client.py - Registers itself with a SIP provider (like voip.ms)
+#   as a client so that VoIP calls can be placed.  This application takes an
+#   audio file of some kind, starts a SIP session, and plays the audio through
+#   the connection.
 
-# By:  The Doctor [412/724/301/703/415][ZS] <drwho at virtadpt dot net>
+# By:  The Doctor [412/724/301/703/415/510] <drwho at virtadpt dot net>
 
 # License: GPLv3
 
-# v1.1
-# - Added handlers for SIP response codes 30x.
-# - Fixed off-by-one errors in SIP response parsers.
-# - Changed playback delay to 5 seconds, because why not, VoIP is hard.
-# - Updated comments here and there.  Nothing to write home about.
-# - Changed the speech playback code so that it time.sleep()'s for
-#   ((duration of .wav) + 1) * 2 for a sick, stupid reason that required an
-#   ugly hack.  When testing this code in the field I spent most of a day
-#   figuring out why PJSIP kept killing itself way prematurely.  As it turns
-#   out, down where the code places the call and goes to sleep to wait for the
-#   .wav file to finish playing, it was waiting only as long as the .wav file
-#   would play and then terminating itself normally, after that many seconds.
-#   What wasn't obvious was that the way PJSIP uses callbacks and their
-#   associated threads the timer starts running the moment the call attempt
-#   begins and not when the other end picks up the phone.  So I doubled the
-#   amount of Time the core code time.sleep()'s and it magickally started to
-#   work.  I realize and fully admit that this is a truly ugly hack that only
-#   Helen Keller could love on payday but it made everything work after a
-#   frustrating day.  I mostly wrote this lengthy and unnecessary changelog
-#   entry in the hope that Google, et al index this text and save other users
-#   of PJSIP twelve hours of cursing, scratching their heads, and drinking way
-#   too much coffee.  The text PJSIP barfs up right before it kills itself is:
+# v1.2 - Updated to take into account the latest version of pjsip (v2.7.2).
+#      - Reworked the code a little, in part to refamiliarize myself with it
+#        and in part to make it match the rest of my code more closely, because
+#        I have more experience under my belt now.
+#      - Reworked some comments.
+#      - Reworked this bot so it uses a config file instead of having to edit
+#        the code to configure it (what was I thinking?!)
+# v1.1 - Added handlers for SIP response codes 30x.
+#      - Fixed off-by-one errors in SIP response parsers.
+#      - Changed playback delay to 5 seconds, because why not, VoIP is hard.
+#      - Updated comments here and there.  Nothing to write home about.
+#      - Changed the speech playback code so that it time.sleep()'s for
+#        ((duration of .wav) + 1) * 2 for a sick, stupid reason that required an
+#        ugly hack.  When testing this code in the field I spent most of a day
+#        figuring out why PJSIP kept killing itself prematurely.  As it turns
+#        out, where the code places the call and goes to sleep to wait for the
+#        .wav to finish playing, it was waiting only as long as the .wav file
+#        would play and then terminating itself normally, after that many
+#        seconds.  What wasn't obvious was the way PJSIP uses callbacks and
+#        their associated threads which the global timer starts running the
+#        moment the call attempt begins, not when the other end picks up.  So
+#        I doubled the amount of time the core code time.sleep()'s and it
+#        magickally started to work.  I fully admit this is a truly ugly hack
+#        that only Helen Keller could love on payday but it made everything
+#        work after a frustrating day.  I mostly wrote this lengthy and
+#        unnecessary changelog entry in the hope that Google, et al index this
+#        text and save other users of PJSIP twelve hours of cursing, scratching
+#        their heads, and drinking way too much coffee.  The text PJSIP barfs
+#        up right before it kills itself is:
 #
 # python2: ../src/pjsua-lib/pjsua_acc.c:586: pjsua_acc_get_user_data: Assertion `pjsua_var.acc[acc_id].valid' failed.
 # Aborted (core dumped)
@@ -53,7 +59,9 @@
 
 # Load modules.
 import argparse
+import ConfigParser
 import contextlib
+import logging
 import os
 import pjsua
 import sys
@@ -62,43 +70,54 @@ import time
 import wave
 
 # Constants.
+
+# Global variables.
+# Handles for the CLI argument parser handler.
+argparser = None
+args = None
+
+# Full path to a config file which contains, among other things, the account
+# credentials for the VoIP provider.
+#config_file = ""
+
+# Handle to a configuration file parser.
+config = None
+
 # User credentials for the Exocortex SIP account.
-USERNAME = '<SIP provider username>'
-HOST = '<SIP registrar>'
-PASSWORD = '<SIP provider password>'
+sip_username = ""
+sip_registrar = ""
+sip_password = ""
 
 # How long to wait before telling the media processor to start playback.
 # Delay is in seconds.
-DELAY_BEFORE_PLAYBACK = 5
+delay = 5
 
-# Global variables.
 # Handles for the PJSUA objects that need to be instantiated.
-lib = ''
-account = ''
+lib = None
+account = None
 
 # Global handle for the current SIP call.
-current_call = ''
+current_call = None
 
 # Phone number of the call's destination and SIP URI to call.
-phone_number = ''
-call_destination = ''
+#phone_number = ""
+call_destination = ""
 
-# Handle to a CLI argument parser handler.
-argparser = ''
-args = ''
+# Handle to a configuration file parser.
+config = None
 
 # Path of a .wav file to play back into the call.
-outbound_message = ''
+#outbound_message = ""
 
 # Flag that specifies whether or not it's being run on an Exocortex server.
-production_mode = False
+#production_mode = False
 
 # Handles for the media engine and the .wav player.
-wav_player = ''
+wav_player = ""
 wav_player_slot = 0
 
 # Outbound username to spoof.
-outbound_username = ''
+#outbound_username = ""
 
 # File specifics on the .wav file to play back.
 wav_frames = 0
@@ -106,10 +125,11 @@ wav_rate = 0
 wav_duration = 0.0
 
 # Classes.
-# MyAccountCallback(pjsua.AccountCallback): Callback class for Account objects.
-#   Receives and handles status events, mostly.  Necessary for anything
-#   involving SIP account objects.
+# MyAccountCallback(): Callback class for Account objects.  Receives and
+#   handles status events, mostly.  Necessary for anything involving SIP
+#   account objects.
 class MyAccountCallback(pjsua.AccountCallback):
+
     # Because this is a threaded class, we need to allocate at least one
     # semaphore to take care of it.
     semaphore = None
@@ -154,8 +174,7 @@ class MyAccountCallback(pjsua.AccountCallback):
                 print "ERROR: Holy shit, what did you do?!?! "
                 print self.account.info().reg_reason
 
-# MyCallCallback(pjsua.CallCallback): Callback class that receives and handles
-#   events related to SIP calls.
+# MyCallCallback(): Callback class that receives and handles SIP call events.
 class MyCallCallback(pjsua.CallCallback):
 
     # Initialize instances of this object.  By default, use the __init__() of
@@ -166,6 +185,7 @@ class MyCallCallback(pjsua.CallCallback):
 
     # Method that handles call state changes.
     def on_state(self):
+
         # Reference current_call in the global context.
         global current_call
 
@@ -182,6 +202,7 @@ class MyCallCallback(pjsua.CallCallback):
     # Method that implements state changes in the media processor.
     def on_media_state(self):
         if self.call.info().media_state == pjsua.MediaState.ACTIVE:
+
             # Capture the call_slot for the currently active call.
             call_slot = self.call.info().conf_slot
 
@@ -196,46 +217,99 @@ class MyCallCallback(pjsua.CallCallback):
         else:
             print "Media processor is now inactive."
 
+# set_loglevel(): Turn a string into a numerical value which Python's logging
+#   module can use because.
+def set_loglevel(loglevel):
+    if loglevel == "critical":
+        return 50
+    if loglevel == "error":
+        return 40
+    if loglevel == "warning":
+        return 30
+    if loglevel == "info":
+        return 20
+    if loglevel == "debug":
+        return 10
+    if loglevel == "notset":
+        return 0
+
 # Core code...
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser()
-argparser.add_argument('--production', action='store_true',
+argparser.add_argument("--production", action="store_true",
     help="Don't try to initialize a sound device when won't exist anyway.")
-argparser.add_argument('--phone-number', action='store', default='2064560649',
+argparser.add_argument("--phone-number", action="store", default="2064560649",
     help="Specify a phone number to call (no dashes, e.g., 2125551212).")
-argparser.add_argument('--message', action='store',
+argparser.add_argument("--message", action="store",
     help="Full path to a .wav file to play back into the call.  Required.")
-argparser.add_argument('--username', action='store',
+argparser.add_argument("--username", action="store", default="UNKNOWN",
     help="Optional username to add to outbound SIP packets.")
+argparser.add_argument("--config", action="store",
+    default="./exocortex_sip_client.conf",
+    help="Full path to a configuration file.")
+argparser.add_argument('--loglevel', action='store',
+    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
 
 # Parse the command line args, if any.
 args = argparser.parse_args()
 if args.production:
-    production_mode = True
-    print "Production mode enabled.  No sound hardware enabled."
+    #production_mode = True
+    logger.info("Production mode enabled.  No sound hardware enabled.")
 
-if args.phone_number:
-    phone_number = args.phone_number
+# If no number to call was given, ABEND because we can't place a call.
+if not args.phone_number:
+    logger.critical("No phone number given - can't call anyone!")
+    sys.exit(1)
 
+# Ensure that there is a media file of some kind to play into the call.
 if not args.message:
-    print "ERROR: You must specify a path to a .wav file to play into your call."
+    logger.critical("ERROR: You must specify a path to a .wav file to play into your call.")
     sys.exit(1)
 else:
     # Make sure the file exists.  ABEND if not.
     if not os.path.exists(args.message):
-        print "ERROR: That file doesn't exist.  Did you get the path right?"
+        logger.critical("ERROR: That file doesn't exist.  Did you get the path right?")
         sys.exit(1)
-    else:
-        outbound_message = args.message
+    #else:
+    #    outbound_message = args.message
 
-if args.username:
-    outbound_username = args.username
+#if args.username:
+#    outbound_username = args.username
+
+# If a configuration file has been specified on the command line, parse it.
+config = ConfigParser.ConfigParser()
+if not os.path.exists(args.config):
+    logging.error("Unable to find or open configuration file " +
+        args.config + ".")
+    sys.exit(1)
+config.read(args.config)
+
+# Get the SIP credentials from the config file.
+sip_username = config.get ("DEFAULT", "sip_username")
+sip_registrar = config.get ("DEFAULT", "sip_registrar")
+sip_password = config.get ("DEFAULT", "sip_password")
+
+# Get the delay (in seconds) before starting playback.
+delay = config.get ("DEFAULT", "delay")
+
+# Get the default loglevel of the bot.
+config_log = config.get("DEFAULT", "loglevel").lower()
+if config_log:
+    loglevel = set_loglevel(config_log)
+
+# Set the loglevel from the override on the command line if it exists.
+if args.loglevel:
+    loglevel = set_loglevel(args.loglevel.lower())
+
+# Configure the logger.
+logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 # Allocate an instance of the PJSUA library interface.
 lib = pjsua.Lib()
 
 # Try to initialize the PJSUA library interface, set a transport, and start
-# it up.
+# the engine up.
 try:
     lib.init()
     lib.create_transport(pjsua.TransportType.UDP)
@@ -243,12 +317,14 @@ try:
 
     # In production mode (read: running on a VPS) disable the default sound
     # device because there won't be one, anyway.
-    if production_mode:
+    if args.production:
         lib.set_null_snd_dev()
 
     # Register with the SIP provider.
-    account = lib.create_account(pjsua.AccountConfig(HOST, USERNAME, PASSWORD,
-        outbound_username))
+    # MOOF MOOF MOOF - I may have to migrate this to a keyword-based arglist.
+    # http://www.pjsip.org/python/pjsua.htm#AccountConfig
+    account = lib.create_account(pjsua.AccountConfig(sip_registrar,
+        sip_username, sip_password, args.username))
 
     # Attach a callback to the account object so we can keep track of its
     # status.
@@ -265,10 +341,10 @@ try:
     print "\n"
 
     # Create a SIP URI for the destination to call.
-    call_destination = 'sip:' + phone_number + '@' + HOST
+    call_destination = 'sip:' + args.phone_number + '@' + sip_registrar
 
     # Allocate a .wav playback object.
-    wav_player = lib.create_player(outbound_message)
+    wav_player = lib.create_player(args.message)
     wav_player_slot = lib.player_get_slot(wav_player)
 
     # Try to place a call to the generated SIP URI.
@@ -279,7 +355,7 @@ try:
         print "ERROR: Unable to place call: ", call_error
 
     # Calculate the duration of the .wav file to play into the call.
-    with contextlib.closing(wave.open(outbound_message, 'r')) as wav_file:
+    with contextlib.closing(wave.open(args.message, 'r')) as wav_file:
         wav_frames = wav_file.getnframes()
         wav_rate = wav_file.getframerate()
         wav_duration = wav_frames / float(wav_rate)
@@ -302,4 +378,3 @@ lib = None
 
 # Fin.
 sys.exit(0)
-

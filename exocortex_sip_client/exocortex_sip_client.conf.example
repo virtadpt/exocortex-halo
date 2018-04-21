@@ -1,0 +1,13 @@
+[DEFAULT]
+
+# The username, SIP registrar and password for the SIP provider.
+sip_username = 2125554240
+sip_registrar = voip.otv-studios.com
+sip_password = EddieVedderFromAccounting
+
+# How long to wait (in seconds) before starting playback.
+delay = 5
+
+# Set the default loglevel of the bot.
+# One of critical, error, warning, info, debug, notset.
+loglevel = info

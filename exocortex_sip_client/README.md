@@ -7,10 +7,11 @@ How to install PJSIP (http://www.pjsip.org/) into a virtualenv on a fairly recen
 * source env/bin/activate
 * mkdir src
 * cd src
-* download pjproject: wget http://www.pjsip.org/release/2.3/pjproject-2.3.tar.bz2
-* tar xvfj pjproject-2.3.tar.bz2
-* cd pjproject-2.3
+* download pjproject: wget http://www.pjsip.org/release/2.7.2/pjproject-2.7.2.tar.bz2
+* tar xvfj pjproject-2.7.2.tar.bz2
+* cd pjproject-2.7.2
 * ./configure CFLAGS="$CFLAGS -fPIC"
+* make dep
 * make
 * cd pjsip-apps/src/python
 * sed "s/python/python2/" -i Makefile
