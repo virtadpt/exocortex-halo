@@ -30,6 +30,11 @@ etherpad_url = http://localhost:9001
 # Etherpad-Lite API key (from APIKEY.txt)
 etherpad_api_key = foobarbazquux
 
+# Version of the REST API the Etherpad-Lite install supports.  Referenced in
+# this file on the server:
+#   etherpad-lite/node_modules/ep_etherpad-lite/node/handler/APIHandler.js
+api_version = 1.2.13
+
 # This is the URL that the user will access pad pages through remotely.
 archive_url = http://pad.example.com/p/
 

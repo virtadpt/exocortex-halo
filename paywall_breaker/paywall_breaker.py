@@ -15,6 +15,9 @@
 
 # License: GPLv3
 
+# v1.3 - Added an explicit version for the Etherpad-Lite API because the last
+#        major release included some security fixes that bumped the version
+#        number.  It breaks otherwise.
 # v1.2 - Added some HTTP request code handlers.
 #      - Added an exception handler.
 # v1.1 - Figured out how to strip out all CSS and JS to make pages easier to
@@ -89,6 +92,9 @@ origin_email_address = ""
 # URL and API key of the Etherpad-Lite instance to use as an archive.
 etherpad_url = ""
 etherpad_api_key = ""
+
+# Version of the Etherpad-Lite API to use.
+api_version = "1"
 
 # URL that the user will access pad pages through.
 archive_url = ""
@@ -403,6 +409,9 @@ etherpad_url = config.get("DEFAULT", "etherpad_url")
 # Get the API key of the Etherpad-Lite instance.
 etherpad_api_key = config.get("DEFAULT", "etherpad_api_key")
 
+# Get the version of the REST API the Etherpad-Lite server supports.
+api_version = config.get("DEFAULT", "api_version")
+
 # Get the URL that the user will access pad pages through.
 archive_url = config.get("DEFAULT", "archive_url")
 
@@ -428,6 +437,7 @@ logger.debug("E-mail address that search results are sent from: " +
     origin_email_address)
 logger.debug("URL of the Etherpad-Lite instance: " + etherpad_url)
 logger.debug("API key for the Etherpad-Lite instance: " + etherpad_api_key)
+logger.debug("Version of the REST API the Etherpad-Lite instance supports: " + str(api_version))
 logger.debug("URL of the Etherpad-Lite archive: " + archive_url)
 logging.debug("User agents that will be spoofed: " + str(user_agents))
 
@@ -514,7 +524,8 @@ while True:
         pad_id = hash.hexdigest()
 
         # Contact Etherpad and create a new pad with the contents of the page.
-        etherpad = EtherpadLiteClient(base_params={'apikey': etherpad_api_key})
+        etherpad = EtherpadLiteClient(base_params={'apikey': etherpad_api_key},
+            api_version=api_version)
         page_text = str(title) + "\n\n" + str(body) + "\n"
         try:
             etherpad.createPad(padID=pad_id, text=page_text)
