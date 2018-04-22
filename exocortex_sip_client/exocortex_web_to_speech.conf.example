@@ -1,0 +1,15 @@
+[DEFAULT]
+
+# The IP address and port to listen on.
+ip = 127.0.0.1
+port = 3030
+
+# Set the default loglevel of the bot.
+# One of critical, error, warning, info, debug, notset.
+loglevel = info
+
+# API key to restrict access to the service.
+apikey = foobarbazquux
+
+# Full path to the text-to-speech utility.
+tts = /usr/bin/text2wave

@@ -99,9 +99,6 @@ current_call = None
 # Phone number to call.
 call_destination = ""
 
-# Handle to a configuration file parser.
-config = None
-
 # Handles for the media engine and the .wav player.
 wav_player = ""
 wav_player_slot = 0

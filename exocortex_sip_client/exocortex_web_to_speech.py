@@ -24,6 +24,8 @@
 
 # License: GPLv3
 
+# v2.0 - I've changed so much stuff, this may as well be a new rev.
+
 # v1.1.1 - Added an optional delay between receiving a message to process and
 #   placing a call.  Updated online documentation to reflect this.
 
@@ -43,11 +45,19 @@
 #   nice to have some debugging assistance.
 
 # TO-DO:
+# - Get rid of web.py and use BaseHTTPServer instead.
+# - Use a real configuration file parser.  Because, again, editing the source
+#   code to configure it is a terrible idea.
+# - Add logger support.
 
 # Load modules.
+import argparse
+import ConfigParser
 import json
+import logging
 import os
 import subprocess
+import sys
 import tempfile
 import web
 
@@ -64,6 +74,21 @@ API_KEY = '<API key here>'
 GENERATE = '/usr/bin/text2wave'
 
 # Global variables.
+# Handles for the CLI argument parser handler.
+argparser = None
+args = None
+
+# Handle to a configuration file parser.
+config = None
+
+# Overrideable configuration settings.  Will be set by the config file first
+# and reset by any command line arguments if given.
+ip = None
+port = 0
+loglevel = None
+apikey = ""
+tts = ""
+
 # Phone number to dial.
 phone_number = 0
 
@@ -209,10 +234,89 @@ class reconfigurable_web_app(web.application):
         func = self.wsgifunc(*middleware)
         return web.httpserver.runsimple(func, ('127.0.0.1', port))
 
+# Functions.
+# set_loglevel(): Turn a string into a numerical value which Python's logging
+#   module can use because.
+def set_loglevel(loglevel):
+    if loglevel == "critical":
+        return 50
+    if loglevel == "error":
+        return 40
+    if loglevel == "warning":
+        return 30
+    if loglevel == "info":
+        return 20
+    if loglevel == "debug":
+        return 10
+    if loglevel == "notset":
+        return 0
+
 # Core code...
+# Set up the command line argument parser.
+argparser = argparse.ArgumentParser()
+argparser.add_argument("--address", action="store", default="127.0.0.1",
+    help="IP address to listen on.  Defaults to 127.0.0.1.")
+argparser.add_argument("--port", action="store", default=3030,
+    help="Port to listen on.  Defaults to 3030/tcp.")
+argparser.add_argument("--config", action="store",
+    default="./exocortex_web_to_speech.conf",
+    help="Full path to a configuration file.")
+argparser.add_argument('--loglevel', action='store', default="info",
+    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
+
+# Parse the command line args, if any.
+args = argparser.parse_args()
+
+# If a configuration file has been specified on the command line, parse it.
+config = ConfigParser.ConfigParser()
+if not os.path.exists(args.config):
+    print "Unable to find or open configuration file " + args.config + "."
+    sys.exit(1)
+config.read(args.config)
+
+# Get the HTTP server configs from the config file.
+ip = config.get ("DEFAULT", "ip")
+port = config.get ("DEFAULT", "port")
+
+# Get the API key which restricts access to this server from the config file.
+apikey = config.get ("DEFAULT", "apikey")
+
+# Get the full pat to the text-to-speech utility the server will use to create
+# the call audio.
+tts = config.get ("DEFAULT", "tts")
+
+# Get the default loglevel of the bot from the config file.
+config_log = config.get("DEFAULT", "loglevel").lower()
+if config_log:
+    loglevel = set_loglevel(config_log)
+
+# Set the loglevel from the override on the command line if it exists.
+if args.loglevel:
+    loglevel = set_loglevel(args.loglevel.lower())
+
+# Configure the logger.
+logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
+
+# Override settings in the config file with the command line args if they exist.
+if args.address:
+    ip = args.address
+if args.port:
+    ip = args.port
+
+# Ensure that the API key is set.  ABEND if it's not.
+if not apikey:
+    logger.critical("You need to set an API key in the config file.")
+    sys.exit(1)
+
+# Ensure that the TTS utility exists.  ABEND if it's not.
+if not os.path.exists(tts):
+    logger.critical("I wasn't able to find the text-to-speech utility " + tts + ".  Please check your configuration file or install any necessary packages.")
+    sys.exit(1)
+
 # Stand up the web application server.
 app = reconfigurable_web_app(urls, globals())
 if __name__ == "__main__":
-    app.run(port=3030)
+    app.run(port=args.port)
 
 # Fin.
