@@ -219,7 +219,7 @@ def set_loglevel(loglevel):
 
 # Core code...
 # Set up the command line argument parser.
-argparser = argparse.ArgumentParser()
+argparser = argparse.ArgumentParser(description="A command line utility which initiates a SIP session with a VoIP service, places a phone call, and plays an arbitrary .wav file into the connection.")
 argparser.add_argument("--production", action="store_true",
     help="Don't try to initialize a sound device when won't exist anyway.")
 argparser.add_argument("--phone-number", action="store", default="2064560649",

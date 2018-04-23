@@ -13,3 +13,7 @@ apikey = foobarbazquux
 
 # Full path to the text-to-speech utility.
 tts = /usr/bin/text2wave
+
+# Full path to the SIP client you want to use to place the call.  This defaults
+# to the one I wrote.
+sip_client = /full/path/to/exocortex_sip_client/call.sh

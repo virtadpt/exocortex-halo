@@ -67,6 +67,8 @@
 #   lowercase instead of proper capitalization, or proper capitalization
 #   instead of all caps) match when search requests are pushed into the
 #   message queue.  I think I can do this, I just need to play with it.
+# - When building the list of message queues, run .strip() on each term to
+#   knock out any whitespace that sneaks in.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -209,4 +211,3 @@ while True:
 
 # Fin.
 sys.exit(0)
-
