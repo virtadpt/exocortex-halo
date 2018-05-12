@@ -32,10 +32,12 @@ from BaseHTTPServer import BaseHTTPRequestHandler
 
 import argparse
 import base64
+import cgi
 import ConfigParser
 import logging
 import os
 import sys
+import urlparse
 
 # Constants.
 
@@ -125,12 +127,26 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         logger.debug("Entered RESTRequestHandler.do_POST().")
         self.send_response(200)
         self.end_headers()
+
+        type = ""
+        length = 0
+        parameters = None
+        payload = None
+
+        type = self.headers["Content-Type"]
         length = int(self.headers["Content-Length"])
-        payload = self.rfile.read(length)
+        parameters = self.rfile.read(length)
+
+        if type == "multipart/form-data":
+            payload = cgi.parse_multipart(parameters, self.headers)
+        elif type == "application/x-www-form-urlencoded":
+            payload = urlparse.parse_qs(parameters, keep_blank_values=1)
+
         self.wfile.write("Received POST request.\n")
-        logger.debug("Requested path:" + str(self.path))
-        logger.debug("Request headers:" + str(self.headers))
-        logger.debug("Request payload:" + str(payload))
+        logger.debug("Requested path: " + str(self.path))
+        logger.debug("Request headers: " + str(self.headers))
+        logger.debug("Request parameters: " + str(parameters))
+        logger.debug("Request payload: " + str(payload))
         return
 
 # Functions.
