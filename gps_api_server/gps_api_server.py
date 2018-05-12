@@ -126,6 +126,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.end_headers()
         self.wfile.write("Received POST request.\n")
+        logger.debug("Requested path:" + str(self.path))
+        logger.debug("Request headers:" + str(self.headers))
         return
 
 # Functions.
