@@ -1,0 +1,15 @@
+[DEFAULT]
+
+# The IP address and port to listen on.
+ip = 0.0.0.0
+port = 4040
+
+# Set the default loglevel of the bot.
+# One of critical, error, warning, info, debug, notset.
+loglevel = info
+
+# Authentication name for clients.
+authname = testuser
+
+# Authentication key for clients.
+authkey = foobarbazquux
