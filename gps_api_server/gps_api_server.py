@@ -9,6 +9,11 @@
 #   credentials.  Methods supported:
 #   - GET with HTTP Basic authentication.
 
+# Seguime, when it logs in, sends a POST with the following parameters:
+#   usuario - username
+#   clave - password
+#   comando - command (session)
+
 # By: The Doctor <drwho at virtadpt dot net> [4d7d 5c94  fa44 a235]
 
 # License: GPLv3
@@ -125,8 +130,19 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
     # Handle POST requests.
     def do_POST(self):
         logger.debug("Entered RESTRequestHandler.do_POST().")
+
+        # Parse the data submitted by the client.
+        submitted_data = cgi.FieldStorage(fp=self.rfile,
+            headers=self.headers, environ={ "REQUEST_METHOD": "POST",
+                "CONTENT_TYPE": self.headers["Content-Type"] })
+
         self.send_response(200)
         self.end_headers()
+
+        for field in submitted_data:
+            logger.debug("Parameter: " + str(field) + " - " + str(submitted_data[field]))
+        self.wfile.write("Received POST request.\n")
+        return
 
         type = ""
         length = 0
@@ -146,7 +162,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         logger.debug("Requested path: " + str(self.path))
         logger.debug("Request headers: " + str(self.headers))
         logger.debug("Request parameters: " + str(parameters))
-        logger.debug("Request payload: " + str(payload))
+        for parameter in payload.keys():
+            logger.debug("Parameter: " + parameter + " - " + payload[parameter][0])
         return
 
 # Functions.
