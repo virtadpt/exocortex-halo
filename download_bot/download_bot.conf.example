@@ -16,3 +16,6 @@ loglevel = info
 # Directory to put all of the downloaded files into.
 download_directory = ~/Downloads
 
+# Path to the ffmpeg executable.  This will enable only downloading the audio
+# track of a media stream, i.e., save as an MP3.
+# ffmpeg = /bin/ffmpeg

@@ -14,6 +14,7 @@
 
 # License: GPLv3
 
+# v1.2 - Added "download this as an MP3" support.
 # v1.1 - Added youtube-dl support.
 # v1.0 - Initial release.
 
@@ -38,7 +39,7 @@ import time
 
 # Global variables.
 # Handle to a logging object.
-logger = ""
+logger = None
 
 # Path to and name of the configuration file.
 config_file = ""
@@ -69,8 +70,15 @@ download_request = None
 # Flag that determines if youtube-dl is available as a module.
 video_enabled = False
 
-# Flag that determines if a media stream will be downloaded.
+# Flag that determines if ffmpeg is enabled, which will enable audio-only
+# media downloads.
+ffmpeg_enabled = False
+
+# Flag that determines if a video stream will be downloaded.
 download_video = False
+
+# Flag that determines if an audio stream will be downloaded.
+download_audio = False
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -98,8 +106,9 @@ def parse_download_request(download_request):
     download_url = ""
     words = []
 
-    # Make the download_video flag available from the top level.
+    # Make the download_[video,audio] flags available from the top level.
     global download_video
+    global download_audio
 
     # Clean up the download request.
     download_request = download_request.strip()
@@ -141,6 +150,17 @@ def parse_download_request(download_request):
             del words[0]
         else:
             logger.error("User wants to download a media stream but that capability isn't enabled.")
+            return None
+
+    # User asked the construct to download an audio stream with youtube-dl.
+    if (words[0] == "mp3") or (words[0] == "audio"):
+        logger.info("Got a token that suggests that this is an audio download request.")
+        if ffmpeg_enabled:
+            download_audio = True
+            logger.info("Enabling audio stream download.")
+            del words[0]
+        else:
+            logger.error("User wants to download an audio stream but that capability isn't enabled.")
             return None
 
     # If the parsed search term is now empty, return an error.
@@ -188,13 +208,21 @@ def download_file(download_directory, url):
     # Return the result.
     return result
 
+# mp3_download_hook(): Function that takes a youtube-dl status object as an
+#   argument.  Doesn't return anything but does send the user a message.
+def mp3_download_hook(status):
+    if status["status"] == "finished":
+        send_message_to_user("Done downloading media stream.  Now converting to MP3.")
+    return
+
 # download_media(): Function that takes as its arguments a directory to store
 #   the downloaded media file into and a URL to download a stream from.
 def download_media(download_directory, url):
     logger.debug("Entered function download_media().")
 
-    # Make the "download a media stream" flag accessible.
+    # Make the "download a media stream" flags accessible.
     global download_video
+    global download_audio
 
     # Generic flag that determines whether or not the process worked.
     result = False
@@ -209,6 +237,17 @@ def download_media(download_directory, url):
     options["outtmpl"] = download_directory + "/%(title)s-%(id)s.%(ext)s"
     options["outtmpl"] = os.path.normpath(options["outtmpl"])
 
+    # If we're downloading an audio stream, set a few extra options.
+    if download_audio:
+        postprocessors = {}
+        postprocessors["key"] = "FFmpegExtractAudio"
+        postprocessors["preferredcodec"] = "mp3"
+        postprocessors["preferredquality"] = "192"
+
+        options["format"] = "bestaudio/best"
+        options["postprocessors"] = [postprocessors]
+        options["progress_hooks"] = [mp3_download_hook]
+
     # The .download() method takes as its argument an array of strings.
     download = [ url ]
 
@@ -221,8 +260,9 @@ def download_media(download_directory, url):
     except:
         send_message_to_user("Something went wrong - I wasn't able to download the media stream at " + str(url))
 
-    # Reset this flag anyway because we don't want it to get stuck.
+    # Reset the media flags because we don't want them to get stuck.
     download_video = False
+    download_audio = False
 
     # Return the result.
     return result
@@ -252,7 +292,7 @@ def send_message_to_user(message):
 argparser = argparse.ArgumentParser(description='A bot that polls a message queue for URLs to files to download and downloads them into a local directory.')
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument('--config', action='store', 
+argparser.add_argument('--config', action='store',
     default='./download_bot.conf')
 
 # Loglevels: critical, error, warning, info, debug, notset.
@@ -297,6 +337,11 @@ try:
 except:
     # Nothing to do here, it's an optional configuration setting.
     pass
+
+# Get the path to the ffmpeg executable.  If it's present, AND if youtube-dl
+# support is present, the bot will be able to download and store audio tracks
+# from video streams upon request.
+ffmpeg_enabled = config.get("DEFAULT", "ffmpeg")
 
 # Get the directory to store files in.
 download_directory = config.get("DEFAULT", "download_directory")
@@ -348,6 +393,8 @@ logger.debug("Time in seconds for polling the message queue: " +
 logger.debug("Download directory: " + download_directory)
 if video_enabled:
     logger.debug("This instance of download_bot.py is youtube-dl enabled.")
+if ffmpeg_enabled:
+    logger.debug("This instance of download_bot.py can save MP3s.")
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any download requests waiting for it.
@@ -397,6 +444,10 @@ while True:
                 reply = "I am youtube-dl enabled, and so can download any media stream this module is capable of.  To download a supported media, stream, send me a message that looks like this:\n\n"
                 reply = reply + bot_name + ", [download,get] [stream,video] https://youtube.com/foo"
                 send_message_to_user(reply)
+            if ffmpeg_enabled:
+                reply = "I am also capable of downloading and saving just the audio portion of video streams and saving them as MP3 files.  To download an MP3 from a stream, send me a message that looks like this:\n\n"
+                reply = reply + bot_name + ", [download,get] [audio,mp3] https://youtube.com/foo"
+                send_message_to_user(reply)
             continue
 
         # Handle the download request.
@@ -425,4 +476,3 @@ while True:
 
 # Fin.
 sys.exit(0)
-
