@@ -156,6 +156,7 @@ def parse_download_request(download_request):
     if (words[0] == "mp3") or (words[0] == "audio"):
         logger.info("Got a token that suggests that this is an audio download request.")
         if ffmpeg_enabled:
+            download_video = True
             download_audio = True
             logger.info("Enabling audio stream download.")
             del words[0]
@@ -210,6 +211,8 @@ def download_file(download_directory, url):
 
 # mp3_download_hook(): Function that takes a youtube-dl status object as an
 #   argument.  Doesn't return anything but does send the user a message.
+# Keys possessed by status:
+#   status, downloaded_bytes, filename, elapsed, total_bytes
 def mp3_download_hook(status):
     if status["status"] == "finished":
         send_message_to_user("Done downloading media stream.  Now converting to MP3.")
@@ -239,14 +242,15 @@ def download_media(download_directory, url):
 
     # If we're downloading an audio stream, set a few extra options.
     if download_audio:
-        postprocessors = {}
-        postprocessors["key"] = "FFmpegExtractAudio"
-        postprocessors["preferredcodec"] = "mp3"
-        postprocessors["preferredquality"] = "192"
-
+        logger.debug("Handling an audio stream download request.")
         options["format"] = "bestaudio/best"
-        options["postprocessors"] = [postprocessors]
-        options["progress_hooks"] = [mp3_download_hook]
+        options["postprocessors"] = [ {
+            "key": "FFmpegExtractAudio",
+            "preferredcodec": "mp3",
+            "preferredquality": "128"
+        } ]
+        options["progress_hooks"] = [ mp3_download_hook ]
+    logger.debug("Value of options{}: " + str(options))
 
     # The .download() method takes as its argument an array of strings.
     download = [ url ]
@@ -255,7 +259,7 @@ def download_media(download_directory, url):
     try:
         with youtube_dl.YoutubeDL(options) as ydl:
             ydl.download(download)
-        Result = True
+        result = True
         send_message_to_user("Successfully downloaded media stream: " + str(url))
     except:
         send_message_to_user("Something went wrong - I wasn't able to download the media stream at " + str(url))
@@ -436,17 +440,17 @@ while True:
         if download_request.lower() == "help":
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + """I am capable of accepting URLs for arbitrary files on the web and downloading them.  To download a file, send me a message that looks something like this:\n\n"""
-            reply = reply + bot_name + ", [download,get,pull] https://www.example.com/foo.pdf\n\n"
+            reply = reply + bot_name + ", [download,get,pull] https://www.example.com/foo.pdf\n"
             send_message_to_user(reply)
-            reply = "I will download files into: " + download_directory
+            reply = "I will download files into: " + download_directory + "\n"
             send_message_to_user(reply)
             if video_enabled:
                 reply = "I am youtube-dl enabled, and so can download any media stream this module is capable of.  To download a supported media, stream, send me a message that looks like this:\n\n"
-                reply = reply + bot_name + ", [download,get] [stream,video] https://youtube.com/foo"
+                reply = reply + bot_name + ", [download,get] [stream,video] https://youtube.com/foo\n"
                 send_message_to_user(reply)
             if ffmpeg_enabled:
-                reply = "I am also capable of downloading and saving just the audio portion of video streams and saving them as MP3 files.  To download an MP3 from a stream, send me a message that looks like this:\n\n"
-                reply = reply + bot_name + ", [download,get] [audio,mp3] https://youtube.com/foo"
+                reply = "I am also capable of downloading and saving just the audio portion of video streams and saving them as MP3 files.  To download an MP3 from a stream, send me a message that looks like this:\n"
+                reply = reply + bot_name + ", [download,get] [audio,mp3] https://youtube.com/foo\n"
                 send_message_to_user(reply)
             continue
 
