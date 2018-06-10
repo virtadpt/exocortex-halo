@@ -50,8 +50,6 @@
 #    "title": "Transreality",
 #  },
 
-# SQLite database schema
-
 # By: The Doctor [412/724/301/703/415/510] <drwho at virtadpt dot net>
 
 # License: GPLv3
@@ -60,8 +58,6 @@
 
 # TO-DO:
 # - Refactor into separate files once I have a PoC.
-# - CLI parser.
-# - Read an LT dump in and build a database.
 # - PoC test queries from the command line.
 # - HTTP server.
 # - Online documentation. (ongoing)
