@@ -65,6 +65,9 @@
 # - Update the database with a new LT dump.
 
 # Load modules.
+from BaseHTTPServer import HTTPServer
+from BaseHTTPServer import BaseHTTPRequestHandler
+
 import argparse
 import json
 import logging
@@ -85,9 +88,26 @@ loglevel = "INFO"
 # Handle to a SQLite database.
 database = None
 
+# Handle to the REST API server.
+app_server = None
+
 # If this is a class or module, say what it is and what it does.
 
 # Classes.
+class RESTRequestHandler(BaseHTTPRequestHandler):
+
+    def do_GET(self):
+        logger.debug("Entered RESTRequestHandler.do_GET().")
+
+        # If someone requests /, display online documentation.
+        if self.path == '/':
+
+        return
+
+    def do_PUT(self):
+        logger.debug("Entered RESTRequestHandler.do_PUT().")
+        
+        return
 
 # Functions.
 # build_new_database(): Function that builds a new database using a JSON dump
@@ -304,6 +324,10 @@ if not database:
     database = sqlite3.connect(args.database)
 
 # Fire up the HTTP server.
+app_server = HTTPServer((str(args.address), int(args.port)), RESTRequestHandler)
+logger.debug("Card catalogue API server now listening on " + str(args.address) + ", port " + str(args.port) + "/tcp.")
+while True:
+    app_server.serve_forever()
 
 # Fin.
 database.close()

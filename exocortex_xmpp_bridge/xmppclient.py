@@ -8,7 +8,14 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
-# v4.0 - Refacted bot to break major functional parts out into separate modules.
+# v4.1 - Explicitly setting the stanza type to "chat" makes the bridge work
+#        reliably with more XMPP clients (such as converse.js).
+#      - Also fixed typos in some comments.  Oops.
+#      - I've long since started using double quotes whever possible, so I went
+#        back through and switched out single quotes for doubles wherever
+#        possible.
+# v4.0 - Refactored bot to break major functional parts out into separate
+#        modules.
 #      - Fixed a bug in which I miscounted the number of keys in the message
 #        queue.  Oops.
 # v3.0 - Rewriting to use SleekXMPP, because I'm tired of XMPPpy's lack of
@@ -88,11 +95,14 @@ class XMPPClient(ClientXMPP):
     # Handle to the /replies processor thread.
     replies_processor = None
 
+    # Default stanza type to make the bridge work reliably with more clients.
+    stanza_type = "chat"
+
     # Initialize new instances of the class.
     def __init__(self, username, password, owner):
 
         # Store the username, password and nickname as local attributes.
-        self.nickname = username.split('@')[0].capitalize()
+        self.nickname = username.split("@")[0].capitalize()
 
         # Register the bot's owner.
         self.owner = owner
@@ -132,7 +142,7 @@ class XMPPClient(ClientXMPP):
         return
 
     # Fires whenever an XMPP session starts.  Just about anything can go in
-    # here.  'event' is an empty dict.
+    # here.  "event" is an empty dict.
     def session_start(self, event):
         now_online_message = ""
 
@@ -149,7 +159,7 @@ class XMPPClient(ClientXMPP):
             now_online_message = "The bots "
 
         for key in message_queue.message_queue.keys():
-            if key == 'replies':
+            if key == "replies":
                 continue
             now_online_message = now_online_message + key + ", "
         now_online_message = now_online_message.strip(", ")
@@ -160,13 +170,14 @@ class XMPPClient(ClientXMPP):
             now_online_message = now_online_message + " are now online."
 
         # Send the message to the bot's owner.
-        self.send_message(mto=self.owner, mbody=now_online_message)
+        self.send_message(mto=self.owner, mbody=now_online_message,
+            mtype=self.stanza_type)
 
     # Event handler that fires whenever an XMPP message is sent to the bot.
-    # 'received_message' represents a message object from the server.
+    # "received_message" represents a message object from the server.
     def message(self, received_message):
-        message_sender = str(received_message.getFrom()).strip().split('/')[0]
-        message_body = str(received_message['body']).strip()
+        message_sender = str(received_message.getFrom()).strip().split("/")[0]
+        message_body = str(received_message["body"]).strip()
         agent_name = ""
         command = ""
         acknowledgement = ""
@@ -175,11 +186,12 @@ class XMPPClient(ClientXMPP):
         logging.debug("Value of XMPPClient.message().message_body is: " + str(message_body))
 
         # Potential message types: normal, chat, error, headline, groupchat
-        # Only pay attention to 'normal' and 'chat' messages.
-        if received_message['type'] not in ('chat', 'normal'):
+        # Only pay attention to "normal" and "chat" messages.
+        if received_message["type"] not in ("chat", "normal"):
             return
 
-        # If the sender isn't the bot's owner, ignore the message.
+        # If the sender isn't the bot's owner, ignore the message.  We don't
+        # owe the send a response for security reasons.
         if message_sender != self.owner:
             logging.debug("Received a command from invalid bot owner " + message_sender + ".")
             return
@@ -202,25 +214,26 @@ class XMPPClient(ClientXMPP):
 
         # Try to split off the bot's name from the message body.  If the
         # agent's name isn't registered, bounce.
-        if ',' in message_body:
-            agent_name = message_body.split(',')[0]
+        if "," in message_body:
+            agent_name = message_body.split(",")[0]
         else:
-            agent_name = message_body.split(' ')[0]
+            agent_name = message_body.split(" ")[0]
         logging.debug("Agent name: " + agent_name)
 
         if agent_name not in message_queue.message_queue.keys():
             logging.debug("Command sent to agent " + agent_name + ", which doesn't exist on this bot.")
             response = "Request sent to agent " + agent_name + ", which doesn't exist on this bot.  Please check your spelling."
-            self.send_message(mto=self.owner, mbody=response)
+            self.send_message(mto=self.owner, mbody=response,
+                mtype=self.stanza_type)
             return
 
         # Extract the command from the message body and clean it up.
-        if ',' in message_body:
-            command = message_body.split(',')[1]
+        if "," in message_body:
+            command = message_body.split(",")[1]
         else:
-            command = ' '.join(message_body.split(' ')[1:])
+            command = " ".join(message_body.split(" ")[1:])
         command = command.strip()
-        command = command.strip('.')
+        command = command.strip(".")
         logging.debug("Received request: " + command)
 
         # Push the request into the appropriate message queue.
@@ -231,7 +244,8 @@ class XMPPClient(ClientXMPP):
         # message queue.
         logging.debug("Sending acknowledgement of request to " + self.owner + ".")
         acknowledgment = "Your request has been added to " + agent_name + "'s request queue."
-        self.send_message(mto=self.owner, mbody=acknowledgement)
+        self.send_message(mto=self.owner, mbody=acknowledgement,
+            mtype=self.stanza_type)
         return
 
     # Helper method that returns online help when queried.
@@ -248,7 +262,8 @@ To send a command to one of the constructs, use your XMPP client to send a messa
 Individual constructs may have their own online help, so try sending the command "[bot name], help."\n
             """
 
-        self.send_message(mto=self.owner, mbody=help_text)
+        self.send_message(mto=self.owner, mbody=help_text,
+            mtype=self.stanza_type)
         return
 
     # Helper method that returns a status report when queried.
@@ -256,11 +271,12 @@ Individual constructs may have their own online help, so try sending the command
         logging.debug("Entering XMPPClient._status_report().")
         response = "Contents of message queues are as follows:\n\n"
         for key in message_queue.message_queue.keys():
-            if key == 'replies':
+            if key == "replies":
                 continue
             response = response + "Agent " + key + ": "
             response = response + str(message_queue.message_queue[key]) + "\n"
-        self.send_message(mto=self.owner, mbody=response)
+        self.send_message(mto=self.owner, mbody=response,
+            mtype=self.stanza_type)
         return
 
     # Thread that wakes up every n seconds and processes the bot's private
@@ -268,9 +284,10 @@ Individual constructs may have their own online help, so try sending the command
     # used one out and sends it to the bot's owner.
     def process_replies_queue(self):
         logging.debug("Entering XMPPClient.process_replies_queue().")
-        if len(message_queue.message_queue['replies']):
-            reply = message_queue.message_queue['replies'].pop(0)
-            self.send_message(mto=self.owner, mbody=reply)
+        if len(message_queue.message_queue["replies"]):
+            reply = message_queue.message_queue["replies"].pop(0)
+            self.send_message(mto=self.owner, mbody=reply,
+                mtype=self.stanza_type)
         return
 
     # Fires whenever the bot's connection dies.  I need to figure out how to
