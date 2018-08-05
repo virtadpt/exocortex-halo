@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v3.0 - Added real statistics support.
 # v2.2 - Added function to get public IP address of host.
 #      - Added function that gets network traffic stats.
 # v2.1 - Added system uptime.

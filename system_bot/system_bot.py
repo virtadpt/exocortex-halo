@@ -145,8 +145,8 @@ def send_message_to_user(message):
     # Set up a hash table of stuff that is used to build the HTTP request to
     # the XMPP bridge.
     reply = {}
-    reply['name'] = bot_name
-    reply['reply'] = message
+    reply["name"] = bot_name
+    reply["reply"] = message
 
     # Send an HTTP request to the XMPP bridge containing the message for the
     # user.
@@ -341,7 +341,7 @@ while True:
             # Extract the command.
             command = json.loads(request.text)
             logger.debug("Command from user: " + str(command))
-            command = command['command']
+            command = command["command"]
             if not command:
                 logger.debug("Empty command.")
                 logger.debug("Resetting loop_counter.")
@@ -360,12 +360,12 @@ while True:
             # If the user is requesting system load...
             if command == "load":
                 load = system_stats.sysload()
-                message = "The current system load is " + str(load['one_minute']) + " on the one minute average and " + str(load['five_minute']) + " on the five minute average."
+                message = "The current system load is " + str(load["one_minute"]) + " on the one minute average and " + str(load["five_minute"]) + " on the five minute average."
                 send_message_to_user(message)
 
             if command == "info":
                 info = system_stats.uname()
-                message = "System " + info['hostname'] + " in running kernel version " + info['version'] + " compiled by " + info['buildinfo'] + " on the " + info['arch'] + " processor architecture."
+                message = "System " + info["hostname"] + " in running kernel version " + info["version"] + " compiled by " + info["buildinfo"] + " on the " + info["arch"] + " processor architecture."
                 send_message_to_user(message)
 
             if command == "cpus":
