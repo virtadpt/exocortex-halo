@@ -17,6 +17,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
+# Turn the global constants into parameters passed from system_bot.py.
 
 # Load modules.
 import logging
@@ -24,10 +25,28 @@ import math
 import os
 import psutil
 import requests
+import statistics
 import statvfs
 import sys
 
 from datetime import timedelta
+
+# Constants global to this module.
+# Minimum length of system average arrays.
+sys_avg_min_len = 2
+
+# Maximum length of system average arrays.
+sys_avg_max_len = 100
+
+# Number of standard deviations to consider worth alerting on.  Does not need
+# to be a huge number due to how the math works.
+std_devs = 3
+
+# Variables global to this module.
+# Running lists of system averages.
+one_minute_average = []
+five_minute_average = []
+fifteen_minute_average = []
 
 # Functions.
 # sysload(): Function that takes a snapshot of the current system load
@@ -46,18 +65,55 @@ def sysload():
 #   Sends a message to the user, returns an updated value for sysload_counter.
 def check_sysload(sysload_counter, time_between_alerts, status_polling):
     message = ""
+    std_dev = 0.0
     current_load_avg = sysload()
 
-    # Check the average system loads and construct a message for the bot's
-    # owner.
-    if current_load_avg['one_minute'] >= 1.5:
-        message = message + "WARNING: The current system load is " + str(current_load_avg['one_minute']) + ".\n"
+    logging.debug("Current system load averages: " + str(current_load_avg))
 
-    if current_load_avg['five_minute'] >= 2.0:
-        message = message + "WARNING: The five minute system load is " + str(current_load_avg['one_minute']) + ".  What's running that's doing this?\n"
+    # Copy the load averages into the appropriate running lists.
+    one_minute_average.append(current_load_avg["one_minute"])
+    five_minute_average.append(current_load_avg["five_minute"])
+    fifteen_minute_average.append(current_load_avg["fifteen_minute"])
 
-    if current_load_avg['fifteen_minute'] >= 2.0:
-        message = message + "WARNING: The fifteen minute system load is " + str(current_load_avg['one_minute']) + ".  I think something's wrong.\n"
+    logging.debug("Length of one_minute_average: " + str(len(one_minute_average)))
+    logging.debug("Length of five_minute_average: " + str(len(five_minute_average)))
+    logging.debug("Length of fifteen_minute_average: " + str(len(fifteen_minute_average)))
+
+    # Pop the oldest values out of the lists to keep them at a manageable size.
+    if len(one_minute_average) >= sys_avg_max_len:
+        one_minute_average.pop(0)
+    if len(five_minute_average) >= sys_avg_max_len:
+        five_minute_average.pop(0)
+    if len(fifteen_minute_average) >= sys_avg_max_len:
+        fifteen_minute_average.pop(0)
+
+    # To calculate the standard deviation of a group of values, there need to
+    # be more than two available.  Make sure this is the case.  The way I'm
+    # doing this is probably overkill because the three lists will always grow
+    # at the same rate.
+    if len(one_minute_average) < sys_avg_min_len:
+        return sysload_counter
+    if len(five_minute_average) < sys_avg_min_len:
+        return sysload_counter
+    if len(fifteen_minute_average) < sys_avg_min_len:
+        return sysload_counter
+
+    # Calculate the standard deviations of the three system loads and send an
+    # alert if there's been a huge spike.
+    std_dev = statistics.stdev(one_minute_average)
+    logging.debug("Standard deviation of one minute system load: " + str(std_dev))
+    if std_dev > float(std_devs):
+        message = message + "WARNING: The current system load has spiked to " + str(current_load_avg["one_minute"]) + ".\n"
+
+    std_dev = statistics.stdev(five_minute_average)
+    logging.debug("Standard deviation of five minute system load: " + str(std_dev))
+    if std_dev > float(std_devs):
+        message = message + "WARNING: The five minute system load has spiked to " + str(current_load_avg["five_minute"]) + ".  What could be running that's doing this?\n"
+
+    std_dev = statistics.stdev(fifteen_minute_average)
+    logging.debug("Standard deviation of fifteen minute system load: " + str(std_dev))
+    if std_dev > float(std_devs):
+        message = message + "WARNING: The fifteen minute system load has spiked to " + str(current_load_avg["fifteen_minute"]) + ".  I think something's dreadfully wrong.\n"
 
     # If a message has been constructed, check to see if it's been longer than
     # the last time a message was sent.  If so, send it and reset the counter.
@@ -298,4 +354,3 @@ def network_traffic():
 
 if "__name__" == "__main__":
     pass
-
