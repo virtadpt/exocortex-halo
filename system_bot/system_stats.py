@@ -32,17 +32,6 @@ import sys
 
 from datetime import timedelta
 
-# Constants global to this module.
-# Minimum length of system average arrays.
-sys_avg_min_len = 2
-
-# Maximum length of system average arrays.
-sys_avg_max_len = 100
-
-# Number of standard deviations to consider worth alerting on.  Does not need
-# to be a huge number due to how the math works.
-std_devs = 3
-
 # Variables global to this module.
 # Running lists of system averages.
 one_minute_average = []
@@ -61,14 +50,19 @@ def sysload():
     return sysload
 
 # check_sysload: Function that pulls the current system load and tests the
-#   load averages to see if they're too high.  Takes three arguments, the
-#   sysload counter, the time between alerts, and the value of status_polling.
-#   Sends a message to the user, returns an updated value for sysload_counter.
-def check_sysload(sysload_counter, time_between_alerts, status_polling):
+#   load averages to see if they're too high.  Takes six arguments, the
+#   sysload counter, the time between alerts, the value of status_polling, the
+#   number of standard deviations to calculate, and the minimum and maximum
+#   system stat queue lengths.  Sends a message to the user, returns an updated
+#   value for sysload_counter.
+def check_sysload(sysload_counter, time_between_alerts, status_polling,
+    std_devs, sys_avg_min_len, sys_avg_max_len):
     message = ""
     std_dev = 0.0
     current_load_avg = sysload()
 
+    logging.debug("Value of sys_avg_min_len: " + str(sys_avg_min_len))
+    logging.debug("Value of sys_avg_max_len: " + str(sys_avg_max_len))
     logging.debug("Current system load averages: " + str(current_load_avg))
 
     # Copy the load averages into the appropriate running lists.
@@ -81,22 +75,16 @@ def check_sysload(sysload_counter, time_between_alerts, status_polling):
     logging.debug("Length of fifteen_minute_average: " + str(len(fifteen_minute_average)))
 
     # Pop the oldest values out of the lists to keep them at a manageable size.
-    if len(one_minute_average) >= sys_avg_max_len:
+    if len(one_minute_average) >= int(sys_avg_max_len):
+        logging.debug("Removing oldest system load values.")
         one_minute_average.pop(0)
-    if len(five_minute_average) >= sys_avg_max_len:
         five_minute_average.pop(0)
-    if len(fifteen_minute_average) >= sys_avg_max_len:
         fifteen_minute_average.pop(0)
 
     # To calculate the standard deviation of a group of values, there need to
-    # be more than two available.  Make sure this is the case.  The way I'm
-    # doing this is probably overkill because the three lists will always grow
-    # at the same rate.
-    if len(one_minute_average) < sys_avg_min_len:
-        return sysload_counter
-    if len(five_minute_average) < sys_avg_min_len:
-        return sysload_counter
-    if len(fifteen_minute_average) < sys_avg_min_len:
+    # be several available.  Make sure this is the case.
+    if len(one_minute_average) < int(sys_avg_min_len):
+        logging.debug("Need more than " + str(sys_avg_min_len) + " samples of system load.  Waiting.")
         return sysload_counter
 
     # Calculate the standard deviations of the three system loads and send an

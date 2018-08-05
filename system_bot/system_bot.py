@@ -24,9 +24,6 @@
 #   bot can be ordered to execute.
 # - Make it possible to specify system stat thresholds in the config file
 #   rather than hardcoding them.
-# - Make it so that the bot stores previous system system values so that it
-#   can compute standard deviations and alert if things change for the worse
-#   too much.
 # - Add an "alert acknowledged" command that stops the bot from sending the
 #   same alert every couple of seconds.  When the system state changes back to
 #   normal, automatically flip the "alert acknowledged" flag back.
@@ -85,6 +82,13 @@ polling_time = 0
 # value if it's too small (it would be four seconds or less, so default to five
 # seconds?)
 status_polling = 0
+
+# Number of standard deviations to consider hazardous to the system.
+standard_deviations = 0
+
+# Minimum and maximum lengths of the system stat queues.
+minimum_length = 0
+maximum_length = 0
 
 # Configuration for the logger.
 loglevel = None
@@ -227,6 +231,13 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
+# Get the number of standard deviations from the config file.
+standard_deviations = config.get("DEFAULT", "standard_deviations")
+
+# Get the minimum and maximum lengths of the stat queues from the config file.
+minimum_length = config.get("DEFAULT", "minimum_length")
+maximum_length = config.get("DEFAULT", "maximum_length")
+
 # Get the URL of the web service that just returns an IP address.
 try:
     ip_addr_web_service = config.get("DEFAULT", "ip_addr_site")
@@ -268,6 +279,9 @@ logger.debug("Configuration file: " + config_file)
 logger.debug("Server to report to: " + server)
 logger.debug("Message queue to report to: " + message_queue)
 logger.debug("Bot name to respond to search requests with: " + bot_name)
+logger.debug("Number of standard deviations: " + str(standard_deviations))
+logger.debug("Minimum stat queue length: " + str(minimum_length))
+logger.debug("Maximum stat queue length: " + str(maximum_length))
 logger.debug("Value of polling_time (in seconds): " + str(polling_time))
 logger.debug("Value of loop_counter (in seconds): " + str(status_polling))
 logger.debug("URL of web service that returns public IP address: " + ip_addr_web_service)
@@ -288,7 +302,8 @@ while True:
     # Start checking the system runtime stats.  If anything is too far out of
     # whack, send an alert via the XMPP bridge's response queue.
     sysload_counter = system_stats.check_sysload(sysload_counter,
-        time_between_alerts, status_polling)
+        time_between_alerts, status_polling, standard_deviations,
+        minimum_length, maximum_length)
     cpu_idle_time_counter = system_stats.check_cpu_idle_time(
         cpu_idle_time_counter, time_between_alerts, status_polling)
     disk_usage_counter = system_stats.check_disk_usage(disk_usage_counter,
