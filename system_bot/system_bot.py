@@ -109,7 +109,7 @@ memory_utilization_counter = 0
 memory_free_counter = 0
 
 # List of dead processes on the system.  If it's ever populated something died
-# and needs to be attended to.
+# and needs attended to.
 dead_processes = None
 
 # URL of web service that just returns the IP address of the host.
@@ -181,7 +181,7 @@ def online_help():
 argparser = argparse.ArgumentParser(description="A construct that monitors system statistics and sends alerts via the XMPP bridge in the event that things get too far out of whack.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument("--config", action="store", 
+argparser.add_argument("--config", action="store",
     default="./system_bot.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
@@ -421,4 +421,3 @@ while True:
 
 # Fin.
 sys.exit(0)
-

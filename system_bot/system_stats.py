@@ -54,9 +54,9 @@ fifteen_minute_average = []
 def sysload():
     sysload = {}
     system_load = os.getloadavg()
-    sysload['one_minute'] = system_load[0]
-    sysload['five_minute'] = system_load[1]
-    sysload['fifteen_minute'] = system_load[2]
+    sysload["one_minute"] = system_load[0]
+    sysload["five_minute"] = system_load[1]
+    sysload["fifteen_minute"] = system_load[2]
     return sysload
 
 # check_sysload: Function that pulls the current system load and tests the
@@ -134,10 +134,10 @@ def check_sysload(sysload_counter, time_between_alerts, status_polling):
 def uname():
     system_info = {}
     sysinfo = os.uname()
-    system_info['hostname'] = sysinfo[1]
-    system_info['version'] = sysinfo[2]
-    system_info['buildinfo'] = sysinfo[3]
-    system_info['arch'] = sysinfo[4]
+    system_info["hostname"] = sysinfo[1]
+    system_info["version"] = sysinfo[2]
+    system_info["buildinfo"] = sysinfo[3]
+    system_info["arch"] = sysinfo[4]
     return system_info
 
 # cpus(): Takes no arguments.  Returns the number of CPUs on the system.
@@ -336,7 +336,7 @@ def network_traffic():
     nics = psutil.net_io_counters(pernic=True)
 
     # Get rid of the loopback interface.
-    del nics['lo']
+    del nics["lo"]
 
     # Prime the network stats hash table with the remaining network interfaces.
     for i in nics.keys():
