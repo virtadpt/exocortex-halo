@@ -18,7 +18,6 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# Turn the global constants into parameters passed from system_bot.py.
 
 # Load modules.
 import logging

@@ -11,6 +11,8 @@
 
 # License: GPLv3
 
+# v3.0 - Added real statistics support.  Parameterized stuff to eliminate some
+#        magick numbers.
 # v2.3 - Added capability to monitor and restart processes if they die.
 #      - Removed the self test function.  That didn't do anything, anyway.
 # v2.2 - Added function to get public IP address of host.
@@ -22,8 +24,6 @@
 # TO-DO:
 # - Make it possible to specify arbitrary commands in the config file that the
 #   bot can be ordered to execute.
-# - Make it possible to specify system stat thresholds in the config file
-#   rather than hardcoding them.
 # - Add an "alert acknowledged" command that stops the bot from sending the
 #   same alert every couple of seconds.  When the system state changes back to
 #   normal, automatically flip the "alert acknowledged" flag back.
