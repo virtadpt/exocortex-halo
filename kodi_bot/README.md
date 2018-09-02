@@ -12,5 +12,11 @@ Recognized filenames and corresponding functions:
 * search_requests_albums.txt - Questions pertaining to searching your media library by title of album or collection.
 * search_requests_songs.txt - Questions pertaining to searching your media library by title of song or track.
 * search_requests_videos.txt - Questions pertaining to searching your media library by title of video, movie, or show.
+* commands_play.txt - Commands pertaining to starting playback of media.
+* commands_pause.txt - Commands pertaining to pausing playback of media.
+* commands_stop.txt - Commands pertaining to halting playback of media.
+* commands_forward.txt - Commands pertaining to skipping forward.
+* commands_backward.txt - Commands pertaining to skipping backward.
+* commands_shuffle.txt - Commands pertaining to shuffling through your music library.  This is where party mode happens.
 
 If the bot isn't quite sure if it's got a good match, it'll tell you so.  By default, kodi_bot.py will consider any confidence metric over 25% a good match.  You can change this by editing the configuration file and restarting the bot.
