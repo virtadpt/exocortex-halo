@@ -2,7 +2,11 @@
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
-# template_bot.py - Bot written in Python that...
+# kodi_bot.py - Bot written in Python that interfaces with a Kodi instance and
+#   acts as a remote control for audio and video playback.  For forward
+#   compatibility, this bot uses kodipydent
+#   (https://github.com/haikuginger/kodipydent) because it's designed to adapt
+#   to new Kodi JSON-RPC API versions.
 #
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
@@ -15,7 +19,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - 
+# -
 
 # Load modules.
 import argparse
@@ -26,6 +30,10 @@ import os
 import requests
 import sys
 import time
+
+from kodipydent import Kodi
+
+import parser
 
 # Constants.
 
@@ -56,13 +64,32 @@ message_queue = ""
 bot_name = ""
 
 # How often to poll the message queues for orders.
-polling_time = 60
+polling_time = 10
 
 # String that holds the command from the user prior to parsing.
 user_command = None
 
 # Handle to a parsed user command.
 parsed_command = None
+
+# Kodi connection information.
+kodi_host = ""
+kodi_port = 0
+kodi_user = ""
+kodi_password = ""
+
+# Directories containing media.
+media_dirs = []
+media_dirs_tmp = ""
+
+# Directory containing text files to front-load the parser with.
+corpora_dir = ""
+
+# Minimum statistical confidence in a match.  Defaults to 25 out of 100.
+minimum_confidence = 25
+
+# Handle to a Kodi client connection.
+kodi = None
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -80,57 +107,6 @@ def set_loglevel(loglevel):
         return 10
     if loglevel == "notset":
         return 0
-
-# parse_...(): Takes a string and figures out if it was a correctly
-#   formatted request to...  Requests
-#   are of the form "..".  Returns ...
-#   or None if it's not a well-formed request.
-def parse_...(user_command):
-    logger.debug("Entered function parse_...().")
-    words = []
-
-    # Clean up the search request.
-    user_command = user_command.strip()
-    user_command = user_command.strip(",")
-    user_command = user_command.strip(".")
-    user_command = user_command.strip("'")
-
-    # If the user command is empty (i.e., nothing in the queue) return None.
-    if "no commands" in user_command:
-        logger.debug("Got an empty index request.")
-        return None
-
-    # Tokenize the search request.
-    words = user_command.split()
-    logger.debug("Tokenized index request: " + str(words))
-
-    # Start parsing the the index request to see what kind it is.  After
-    # making the determination, remove the words we've sussed out to make the
-    # rest of the query easier.
-
-    # User asked for help.
-    if not len(words):
-        return None
-    if words[0].lower() == "help":
-        logger.debug("User asked for online help.")
-        return words[0]
-
-    # User asked the construct to...
-    if (words[0] == "foo") or (words[0] == "bar") or \
-            (words[0] == "baz"):
-        logger.info("Got a token that suggests that this is...")
-    del words[0]
-
-    # If the parsed search term is now empty, return an error.
-    if not len(words):
-        logger.error("The indexing request appears to be empty.")
-        return None
-
-    # The above, one or more times...
-
-    # Return the final result.
-    logger.debug("Final result: " + something_final_result)
-    return something_final_result
 
 # send_message_to_user(): Function that does the work of sending messages back
 # to the user by way of the XMPP bridge.  Takes one argument, the message to
@@ -151,21 +127,21 @@ def send_message_to_user(message):
     request = requests.put(server + "replies", headers=headers,
         data=json.dumps(reply))
 
-# Core code...
+# Core code... let's do this.
 
 # Set up the command line argument parser.
-argparser = argparse.ArgumentParser(description="A bot that polls a message queue for...")
+argparser = argparse.ArgumentParser(description="A bot that interfaces with a Kodi media server.  It can run searches on the media library as well as send commands to the server.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument("--config", action="store", 
-    default="./template_bot.conf")
+argparser.add_argument("--config", action="store",
+    default="./kodi_bot.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
 argparser.add_argument("--loglevel", action="store",
     help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument("--polling", action="store", help="Default: 60 seconds")
+argparser.add_argument("--polling", action="store", help="Default: 10 seconds")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -216,6 +192,15 @@ if args.polling:
     polling_time = args.polling
 
 # Parse the rest of the configuration file...
+# Get the Kodi configuration information.
+kodi_host = config.get("DEFAULT", "kodi_host")
+kodi_port = config.get("DEFAULT", "kodi_port")
+kodi_user = config.get("DEFAULT", "kodi_user")
+kodi_password = config.get("DEFAULT", "kodi_password")
+media_dirs_tmp = config.get("DEFAULT", "media_dirs")
+media_dirs = media_dirs_tmp.split(",")
+corpora_dir = config.get("DEFAULT", "corpora_dir")
+minimum_confidence = config.get("DEFAULT", "minimum_confidence")
 
 # Debugging output, if required.
 logger.info("Everything is set up.")
@@ -227,6 +212,22 @@ logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
 # Other debugging output...
+logger.debug("Kodi host: " + str(kodi_host))
+logger.debug("Kodi port: " + str(kodi_port))
+logger.debug("Kodi username: " + str(kodi_user))
+logger.debug("Kodi password: " + str(kodi_password)
+logger.debug("Kodi media directories: " + str(media_dirs))
+logger.debug("Corpora to front-load the parser with: " + str(corpora_dir))
+
+# Connect to a Kodi instance.
+try:
+    kodi = Kodi(kodi_host, port=int(kodi_port), username=kodi_user,
+        password=kodi_password)
+except:
+    logger.error("Unable to connect to Kodi instance at " + str(kodi_host) + ":" + str(kodi_port) + "/tcp with username " str(kodi_user) + " and password " + str(kodi_password) + ".  Please check your configuration file.")
+    sys.exit(1)
+
+# Front load the parser
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -255,7 +256,7 @@ while True:
         user_command = user_command["command"]
 
         # Parse the user command.
-        parsed_command = parse_...(user_command)
+        parsed_command = parser.parse(user_command)
 
         # If the parsed command comes back None (i.e., it wasn't well formed)
         # throw an error and bounce to the top of the loop.
@@ -265,7 +266,7 @@ while True:
 
         # If the user is requesting help, assemble a response and send it back
         # to the server's message queue.
-        if parsed_command.lower() == "help":
+        if parsed_command == "help":
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + """I am... send me a message that looks something like this:\n\n"""
             reply = reply + bot_name + ", [command, synonym, synonym...] args...\n\n"
@@ -299,4 +300,3 @@ while True:
 
 # Fin.
 sys.exit(0)
-

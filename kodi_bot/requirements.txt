@@ -1,0 +1,4 @@
+fuzzywuzzy
+kodipydent
+python-Levenshtein
+requests

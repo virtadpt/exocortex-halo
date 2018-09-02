@@ -1,0 +1,32 @@
+# Top level configuration for System Bot.
+[DEFAULT]
+
+# URL of the message queue to poll.
+queue = http://localhost:8003/
+
+# Name the bot should answer to.
+bot_name = MemorableNameOfThisBot
+
+# Set the default loglevel of the bot.
+loglevel = info
+
+# How often to poll the message queue for orders.  Defaults to 10 seconds.
+# polling_time = 10
+
+# Connection information for the Kodi instance to communicate with.
+kodi_host = localhost
+kodi_port = 8080
+kodi_user = kodi
+kodi_password = kodi
+
+# A list of directories containing Kodi's media library.
+media_dirs = /path/to/dir1,/path/to/dir2,/path/to/dir3
+
+# Path to a directory of corpora - text files which the bot will use to figure
+# out what the user is asking.
+corpora_dir = corpora/
+
+# Minimum confidence to consider good.  Anything less than this and the bot
+# will warn you that it's not quite sure.  Defaults to 25 out of a possible
+# 100.
+minimum_confidence = 25
