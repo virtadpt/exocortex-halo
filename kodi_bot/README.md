@@ -18,5 +18,9 @@ Recognized filenames and corresponding functions:
 * commands_forward.txt - Commands pertaining to skipping forward.
 * commands_backward.txt - Commands pertaining to skipping backward.
 * commands_shuffle.txt - Commands pertaining to shuffling through your music library.  This is where party mode happens.
+* help_basic.txt - Basic questions for getting online help.
+* help_audio.txt - Questions for getting online help for audio.
+* help_video.txt - Questions for getting online help for video.
+* help_commands.txt - Questions for getting online help for other commands.
 
 If the bot isn't quite sure if it's got a good match, it'll tell you so.  By default, kodi_bot.py will consider any confidence metric over 25% a good match.  You can change this by editing the configuration file and restarting the bot.
