@@ -80,7 +80,6 @@ kodi_password = ""
 
 # Directories containing media.
 media_dirs = []
-media_dirs_tmp = ""
 
 # Directory containing text files to front-load the parser with.
 corpora_dir = ""
@@ -90,6 +89,10 @@ minimum_confidence = 25
 
 # Handle to a Kodi client connection.
 kodi = None
+
+# Types of commands the bot can parse and act on.
+command_types_tmp = []
+command_types = {}
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -152,8 +155,7 @@ if args.config:
 # command line.
 config = ConfigParser.ConfigParser()
 if not os.path.exists(config_file):
-    logging.error("Unable to find or open configuration file " +
-        config_file + ".")
+    logging.error("Unable to find or open configuration file %s." % config_file)
     sys.exit(1)
 config.read(config_file)
 
@@ -197,37 +199,62 @@ kodi_host = config.get("DEFAULT", "kodi_host")
 kodi_port = config.get("DEFAULT", "kodi_port")
 kodi_user = config.get("DEFAULT", "kodi_user")
 kodi_password = config.get("DEFAULT", "kodi_password")
-media_dirs_tmp = config.get("DEFAULT", "media_dirs")
-media_dirs = media_dirs_tmp.split(",")
+media_dirs = config.get("DEFAULT", "media_dirs").split(",")
 corpora_dir = config.get("DEFAULT", "corpora_dir")
 minimum_confidence = config.get("DEFAULT", "minimum_confidence")
+command_types_tmp = config.get("DEFAULT", "command_types").split(",")
 
 # Debugging output, if required.
 logger.info("Everything is set up.")
 logger.debug("Values of configuration variables as of right now:")
-logger.debug("Configuration file: " + config_file)
-logger.debug("Server to report to: " + server)
-logger.debug("Message queue to report to: " + message_queue)
-logger.debug("Bot name to respond to search requests with: " + bot_name)
-logger.debug("Time in seconds for polling the message queue: " +
-    str(polling_time))
-# Other debugging output...
-logger.debug("Kodi host: " + str(kodi_host))
-logger.debug("Kodi port: " + str(kodi_port))
-logger.debug("Kodi username: " + str(kodi_user))
-logger.debug("Kodi password: " + str(kodi_password)
-logger.debug("Kodi media directories: " + str(media_dirs))
-logger.debug("Corpora to front-load the parser with: " + str(corpora_dir))
+logger.debug("Configuration file: %s" % config_file)
+logger.debug("Server to report to: %s" % server)
+logger.debug("Message queue to report to: %s" % message_queue)
+logger.debug("Bot name to respond to search requests with: %s" % bot_name)
+logger.debug("Time in seconds for polling the message queue: %d" % polling_time)
+logger.debug("Kodi host: %s" % kodi_host)
+logger.debug("Kodi port: %s" % kodi_port)
+logger.debug("Kodi username: %s" % kodi_user)
+logger.debug("Kodi password: %s" % kodi_password)
+logger.debug("Kodi media directories: %s" % media_dirs)
+logger.debug("Corpora to train the parser with: %s" % corpora_dir)
 
 # Connect to a Kodi instance.
 try:
     kodi = Kodi(kodi_host, port=int(kodi_port), username=kodi_user,
         password=kodi_password)
 except:
-    logger.error("Unable to connect to Kodi instance at " + str(kodi_host) + ":" + str(kodi_port) + "/tcp with username " str(kodi_user) + " and password " + str(kodi_password) + ".  Please check your configuration file.")
+    logger.error("Unable to connect to Kodi instance at %s:%d/tcp with username %s and password %s.  Please check your configuration file." % (kodi_host, kodi_port, kodi_user, kodi_password))
     sys.exit(1)
 
-# Front load the parser
+# Load the corpora.
+corpora_dir = os.path.abspath(corpora_dir)
+for i in command_types_tmp:
+    command_types[i] = []
+# Now we have a hash table where the keys are categories of commands to run
+# and the values are empty lists.
+for filename in os.listdir(corpora_dir):
+
+    # Generate the key for the hash.
+    command_type = filename.strip(".txt")
+
+    # Test the length of the corpus file.  If it's 0, then skip the command
+    # class.
+    if not os.path.getsize(filename):
+        logger.warn("Corpus filename %s has a length of zero bytes.  Skipping this command class." % filename)
+        command_types.pop(command_type)
+        continue
+
+    # Read the contents of the corpus file in.
+    try:
+        with open(filename, "r") as file:
+            command_types[command_type] = file.read().splitlines()
+    except:
+        logger.warn("Unable to open filename %s.  Skipping command class." % os.path.join(corpora_dir, filename))
+        command_types.pop(command_type)
+logger.debug("Recognized command types: %s" % str(command_types))
+
+# Load the media library from Kodi.
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -238,7 +265,7 @@ while True:
 
     # Check the message queue for index requests.
     try:
-        logger.debug("Contacting message queue: " + message_queue)
+        logger.debug("Contacting message queue: %s" % message_queue)
         request = requests.get(message_queue)
     except:
         logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
@@ -248,11 +275,11 @@ while True:
     # Test the HTTP response code.
     # Success.
     if request.status_code == 200:
-        logger.debug("Message queue " + bot_name + " found.")
+        logger.debug("Message queue %s found." % bot_name)
 
         # Extract the user command.
         user_command = json.loads(request.text)
-        logger.debug("Value of user_command: " + str(user_command))
+        logger.debug("Value of user_command: %s" % user_command)
         user_command = user_command["command"]
 
         # Parse the user command.
@@ -293,7 +320,7 @@ while True:
 
     # Message queue not found.
     if request.status_code == 404:
-        logger.info("Message queue " + bot_name + " does not exist.")
+        logger.info("Message queue %s does not exist." % bot_name)
 
     # Sleep for the configured amount of time.
     time.sleep(float(polling_time))
