@@ -22,6 +22,9 @@ kodi_password = kodi
 # A list of directories containing Kodi's media library.
 media_dirs = /path/to/dir1,/path/to/dir2,/path/to/dir3
 
+# A list of subdirectories to exclude from the media library.
+#exclude_dirs = junk,backups
+
 # Path to a directory of corpora - text files which the bot will use to figure
 # out what the user is asking.
 corpora_dir = corpora/

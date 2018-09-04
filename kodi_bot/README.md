@@ -24,3 +24,17 @@ Recognized filenames and corresponding functions:
 * help_commands.txt - Questions for getting online help for other commands.
 
 If the bot isn't quite sure if it's got a good match, it'll tell you so.  By default, kodi_bot.py will consider any confidence metric over 25% a good match.  You can change this by editing the configuration file and restarting the bot.
+
+To make this bot work reliably, you'll probably have to create an *advancedsettings.xml* file in the Kodi *userdirectory/* directory on your Kodi box, per [these instructions](https://kodi.wiki/view/Advancedsettings.xml).  At least in part, the contents of this file should look something like this:
+
+```
+<advancedsettings>
+    <network>
+        <curlclienttimeout>120</curlclienttimeout>
+    </network>
+</advancedsettings>
+```
+
+Then restart Kodi.  I've found that this modification makes it much easier for the bot to generate a media library.  Why doesn't Kodi have an API to do this?  I don't know.
+
+Please note that if you have any filenames with broken character encodings, Python will not be able to decode the bytestring and will barf.  By "broken" I mean filenames that look like this: **The.X-Files.S09E03.D'$'\346''monicus.WEBRip.x264-FUM.mp4**
