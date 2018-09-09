@@ -12,12 +12,14 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# -Make the online help interactive and subject based ("help video," "help
+# - Make the online help interactive and subject based ("help video," "help
 #   music.")
+# - Normalize the corpora to lowercase at load-time.
 
 # Load modules.
 import logging
 import os
+import sys
 
 from fuzzywuzzy import fuzz
 
@@ -86,19 +88,18 @@ from fuzzywuzzy import fuzz
 #   [Audio,Video]Library.Scan()
 #   Then rebuild the bot's internal indices?
 # -
-# -
-# -
-# -
-# -
-# -
-# -
-# -
-# -
-# -
+#
+# What the parser returns:
+# - No match? None.
+# - Match?
+#   parsed_command = {}
+#   parsed_command["confidence"] = confidence in match
+#   parsed_command[""]
 
-# Train the command parser on a list of corpora.  Takes two arguments, a string
-#   that points to a directory full of text corpora, and a hash of command
-#   types.  Returns a new has of command types containing the corpora text.
+# load_corpora(): Trains the command parser on a list of corpora.  Takes two
+#   arguments, a string that points to a directory full of text corpora, and a
+#   hash of command types.  Returns a hash of command types containing the
+#   corpora to match against.
 def load_corpora(corpora_dir, command_types):
     logging.debug("Entered parser.load_corpora().")
 
@@ -130,101 +131,16 @@ def load_corpora(corpora_dir, command_types):
     logging.debug("Recognized command types: %s" % str(command_types.keys()))
     return command_types
 
-# parse_help(): Function that matches the word "help" all by itself in an input
-#   string.  Returns the string "help" on a match and None if not.
-def parse_help(command):
-    try:
-        parsed_command = help_command.parseString(command)
-        return "help"
-    except:
-        return None
+# parse(): Function that parses commands from the message bus.  Takes MOOF args,
+#   the command to parse, a hash containing corpora to match against, and the
+#   type of command to match against.  A hash table with the best match is
+#   returned as a match or None on no match.
+def parse(command, possible_commands):
+    logging.debug("Entered parser.parse().")
 
-# parse_system_load(): Function that matches the strings "load" or "system load"
-#   all by themselves in an input string.  Returns the string "load" on a match
-#   and None if not.
-def parse_system_load(command):
-    try:
-        parsed_command = load_or_system_load_command.parseString(command)
-        return "load"
-    except:
-        return None
-
-# parse_system_info(): Function that matches the strings "uname" or "system
-#   info" or "info" all by themselves in an input string.  Returns the string
-#   "info" on a match and None if not.
-def parse_system_info(command):
-    try:
-        parsed_command = system_info_command.parseString(command)
-        return "info"
-    except:
-        return None
-
-# parse_cpus(): Function that matches the strings "cpus" or "CPUs" all by
-#   themselves in an input string.  Returns the string "cpus" on a match and
-#   None if not.
-def parse_cpus(command):
-    try:
-        parsed_command = cpus_command.parseString(command)
-        return "cpus"
-    except:
-        return None
-
-# parse_disk_space(): Function that matches the strings "disk", "disk usage",
-#   or "storage" all by themselves in an input string.  Returns the string
-#   "disk" on a match and None if not.
-def parse_disk_space(command):
-    try:
-        parsed_command = free_disk_space_command.parseString(command)
-        return "disk"
-    except:
-        return None
-
-# parse_free_memory(): Function that matches the strings "memory", "free
-#   memory", "ram", or "free ram" all by themselves in an input string.
-#   Returns the string "memory" on a match and None if not.
-def parse_free_memory(command):
-    try:
-        parsed_command = unused_memory_command.parseString(command)
-        return "memory"
-    except:
-        return None
-
-# parse_uptime(): Function that matches the string "uptime" in an input
-#   string.  Returns the string "uptime" on a match and None if not.
-def parse_uptime(command):
-    try:
-        parsed_command = uptime_command.parseString(command)
-        return "uptime"
-    except:
-        return None
-
-# parse_ip_address(): Function that matches the strings "ip", "ip address",
-#   "public ip", "ip addr", "public ip address", "addr".  Returns the string
-#   "ip" on a match and None if not.
-def parse_ip_address(command):
-    try:
-        parsed_command = ip_address_commands.parseString(command)
-        return "ip"
-    except:
-        return None
-
-# parse_network_traffic(): Function that matches the strings "network traffic",
-#   "traffic volume", "network stats", "traffic stats", "traffic count".
-#   Returns the string "traffic" on a match and None if not.
-def parse_network_traffic(command):
-    try:
-        parsed_command = network_traffic_stats_command.parseString(command)
-        return "traffic"
-    except:
-        return None
-
-# parse_command(): Function that parses commands from the message bus.
-#   Commands come as strings and are run through PyParsing to figure out what
-#   they are.  A single-word string is returned as a match or None on no match.
-#   Conditionals are short-circuited to speed up execution.
-def parse_command(command):
-
-    parsed_command = None
+    parsed_command = {}
+    parsed_command["confidence"] = 0
+    parsed_command["match"] = ""
 
     # Clean up the incoming command.
     command = command.strip()
@@ -236,53 +152,20 @@ def parse_command(command):
     if "no commands" in command:
         return None
 
-    # Online help?
-    parsed_command = parse_help(command)
-    if parsed_command == "help":
-        return parsed_command
+    # Walk through the command corpora and see which one most closely matches.
+    for command_type in possible_commands.keys():
+        logging.debug("Now matching against command class %s." % command_type)
 
-    # System load?
-    parsed_command = parse_system_load(command)
-    if parsed_command == "load":
-        return parsed_command
+        for i in possible_commands[command_type]:
+            tmp = fuzz.token_sort_ratio(command, i.lower())
+            if tmp > parsed_command["confidence"]:
+                logging.debug("Replacing match with one of a higher confidence:")
+                logging.debug("New match: %s" % i)
+                logging.debug("Confidence of new match: %d" % tmp)
+                parsed_command["confidence"] = tmp
+                parsed_command["match"] = command_type
 
-    # System info?
-    parsed_command = parse_system_info(command)
-    if parsed_command == "info":
-        return parsed_command
-
-    # CPUs?
-    parsed_command = parse_cpus(command)
-    if parsed_command == "cpus":
-        return parsed_command
-
-    # Free disk space?
-    parsed_command = parse_disk_space(command)
-    if parsed_command == "disk":
-        return parsed_command
-
-    # Free memory?
-    parsed_command = parse_free_memory(command)
-    if parsed_command == "memory":
-        return parsed_command
-
-    # System uptime?
-    parsed_command = parse_uptime(command)
-    if parsed_command == "uptime":
-        return parsed_command
-
-    # IP address?
-    parsed_command = parse_ip_address(command)
-    if parsed_command == "ip":
-        return parsed_command
-
-    # Network traffic stats?
-    parsed_command = parse_network_traffic(command)
-    if parsed_command == "traffic":
-        return parsed_command
-
-    # Fall-through: Nothing matched.
-    return "unknown"
+    return parsed_command
 
 if "__name__" == "__main__":
     pass

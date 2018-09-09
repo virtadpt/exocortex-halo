@@ -19,7 +19,13 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# -
+# - Checkpoint the media database to disk occasionally to shorten load times.
+#   Just do a JSON dump and then a JSON load.
+# - Figure out how to let the user add to and remove from the various corpora to
+#   personalize the bots without having to shut down, edit the files manually,
+#   and restart the bot.
+# - Add to the command parser the ability to list the active command classes
+#   and the corpora associated with them so the user has an idea of what to say.
 
 # Load modules.
 import argparse
@@ -33,6 +39,7 @@ import time
 
 from kodipydent import Kodi
 
+import help
 import kodi_library
 import parser
 
@@ -94,34 +101,15 @@ minimum_confidence = 25
 kodi = None
 
 # Types of commands the bot can parse and act on.
-command_types_tmp = []
-command_types = {}
+commands_tmp = []
+commands = {}
 
 # List of media source directories on the Kodi box.
 sources = {}
 
 # Local copy of Kodi's media library because you can't actually search it, you
-# can only download a copy and parse through it.  Additionally, there isn't
-# one inclusive uber-library, there are several of them.
+# can only download a copy and parse through it.
 media_library = {}
-#media_library["artists"] = []
-#media_library["albums"] = []
-#media_library["songs"] = []
-#media_library["movies"] = []
-#media_library["tv"] = []
-#media_library["musicvideos"] = []
-#media_library["audio"] = []
-#media_library["video"] = []
-
-# Handles to the results returned from the Kodi library API.
-artists = None
-albums = None
-songs = None
-movies = None
-tv = None
-musicvideos = None
-audio = None
-video = None
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -175,6 +163,10 @@ argparser.add_argument("--loglevel", action="store",
 # Time (in seconds) between polling the message queues.
 argparser.add_argument("--polling", action="store", help="Default: 10 seconds")
 
+# Whether or not to build a media library.  This exists to speed up debugging.
+argparser.add_argument("--no-media-library", action="store_true",
+    help="If this flag is set, the bot won't spend time generating a media library.  This speeds up debugging greatly.")
+
 # Parse the command line arguments.
 args = argparser.parse_args()
 if args.config:
@@ -206,6 +198,7 @@ if config_log:
 # queues.
 try:
     polling_time = config.get("DEFAULT", "polling_time")
+    polling_time = int(polling_time)
 except:
     # Nothing to do here, it's an optional configuration setting.
     pass
@@ -235,7 +228,7 @@ except:
     pass
 corpora_dir = config.get("DEFAULT", "corpora_dir")
 minimum_confidence = config.get("DEFAULT", "minimum_confidence")
-command_types_tmp = config.get("DEFAULT", "command_types").split(",")
+commands_tmp = config.get("DEFAULT", "command_types").split(",")
 
 # Debugging output, if required.
 logger.info("Everything is set up.")
@@ -251,6 +244,8 @@ logger.debug("Kodi username: %s" % kodi_user)
 logger.debug("Kodi password: %s" % kodi_password)
 logger.debug("Directories to skip over: %s" % exclude_dirs)
 logger.debug("Corpora to train the parser with: %s" % corpora_dir)
+if args.no_media_library:
+    logger.debug("Not building a media library.")
 
 # Connect to a Kodi instance.
 try:
@@ -262,89 +257,34 @@ except:
 
 # Load the corpora into a hash table where the keys are categories of commands
 # to run and the values are empty lists.
-for i in command_types_tmp:
-    command_types[i] = []
-command_types = parser.load_corpora(corpora_dir, command_types)
+for i in commands_tmp:
+    commands[i] = []
+commands = parser.load_corpora(corpora_dir, commands)
 
-# Generate a list of media sources on the Kodi box.  From the Kodi docs, there
-# are only two we have to care about, video and music.  I'm using the canonical
-# Kodi names for consistency's sake.
-sources = kodi_library.get_media_sources(kodi)
+# If the user asks that no media library be generated, skip this part.  It's
+# nice, but it also gets in the way of debugging because it can take so long.
+if args.no_media_library == False:
+    # Generate a list of media sources on the Kodi box.  From the Kodi docs,
+    # there are only two we have to care about, video and music.  I'm using the
+    # canonical Kodi names for consistency's sake.
+    sources = kodi_library.get_media_sources(kodi)
 
-# Build a local copy of the Kodi box's media library, because there is no way
-# to run a search on it.
-media_library = kodi_library.build_media_library(kodi, sources, media_library,
-    exclude_dirs)
-print media_library
-sys.exit(1)
+    # Build a local copy of the Kodi box's media library, because there is no
+    # way to run a search on it.
+    media_library = kodi_library.build_media_library(kodi, sources,
+    media_library, exclude_dirs)
 
-# Load the media library from Kodi in steps, because there are multiple library
-# databases inside of Kodi.  This is simultaneously interesting, opaque, and
-# frustrating because I've been dorking around with this all night.
-logger.debug("Now constructing index of artists.")
-artists = kodi.AudioLibrary.GetArtists()
-if "artists" not in artists["result"]:
-    logger.warn("No artists found in library.")
+    # Load the media library from Kodi in steps, because there are multiple
+    # library databases inside of Kodi.  This is simultaneously interesting,
+    # opaque, and frustrating because I've been dorking around with this all
+    # night.
+    media_library["artists"] = kodi_library.get_artists(kodi)
+    media_library["albums"] = kodi_library.get_albums(kodi)
+    media_library["songs"] = kodi_library.get_songs(kodi)
+    media_library["movies"] = kodi_library.get_movies(kodi)
+    media_library["tv"] = kodi_library.get_tv_shows(kodi)
 else:
-    for i in artists["result"]["artists"]:
-        tmp = {}
-        tmp["artistid"] = i["artistid"]
-        tmp["artist"] = i["artist"]
-        media_library["artists"].append(tmp)
-artists = None
-
-logger.debug("Now constructing index of albums.")
-albums = kodi.AudioLibrary.GetAlbums()
-if "albums" not in albums["result"]:
-    logger.debug("No albums found in library.")
-else:
-    for i in albums["result"]["albums"]:
-        tmp = {}
-        tmp["albumid"] = i["albumid"]
-        tmp["label"] = i["label"]
-        media_library["albums"].append(tmp)
-albums = None
-
-logger.debug("Now constructing index of songs.")
-songs = kodi.AudioLibrary.GetSongs()
-if "songs" not in songs["result"]:
-    logger.debug("No songs found in library.")
-else:
-    for i in songs["result"]["songs"]:
-        tmp = {}
-        tmp["songid"] = i["songid"]
-        tmp["label"] = i["label"]
-        media_library["songs"].append(tmp)
-songs = None
-
-logger.debug("Now constructing index of movies.")
-movies = kodi.VideoLibrary.GetMovies()
-if "movie" not in movies["result"]:
-    logger.debug("No movies found in library.")
-else:
-    for i in movies["result"]["movies"]:
-        tmp = {}
-        tmp["movieid"] = i["movieid"]
-        tmp["label"] = i["label"]
-        media_library["movies"].append(tmp)
-movies = None
-
-logger.debug("Now constructing index of television episodes.")
-tv = kodi.VideoLibrary.GetTVShows()
-if "movie" not in movies["result"]:
-    logger.debug("No movies found in library.")
-else:
-    for i in movies["result"]["movies"]:
-        tmp = {}
-        tmp["movieid"] = i["movieid"]
-        tmp["label"] = i["label"]
-        media_library["movies"].append(tmp)
-movies = None
-
-# At this point, we should have a full media library.  In practice, we don't
-# and I'm not sure why.  My media box is certainly useable but
-
-sys.exit(1)
+    logger.info("Skipping media library generation by request.")
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -373,40 +313,47 @@ while True:
         user_command = user_command["command"]
 
         # Parse the user command.
-        parsed_command = parser.parse(user_command)
+        parsed_command = parser.parse(user_command, commands)
+        logging.debug("Parsed command: %s" % parsed_command)
 
-        # If the parsed command comes back None (i.e., it wasn't well formed)
-        # throw an error and bounce to the top of the loop.
+        # No command to parse.  Sleep, move on.
         if not parsed_command:
             time.sleep(float(polling_time))
             continue
 
-        # If the user is requesting help, assemble a response and send it back
-        # to the server's message queue.
-        if parsed_command == "help":
-            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
-            reply = reply + """I am... send me a message that looks something like this:\n\n"""
-            reply = reply + bot_name + ", [command, synonym, synonym...] args...\n\n"
-            reply = reply + bot_name + ", [command, synonym, synonym...] args...\n\n"
-            reply = reply + bot_name + ", [command, synonym, synonym...] args...\n\n"
+        # If the bot's confidence interval on the match is below the minimum,
+        # warn the user.
+        if parsed_command["confidence"] <= minimum_confidence:
+            reply = "I think you should know that I'm not entirely confident I know what you mean.  I'm only about %d sure of my interpretation." % parsed_command["confidence"]
             send_message_to_user(reply)
+
+        # If the user is requesting help, get and return that help text to the
+        # user.
+        if parsed_command["match"] == "help_basic":
+            logging.debug("Matched help_basic.")
+            send_message_to_user(help.help_basic(bot_name, sys.argv[0]))
+            continue
+        if parsed_command["match"] == "help_commands":
+            logging.debug("Matched help_commands.")
+            send_message_to_user(help.help_commands())
+            continue
+        if parsed_command["match"] == "help_audio":
+            logging.debug("Matched help_audio.")
+            send_message_to_user(help.help_audio())
+            continue
+        if parsed_command["match"] == "help_video":
+            logging.debug("Matched help_video.")
+            send_message_to_user(help.help_video())
             continue
 
         # Tell the user what the bot is about to do.
-        reply = "Doing the thing.  Please stand by."
-        send_message_to_user(reply)
-        parsed_command = do_the_thing(parsed_command)
-
-        # If something went wrong...
-        if not parsed_command:
-            logger.warn("Something went wrong with...")
-            reply = "Something went wrong with..."
-            send_message_to_user(reply)
-            continue
+        #reply = "Doing the thing.  Please stand by."
+        #send_message_to_user(reply)
+        #parsed_command = do_the_thing(parsed_command)
 
         # Reply that it was successful.
-        reply = "Tell the user that it was successful."
-        send_message_to_user(reply)
+        #reply = "Tell the user that it was successful."
+        #send_message_to_user(reply)
 
     # Message queue not found.
     if request.status_code == 404:

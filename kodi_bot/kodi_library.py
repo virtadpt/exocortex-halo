@@ -23,29 +23,17 @@
 import logging
 import os
 
-from kodipydent import Kodi
-
 # Constants.
 
 # Global variables.
 
-# Handles to the results returned from the Kodi library API.
-artists = None
-albums = None
-songs = None
-movies = None
-tv = None
-musicvideos = None
-audio = None
-video = None
-
 # Functions.
 
-# Generate a list of media sources on the Kodi box.  From the Kodi docs, there
-#   are only two we have to care about, video and music.  I'm using the
-#   canonical Kodi names for consistency's sake.  Takes one argument, a Kodi
-#   client object.  Returns a hash table containing the media sources the Kodi
-#   box has configured.
+# get_media_sources(): Generate a list of media sources on the Kodi box.  From
+#   the Kodi docs, there are only two we have to care about, video and music.
+#   I'm using the canonical Kodi names for consistency's sake.  Takes one
+#   argument, a Kodi client object.  Returns a hash table containing the media
+#   sources the Kodi box has configured.
 def get_media_sources(kodi):
     logging.debug("Entered media_library.get_media_sources().")
 
@@ -56,20 +44,26 @@ def get_media_sources(kodi):
 
     # Build a list of video sources on the Kodi box.
     tmp = kodi.Files.GetSources("video")
-    for i in tmp["result"]["sources"]:
-        sources["video"].append(i["file"])
+    if "sources" not in tmp["result"]:
+        logging.warn("'video' is not a registered media source.")
+    else:
+        for i in tmp["result"]["sources"]:
+            sources["video"].append(i["file"])
 
     # Build a list of music sources on the Kodi box.
     tmp = kodi.Files.GetSources("music")
-    for i in tmp["result"]["sources"]:
-        sources["music"].append(i["file"])
+    if "sources" not in tmp["result"]:
+        logging.warn("'music' is not a registered media source.")
+    else:
+        for i in tmp["result"]["sources"]:
+            sources["music"].append(i["file"])
 
     logging.debug("Known media sources: %s" % str(sources))
     return sources
 
-# Function that builds the local media library, because there's no
-#   straightforward way to query Kodi.  Takes four args, a reference to a
-#   Kodi client object, a hash table of media sources, a hash table
+# build_media_library(): Function that builds the local media library, because
+#   there's no straightforward way to query Kodi.  Takes four args, a reference
+#   to a Kodi client object, a hash table of media sources, a hash table
 #   representing the media library, and a list of directories to ignore.
 #   Returns a new copy of the media library.
 def build_media_library(kodi, sources, media_library, exclude_dirs):
@@ -123,14 +117,13 @@ def build_media_library(kodi, sources, media_library, exclude_dirs):
             # Catch the "no files in directory" case.
             if tmp["result"]["limits"]["start"] == 0:
                 if tmp["result"]["limits"]["end"] == 0:
-                    logging.debug("Found empty directory %s, skipping." % directory)
+                    logging.warn("Found empty directory %s, skipping." % directory)
                     continue
             # "Explicit is better than implicit."
 
             tmp = tmp["result"]["files"]
             # For every thing in that directory...
             for k in tmp:
-
                 # If you run into a subdirectory, append it to the list of
                 # sources so it can also be scanned.  There is undoubtedly a
                 # better and more stable way of doing this but I don't know
@@ -148,72 +141,105 @@ def build_media_library(kodi, sources, media_library, exclude_dirs):
 
     return media_library
 
-# Load the media library from Kodi in steps, because there are multiple library
-# databases inside of Kodi.  This is simultaneously interesting, opaque, and
-# frustrating because I've been dorking around with this all night.
-def get_media_metadata():
-    logging.debug("Now constructing index of artists.")
+# get_artists(): Gets the directory of artists from the Kodi media database.
+#   Takes one argument, a Kodi client object.  Returns an array of artists.
+def get_artists(kodi):
+    logging.debug("Entered kodi_library.get_artists().")
+    artists = None
+    list_of_artists = []
+
     artists = kodi.AudioLibrary.GetArtists()
     if "artists" not in artists["result"]:
         logging.warn("No artists found in library.")
-    else:
-        for i in artists["result"]["artists"]:
-            tmp = {}
-            tmp["artistid"] = i["artistid"]
-            tmp["artist"] = i["artist"]
-            media_library["artists"].append(tmp)
-    artists = None
+        return None
 
-    logging.debug("Now constructing index of albums.")
+    for i in artists["result"]["artists"]:
+        tmp = {}
+        tmp["artistid"] = i["artistid"]
+        tmp["artist"] = i["artist"]
+        list_of_artists.append(tmp)
+
+    return list_of_artists
+
+# get_albums(): Gets the directory of albums from the Kodi media database.
+#   Takes one argument, a Kodi client object.  Returns an array of albums.
+def get_albums(kodi):
+    logging.debug("Entered kodi_library.get_albums().")
+    albums = None
+    list_of_albums = []
+
     albums = kodi.AudioLibrary.GetAlbums()
     if "albums" not in albums["result"]:
-        logging.debug("No albums found in library.")
-    else:
-        for i in albums["result"]["albums"]:
-            tmp = {}
-            tmp["albumid"] = i["albumid"]
-            tmp["label"] = i["label"]
-            media_library["albums"].append(tmp)
-    albums = None
+        logging.warn("No albums found in library.")
+        return None
 
-    logging.debug("Now constructing index of songs.")
+    for i in albums["result"]["albums"]:
+        tmp = {}
+        tmp["albumid"] = i["albumid"]
+        tmp["label"] = i["label"]
+        list_of_albums.append(tmp)
+
+    return list_of_albums
+
+# get_songs(): Gets the directory of songs from the Kodi media database.
+#   Takes one argument, a Kodi client object.  Returns an array of songs.
+def get_songs(kodi):
+    logging.debug("Entered kodi_library.get_songs().")
+    songs = None
+    list_of_songs = []
+
     songs = kodi.AudioLibrary.GetSongs()
     if "songs" not in songs["result"]:
-        logging.debug("No songs found in library.")
-    else:
-        for i in songs["result"]["songs"]:
-            tmp = {}
-            tmp["songid"] = i["songid"]
-            tmp["label"] = i["label"]
-            media_library["songs"].append(tmp)
-    songs = None
+        logging.warn("No songs found in library.")
+        return None
 
-    logging.debug("Now constructing index of movies.")
+    for i in songs["result"]["songs"]:
+        tmp = {}
+        tmp["songid"] = i["songid"]
+        tmp["label"] = i["label"]
+        list_of_songs.append(tmp)
+
+    return list_of_songs
+
+# get_movies(): Gets the directory of movies from the Kodi media database.
+#   Takes one argument, a Kodi client object.  Returns an array of movies.
+def get_movies(kodi):
+    logging.debug("Entered kodi_library.get_movies().")
+    movies = None
+    list_of_movies = []
+
     movies = kodi.VideoLibrary.GetMovies()
     if "movie" not in movies["result"]:
-        logging.debug("No movies found in library.")
-    else:
-        for i in movies["result"]["movies"]:
-            tmp = {}
-            tmp["movieid"] = i["movieid"]
-            tmp["label"] = i["label"]
-            media_library["movies"].append(tmp)
-    movies = None
+        logging.warn("No movies found in library.")
+        return None
 
-    logging.debug("Now constructing index of television episodes.")
+    for i in movies["result"]["movies"]:
+        tmp = {}
+        tmp["movieid"] = i["movieid"]
+        tmp["label"] = i["label"]
+        list_of_movies.append(tmp)
+
+    return list_of_movies
+
+# get_tv_shows(): Gets the directory of movies from the Kodi media database.
+#   Takes one argument, a Kodi client object.  Returns an array of TV shows.
+def get_tv_shows(kodi):
+    logging.debug("Entered kodi_library.get_tv_shows().")
+    tv = None
+    list_of_tv_shows = []
+
     tv = kodi.VideoLibrary.GetTVShows()
-    if "movie" not in movies["result"]:
-        logging.debug("No movies found in library.")
-    else:
-        for i in movies["result"]["movies"]:
-            tmp = {}
-            tmp["movieid"] = i["movieid"]
-            tmp["label"] = i["label"]
-            media_library["movies"].append(tmp)
-    movies = None
+    if "tv" not in tv["result"]:
+        logging.warn("No television shows found in library.")
+        return None
 
-    # At this point, we should have a full media library.  In practice, we don't
-    # and I'm not sure why.  My media box is certainly useable but
+    for i in tv["result"]["tv"]:
+        tmp = {}
+        tmp["tvid"] = i["tvid"]
+        tmp["label"] = i["label"]
+        list_of_tv_shows.append(tmp)
+
+    return list_of_tv_shows
 
 if "__name__" == "__main__":
     pass
