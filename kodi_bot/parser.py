@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
-# parser.py - Module for kodi_bot.py that implements all of the parsing
-#   related functions.
+# parser.py - Module for kodi_bot.py that implements the command parser.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #       0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -18,6 +17,7 @@
 
 # Load modules.
 import logging
+import os
 
 from fuzzywuzzy import fuzz
 
@@ -95,6 +95,40 @@ from fuzzywuzzy import fuzz
 # -
 # -
 # -
+
+# Train the command parser on a list of corpora.  Takes two arguments, a string
+#   that points to a directory full of text corpora, and a hash of command
+#   types.  Returns a new has of command types containing the corpora text.
+def load_corpora(corpora_dir, command_types):
+    logging.debug("Entered parser.load_corpora().")
+
+    command_type = ""
+
+    corpora_dir = os.path.abspath(corpora_dir)
+    for filename in os.listdir(corpora_dir):
+        logging.debug("Looking at corpus file %s." % filename)
+
+        # Generate the key for the hash.
+        command_type = filename.strip(".txt")
+
+        # Test the length of the corpus file.  If it's 0, then skip the command
+        # class.
+        filename = os.path.join(corpora_dir, filename)
+        if not os.path.getsize(filename):
+            logging.warn("Corpus filename %s has a length of zero bytes.  Skipping this command class." % filename)
+            command_types.pop(command_type)
+            continue
+
+        # Read the contents of the corpus file in.
+        try:
+            with open(filename, "r") as file:
+                command_types[command_type] = file.read().splitlines()
+        except:
+            logging.warn("Unable to open filename %s.  Skipping command class." % os.path.join(corpora_dir, filename))
+            command_types.pop(command_type)
+
+    logging.debug("Recognized command types: %s" % str(command_types.keys()))
+    return command_types
 
 # parse_help(): Function that matches the word "help" all by itself in an input
 #   string.  Returns the string "help" on a match and None if not.

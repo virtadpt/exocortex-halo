@@ -33,6 +33,7 @@ import time
 
 from kodipydent import Kodi
 
+import kodi_library
 import parser
 
 # Constants.
@@ -103,14 +104,14 @@ sources = {}
 # can only download a copy and parse through it.  Additionally, there isn't
 # one inclusive uber-library, there are several of them.
 media_library = {}
-media_library["artists"] = []
-media_library["albums"] = []
-media_library["songs"] = []
-media_library["movies"] = []
-media_library["tv"] = []
-media_library["musicvideos"] = []
-media_library["audio"] = []
-media_library["video"] = []
+#media_library["artists"] = []
+#media_library["albums"] = []
+#media_library["songs"] = []
+#media_library["movies"] = []
+#media_library["tv"] = []
+#media_library["musicvideos"] = []
+#media_library["audio"] = []
+#media_library["video"] = []
 
 # Handles to the results returned from the Kodi library API.
 artists = None
@@ -259,100 +260,21 @@ except:
     logger.error("Unable to connect to Kodi instance at %s:%d/tcp with username %s and password %s.  Please check your configuration file." % (kodi_host, kodi_port, kodi_user, kodi_password))
     sys.exit(1)
 
-# Load the corpora.
-corpora_dir = os.path.abspath(corpora_dir)
+# Load the corpora into a hash table where the keys are categories of commands
+# to run and the values are empty lists.
 for i in command_types_tmp:
     command_types[i] = []
-# Now we have a hash table where the keys are categories of commands to run
-# and the values are empty lists.
-for filename in os.listdir(corpora_dir):
-    logger.debug("Looking at corpus file %s." % filename)
-
-    # Generate the key for the hash.
-    command_type = filename.strip(".txt")
-
-    filename = os.path.join(corpora_dir, filename)
-
-    # Test the length of the corpus file.  If it's 0, then skip the command
-    # class.
-    if not os.path.getsize(filename):
-        logger.warn("Corpus filename %s has a length of zero bytes.  Skipping this command class." % filename)
-        command_types.pop(command_type)
-        continue
-
-    # Read the contents of the corpus file in.
-    try:
-        with open(filename, "r") as file:
-            command_types[command_type] = file.read().splitlines()
-    except:
-        logger.warn("Unable to open filename %s.  Skipping command class." % os.path.join(corpora_dir, filename))
-        command_types.pop(command_type)
-logger.debug("Recognized command types: %s" % str(command_types.keys()))
+command_types = parser.load_corpora(corpora_dir, command_types)
 
 # Generate a list of media sources on the Kodi box.  From the Kodi docs, there
 # are only two we have to care about, video and music.  I'm using the canonical
 # Kodi names for consistency's sake.
-logger.debug("Building list of known media sources.")
-sources["video"] = []
-media_library["video"] = []
-tmp = kodi.Files.GetSources("video")
-for i in tmp["result"]["sources"]:
-    sources["video"].append(i["file"])
-sources["music"] = []
-media_library["music"] = []
-tmp = kodi.Files.GetSources("music")
-for i in tmp["result"]["sources"]:
-    sources["music"].append(i["file"])
-logger.debug("Known media sources: %s" % str(sources))
+sources = kodi_library.get_media_sources(kodi)
 
-# Building the media library, because there's no straightforward way to do this.
-# For every media source...
-logger.info("Now indexing media library... this could take a while.")
-for i in sources.keys():
-
-    # For every directory for every source...
-    logger.debug("Now scanning media source %s..." % i)
-    for j in sources[i]:
-        # Skip the EXT?fs lost+found directory.
-        if j.endswith("lost+found/"):
-            continue
-
-        tmp = kodi.Files.GetDirectory(j)
-
-        # Catch file system errors, like file permissions.
-        if "error" in tmp.keys():
-            logger.warn("Got one of Kodi's 'Invalid params' error messages when accessing %s.  Might be bad permissions.  Skipping." % j)
-            continue
-
-        # Catch the "no files in directory" case.
-        if tmp["result"]["limits"]["start"] == 0:
-            if tmp["result"]["limits"]["end"] == 0:
-                logger.debug("Found empty directory %s, skipping." % j)
-                continue
-        # "Explicit is better than implicit."
-
-        tmp = tmp["result"]["files"]
-        # For every thing in that directory...
-        for k in tmp:
-            # Check the list of directories to skip.
-            for x in exclude_dirs:
-                if x in k["file"]:
-                    logger.debug("Skipping over directory %s." % k["file"])
-                    continue
-
-            # If you run into a subdirectory, append it to the list of sources
-            # so it can also be scanned.  There is undoubtedly a better and
-            # more stable way of doing this but I don't know what it is yet.
-            if k["file"].endswith("/"):
-                logger.debug("Found subdirectory %s in the media library.  Adding it to the queue to index later." % k["file"])
-                sources[i].append(k["file"])
-                continue
-            # Otherwise, add the media to the library.
-            media_tmp = {}
-            media_tmp["file"] = k["file"]
-            media_tmp["label"] = k["label"]
-            media_library[i].append(media_tmp)
-
+# Build a local copy of the Kodi box's media library, because there is no way
+# to run a search on it.
+media_library = kodi_library.build_media_library(kodi, sources, media_library,
+    exclude_dirs)
 print media_library
 sys.exit(1)
 
@@ -362,7 +284,7 @@ sys.exit(1)
 logger.debug("Now constructing index of artists.")
 artists = kodi.AudioLibrary.GetArtists()
 if "artists" not in artists["result"]:
-    logger.debug("No artists found in library.")
+    logger.warn("No artists found in library.")
 else:
     for i in artists["result"]["artists"]:
         tmp = {}
@@ -418,6 +340,9 @@ else:
         tmp["label"] = i["label"]
         media_library["movies"].append(tmp)
 movies = None
+
+# At this point, we should have a full media library.  In practice, we don't
+# and I'm not sure why.  My media box is certainly useable but
 
 sys.exit(1)
 
