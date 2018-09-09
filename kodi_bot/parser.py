@@ -165,6 +165,13 @@ def parse(command, possible_commands):
                 parsed_command["confidence"] = tmp
                 parsed_command["match"] = command_type
 
+            # Short-circuit evaluation by bouncing if we reach maximum
+            # confidence.
+            if parsed_command["confidence"] == 100:
+                logging.debug("Got a perfect match.  No need to keep searching.")
+                return parsed_command
+
+    # Return whatever match we've got.
     return parsed_command
 
 if "__name__" == "__main__":

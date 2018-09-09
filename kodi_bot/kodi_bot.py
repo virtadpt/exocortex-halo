@@ -227,7 +227,7 @@ except:
     # This is optional.
     pass
 corpora_dir = config.get("DEFAULT", "corpora_dir")
-minimum_confidence = config.get("DEFAULT", "minimum_confidence")
+minimum_confidence = int(config.get("DEFAULT", "minimum_confidence"))
 commands_tmp = config.get("DEFAULT", "command_types").split(",")
 
 # Debugging output, if required.
@@ -244,6 +244,7 @@ logger.debug("Kodi username: %s" % kodi_user)
 logger.debug("Kodi password: %s" % kodi_password)
 logger.debug("Directories to skip over: %s" % exclude_dirs)
 logger.debug("Corpora to train the parser with: %s" % corpora_dir)
+logger.debug("Minimum statistical match confidence: %d" % minimum_confidence)
 if args.no_media_library:
     logger.debug("Not building a media library.")
 
@@ -260,6 +261,7 @@ except:
 for i in commands_tmp:
     commands[i] = []
 commands = parser.load_corpora(corpora_dir, commands)
+logger.debug("Command classes supported by the parser: %s" % str(commands.keys()))
 
 # If the user asks that no media library be generated, skip this part.  It's
 # nice, but it also gets in the way of debugging because it can take so long.
@@ -324,7 +326,8 @@ while True:
         # If the bot's confidence interval on the match is below the minimum,
         # warn the user.
         if parsed_command["confidence"] <= minimum_confidence:
-            reply = "I think you should know that I'm not entirely confident I know what you mean.  I'm only about %d sure of my interpretation." % parsed_command["confidence"]
+            logging.debug("Sending warning about insufficient confidence.")
+            reply = "I think you should know that I'm not entirely confident I know what you mean.  I'm only about %d percent sure of my interpretation." % parsed_command["confidence"]
             send_message_to_user(reply)
 
         # If the user is requesting help, get and return that help text to the

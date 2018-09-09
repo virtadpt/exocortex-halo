@@ -32,6 +32,15 @@ def help_basic(bot_name, bot_type):
 # help_commands(): Returns help about general commands the bot understands to
 #   the user as a string.
 def help_commands():
+    reply = """
+    I can set the playback volume higher or lower, or to a specific level.  I can also mute and unmute playback.
+
+    I can shut down and restart both Kodi and the server it's running on.
+
+    I can help you search the audio and video libraries on the Kodi server.  I can do this by searching on titles, artists, genres, and names associated with those libraries.  I can start and stop playback of media.  If you have any playlists defined I can list and play those, too.
+
+    Of course, I support party mode.  I wouldn't be very helpful if I didn't, would I?
+    """
     return reply
 
 # help_audio(): Returns help about audio related commands to the user as a
