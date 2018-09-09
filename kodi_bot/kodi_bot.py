@@ -45,7 +45,7 @@ import parser
 
 # Constants.
 # This comes from kodipydent.Kodi.Files.Media
-media_types = [ "video", "music", "pictures", "files" ]
+#media_types = [ "video", "music", "pictures", "files" ]
 
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
@@ -111,6 +111,10 @@ sources = {}
 # can only download a copy and parse through it.
 media_library = {}
 
+# Number of points to increase or decrease the volume at a time.  Defaults to
+# 10.
+volume_step = 10
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -146,6 +150,20 @@ def send_message_to_user(message):
     # user.
     request = requests.put(server + "replies", headers=headers,
         data=json.dumps(reply))
+
+# kodi_settings(): A function that just returns the bot's configuration
+#   settings.  Takes no arguments, references all of the global config
+#   variables.  Returns a string.
+def kodi_settings():
+    reply = "These are my configuration settings:\n"
+    reply = reply + "Message queue I report to: %s\n" % message_queue
+    reply = reply + "Number of seconds in between polling for commands: %d\n" % polling_time
+    reply = reply + "Kodi box that I control: %s:%d\n" % (kodi_host, kodi_port)
+    reply = reply + "Directories on the server I'm not checking for media to play back: %s\n" % exclude_dirs
+    reply = reply + "Minimum confidence in my understanding of your commands before I'll act on them: %d\n" % minimum_confidence
+    reply = reply + "Media sources I know about on the Kodi server: %s\n" % sources
+    reply = reply + "When you tell me to change the volume, I change it by %d points each time.\n" % volume_step
+    return reply
 
 # Core code... let's do this.
 
@@ -229,6 +247,7 @@ except:
 corpora_dir = config.get("DEFAULT", "corpora_dir")
 minimum_confidence = int(config.get("DEFAULT", "minimum_confidence"))
 commands_tmp = config.get("DEFAULT", "command_types").split(",")
+volume_step = int(config.get("DEFAULT", "volume_step"))
 
 # Debugging output, if required.
 logger.info("Everything is set up.")
@@ -245,6 +264,7 @@ logger.debug("Kodi password: %s" % kodi_password)
 logger.debug("Directories to skip over: %s" % exclude_dirs)
 logger.debug("Corpora to train the parser with: %s" % corpora_dir)
 logger.debug("Minimum statistical match confidence: %d" % minimum_confidence)
+logger.debug("Volume change step size: %d" % volume_step)
 if args.no_media_library:
     logger.debug("Not building a media library.")
 
@@ -325,6 +345,8 @@ while True:
 
         # If the bot's confidence interval on the match is below the minimum,
         # warn the user.
+        # MOOF MOOF MOOF - Consider not running commands other than requests
+        # for help if the confidence is too low.
         if parsed_command["confidence"] <= minimum_confidence:
             logging.debug("Sending warning about insufficient confidence.")
             reply = "I think you should know that I'm not entirely confident I know what you mean.  I'm only about %d percent sure of my interpretation." % parsed_command["confidence"]
@@ -347,6 +369,10 @@ while True:
         if parsed_command["match"] == "help_video":
             logging.debug("Matched help_video.")
             send_message_to_user(help.help_video())
+            continue
+        if parsed_command["match"] == "kodi_settings":
+            logging.debug("Matched kodi_settings.")
+            send_message_to_user(kodi_settings())
             continue
 
         # Tell the user what the bot is about to do.

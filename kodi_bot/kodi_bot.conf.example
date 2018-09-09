@@ -38,3 +38,6 @@ minimum_confidence = 25
 # corresponds to a command parser inside the bot on a 1:1 basis, so while the
 # contents can (and probably should) differ the names must remain the same.
 command_types = commands_back,commands_forward,commands_play,commands_pause,commands_shuffle,commands_stop,help_audio,help_basic,help_commands,help_video,search_requests_albums,search_requests_artists,search_requests_genres,search_requests_songs,search_requests_videos
+
+# Number of points to step the volume up or down by.
+volume_step = 10

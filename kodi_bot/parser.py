@@ -30,11 +30,6 @@ from fuzzywuzzy import fuzz
 #   Files.GetSources()
 # - List a particular media source: video, pictures, music
 #   Only support media sources found earlier/above.
-# - Build an internal list of media files on the Kodi box.
-#   Files.GetDirectory()
-#   Used by other methods to support searching for the presence of certain
-#   things.  Maybe normalize everything?  Find a Python module that's good at
-#   this sort of thing?
 # - Search the Kodi box's library:
 #   "Do I have any music by...?"
 #   "Do I have any videos with...?"
