@@ -23,6 +23,8 @@
 import logging
 import os
 
+from fuzzywuzzy import fuzz
+
 # Functions.
 
 # get_media_sources(): Generate a list of media sources on the Kodi box.  From
@@ -236,6 +238,31 @@ def get_tv_shows(kodi):
         list_of_tv_shows.append(tmp)
 
     return list_of_tv_shows
+
+# search_media_library(): Takes a search term and a reference into a section of
+#   the media library and scans for matches.  Returns a hash table containing
+#   the media's internal entry.
+def search_media_library(search_term, media_library):
+    logging.debug("Entered kodi_library.search_media_library.")
+
+    match = 0
+    result = {}
+    result["confidence"] = 0
+
+    for i in media_library:
+        match = fuzz.token_sort_ratio(search_term.lower(), i["label"].lower())
+        if match > result["confidence"]:
+            logging.debug("Replacing match with one of a higher confidence.")
+            result["albumid"] = i["albumid"]
+            result["label"] = i["label"]
+            result["confidence"] = match
+
+            # Short-circuit the search if we find a perfect match.
+            if result["confidence"] == 100:
+                logging.debug("Hot dog - perfect match!")
+                break
+
+    return result
 
 if "__name__" == "__main__":
     pass

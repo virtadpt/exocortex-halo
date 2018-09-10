@@ -1,6 +1,14 @@
 Do I have the album
+Do I have the soundtrack
 Do I have the album in my library
+Do I have the soundtrack in my library
 Search my library for the album
+Search my library for the soundtrack
 Search for albums called
 Search for an album called
 Search for the album
+Search for the soundtrack
+Is the album
+Is the soundtrack
+Is the album in my library
+Is the soundtrack in my library

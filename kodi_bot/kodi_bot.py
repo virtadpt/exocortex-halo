@@ -25,6 +25,8 @@
 #   and restart the bot.
 # - Add to the command parser the ability to list the active command classes
 #   and the corpora associated with them so the user has an idea of what to say.
+# - Refactor the part of the do-stuff loop where the bot handles search
+#   requests.  It's going to turn into a mess soon.
 
 # Load modules.
 import argparse
@@ -115,6 +117,12 @@ volume_step = 10
 
 # Where to dump a local backup copy of the media library.
 local_library = ""
+
+# Handle to a search result.
+search_result = None
+
+# Handle to the thing you want to play.
+media_to_play = None
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -368,6 +376,7 @@ logger.debug("Entering main loop to handle requests.")
 send_message_to_user(bot_name + " now online.")
 while True:
     user_command = None
+    reply = ""
 
     # Check the message queue for index requests.
     try:
@@ -403,6 +412,7 @@ while True:
         # for help if the confidence is too low.
         if parsed_command["confidence"] <= minimum_confidence:
             logging.debug("Sending warning about insufficient confidence.")
+
             reply = "I think you should know that I'm not entirely confident I know what you mean.  I'm only about %d percent sure of my interpretation." % parsed_command["confidence"]
             send_message_to_user(reply)
 
@@ -425,10 +435,37 @@ while True:
             send_message_to_user(help.help_video())
             continue
 
-        # If the user is asking about the bot's settings,
+        # If the user is asking about the bot's settings, format them in a
+        # message and send back to the user.
         if parsed_command["match"] == "kodi_settings":
             logging.debug("Matched kodi_settings.")
             send_message_to_user(kodi_settings())
+            continue
+
+        # If the user is asking to search the album subsection of the media
+        # library, do the thing.
+        if parsed_command["match"] == "search_requests_albums":
+            logging.debug("Matched search_requests_albums.")
+            reply = "I think you're asking me to search for an album title.  Just a moment, please..."
+            send_message_to_user(reply)
+
+            search_result = kodi_library.search_media_library(user_command, media_library["albums"])
+
+            # Set the media type for later.
+            search_result["type"] = "albums"
+
+            # Figure out how confident we are in the search result's accuracy.
+            if search_result["confidence"] == 100:
+                reply = "I found it!  %s is in your media library." % search_result["label"]
+            elif search_result["confidence"] >= minimum_confidence:
+                reply = "I think I found what you're looking for in your library: %s" % search_result["label"]
+            else:
+                reply = "I'm not too sure about it, but I may have found something vaguely matching %s is in your media library." % search_result["label"]
+
+            # Store a reference to the media to play because later I want the
+            # bot to be able to play what it found.
+            media_to_play = search_result
+            send_message_to_user(reply)
             continue
 
         # Tell the user what the bot is about to do.
