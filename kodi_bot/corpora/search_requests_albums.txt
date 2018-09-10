@@ -1,6 +1,6 @@
 Do I have the album
+Do I have the album in my library
 Search my library for the album
-Search for albums by
-Search for an album by
+Search for albums called
+Search for an album called
 Search for the album
-Do I have in my library

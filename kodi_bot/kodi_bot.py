@@ -20,8 +20,6 @@
 
 # TO-DO:
 # - Checkpoint the media database to disk occasionally to shorten load times.
-#   That's going to take some more refactoring to move it into a function that
-#   can be called whenever.
 # - Figure out how to let the user add to and remove from the various corpora to
 #   personalize the bots without having to shut down, edit the files manually,
 #   and restart the bot.
@@ -46,8 +44,6 @@ import kodi_library
 import parser
 
 # Constants.
-# This comes from kodipydent.Kodi.Files.Media
-#media_types = [ "video", "music", "pictures", "files" ]
 
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
@@ -191,6 +187,29 @@ def load_local_media_library(local_library):
     else:
         raise Exception
 
+# build_local_media_library(): Function that builds a local copy of the media
+#   library by pulling the data out of Kodi.  Returns a hash table containing
+#   all of the information.
+def build_local_media_library():
+    logging.debug("Entered build_local_media_library().")
+
+    media_library = {}
+
+    media_library = kodi_library.build_media_library(kodi, sources,
+        media_library, exclude_dirs)
+
+    # Load the media library from Kodi in steps, because there are multiple
+    # library databases inside of Kodi.  This is simultaneously interesting,
+    # opaque, and frustrating because I've been dorking around with this all
+    # night.
+    media_library["artists"] = kodi_library.get_artists(kodi)
+    media_library["albums"] = kodi_library.get_albums(kodi)
+    media_library["songs"] = kodi_library.get_songs(kodi)
+    media_library["movies"] = kodi_library.get_movies(kodi)
+    media_library["tv"] = kodi_library.get_tv_shows(kodi)
+
+    return media_library
+
 # Core code... let's do this.
 
 # Set up the command line argument parser.
@@ -332,18 +351,7 @@ if args.no_media_library == False:
 
         # Build a local copy of the Kodi box's media library, because there is
         # no way to run a search on it.
-        media_library = kodi_library.build_media_library(kodi, sources,
-        media_library, exclude_dirs)
-
-        # Load the media library from Kodi in steps, because there are multiple
-        # library databases inside of Kodi.  This is simultaneously interesting,
-        # opaque, and frustrating because I've been dorking around with this all
-        # night.
-        media_library["artists"] = kodi_library.get_artists(kodi)
-        media_library["albums"] = kodi_library.get_albums(kodi)
-        media_library["songs"] = kodi_library.get_songs(kodi)
-        media_library["movies"] = kodi_library.get_movies(kodi)
-        media_library["tv"] = kodi_library.get_tv_shows(kodi)
+        media_library = build_local_media_library()
 
         # Now make a local backup of the media library to make startup faster.
         if local_library:
@@ -416,6 +424,8 @@ while True:
             logging.debug("Matched help_video.")
             send_message_to_user(help.help_video())
             continue
+
+        # If the user is asking about the bot's settings,
         if parsed_command["match"] == "kodi_settings":
             logging.debug("Matched kodi_settings.")
             send_message_to_user(kodi_settings())
