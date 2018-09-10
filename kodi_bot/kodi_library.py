@@ -23,10 +23,6 @@
 import logging
 import os
 
-# Constants.
-
-# Global variables.
-
 # Functions.
 
 # get_media_sources(): Generate a list of media sources on the Kodi box.  From

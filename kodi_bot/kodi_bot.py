@@ -20,7 +20,8 @@
 
 # TO-DO:
 # - Checkpoint the media database to disk occasionally to shorten load times.
-#   Just do a JSON dump and then a JSON load.
+#   That's going to take some more refactoring to move it into a function that
+#   can be called whenever.
 # - Figure out how to let the user add to and remove from the various corpora to
 #   personalize the bots without having to shut down, edit the files manually,
 #   and restart the bot.
@@ -30,6 +31,7 @@
 # Load modules.
 import argparse
 import ConfigParser
+import humanfriendly
 import json
 import logging
 import os
@@ -115,6 +117,9 @@ media_library = {}
 # 10.
 volume_step = 10
 
+# Where to dump a local backup copy of the media library.
+local_library = ""
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -160,10 +165,31 @@ def kodi_settings():
     reply = reply + "Number of seconds in between polling for commands: %d\n" % polling_time
     reply = reply + "Kodi box that I control: %s:%d\n" % (kodi_host, kodi_port)
     reply = reply + "Directories on the server I'm not checking for media to play back: %s\n" % exclude_dirs
-    reply = reply + "Minimum confidence in my understanding of your commands before I'll act on them: %d\n" % minimum_confidence
+    reply = reply + "Minimum confidence in my understanding of your commands before I'll act on them: %d percent\n" % minimum_confidence
     reply = reply + "Media sources I know about on the Kodi server: %s\n" % sources
     reply = reply + "When you tell me to change the volume, I change it by %d points each time.\n" % volume_step
+    reply = reply + "I store local backup copies of the media library here: %s\n" % local_library
+    reply = reply + "The size of your media library's database is %s, by the way.\n" % humanfriendly.format_size(os.path.getsize(local_library))
     return reply
+
+# load_local_media_library(): Function that tries to load a local dump of the
+#   Kodi media library if it exists.  Returns the loaded JSON dump if
+#   successful, raise a generic Exception on failure.
+def load_local_media_library(local_library):
+    logger.debug("Entered load_local_media_library().")
+
+    media_library = {}
+
+    if os.path.exists(local_library):
+        logger.info("Trying to load local copy of media library %s..." % local_library)
+        with open(local_library, "r") as media_library_dump:
+            try:
+                media_library = json.load(media_library_dump)
+            except:
+                logger.warn("Unable to reload media library!  Building a new one from scratch!")
+        return media_library
+    else:
+        raise Exception
 
 # Core code... let's do this.
 
@@ -248,6 +274,12 @@ corpora_dir = config.get("DEFAULT", "corpora_dir")
 minimum_confidence = int(config.get("DEFAULT", "minimum_confidence"))
 commands_tmp = config.get("DEFAULT", "command_types").split(",")
 volume_step = int(config.get("DEFAULT", "volume_step"))
+try:
+    local_library = config.get("DEFAULT", "local_library")
+    local_library = os.path.abspath(local_library)
+except:
+    # This is optional.
+    pass
 
 # Debugging output, if required.
 logger.info("Everything is set up.")
@@ -267,6 +299,8 @@ logger.debug("Minimum statistical match confidence: %d" % minimum_confidence)
 logger.debug("Volume change step size: %d" % volume_step)
 if args.no_media_library:
     logger.debug("Not building a media library.")
+if local_library:
+    logger.debug("Location of local library dump: %s" % local_library)
 
 # Connect to a Kodi instance.
 try:
@@ -286,25 +320,37 @@ logger.debug("Command classes supported by the parser: %s" % str(commands.keys()
 # If the user asks that no media library be generated, skip this part.  It's
 # nice, but it also gets in the way of debugging because it can take so long.
 if args.no_media_library == False:
-    # Generate a list of media sources on the Kodi box.  From the Kodi docs,
-    # there are only two we have to care about, video and music.  I'm using the
-    # canonical Kodi names for consistency's sake.
-    sources = kodi_library.get_media_sources(kodi)
+    # If a local copy of the media library exists, load it from disk.
+    try:
+        media_library = load_local_media_library(local_library)
+        logger.info("Success!")
+    except:
+        # Generate a list of media sources on the Kodi box.  From the Kodi docs,
+        # there are only two we have to care about, video and music.  I'm using
+        # the canonical Kodi names for consistency's sake.
+        sources = kodi_library.get_media_sources(kodi)
 
-    # Build a local copy of the Kodi box's media library, because there is no
-    # way to run a search on it.
-    media_library = kodi_library.build_media_library(kodi, sources,
-    media_library, exclude_dirs)
+        # Build a local copy of the Kodi box's media library, because there is
+        # no way to run a search on it.
+        media_library = kodi_library.build_media_library(kodi, sources,
+        media_library, exclude_dirs)
 
-    # Load the media library from Kodi in steps, because there are multiple
-    # library databases inside of Kodi.  This is simultaneously interesting,
-    # opaque, and frustrating because I've been dorking around with this all
-    # night.
-    media_library["artists"] = kodi_library.get_artists(kodi)
-    media_library["albums"] = kodi_library.get_albums(kodi)
-    media_library["songs"] = kodi_library.get_songs(kodi)
-    media_library["movies"] = kodi_library.get_movies(kodi)
-    media_library["tv"] = kodi_library.get_tv_shows(kodi)
+        # Load the media library from Kodi in steps, because there are multiple
+        # library databases inside of Kodi.  This is simultaneously interesting,
+        # opaque, and frustrating because I've been dorking around with this all
+        # night.
+        media_library["artists"] = kodi_library.get_artists(kodi)
+        media_library["albums"] = kodi_library.get_albums(kodi)
+        media_library["songs"] = kodi_library.get_songs(kodi)
+        media_library["movies"] = kodi_library.get_movies(kodi)
+        media_library["tv"] = kodi_library.get_tv_shows(kodi)
+
+        # Now make a local backup of the media library to make startup faster.
+        if local_library:
+            logger.debug("Now making a local copy of media library.")
+            with open(local_library, "w") as media_library_dump:
+                json.dump(media_library, media_library_dump)
+            logger.debug("Done.  File size is %s." % humanfriendly.format_size(os.path.getsize(local_library)))
 else:
     logger.info("Skipping media library generation by request.")
 
