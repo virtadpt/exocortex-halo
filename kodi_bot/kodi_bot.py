@@ -26,7 +26,8 @@
 # - Add to the command parser the ability to list the active command classes
 #   and the corpora associated with them so the user has an idea of what to say.
 # - Refactor the part of the do-stuff loop where the bot handles search
-#   requests.  It's going to turn into a mess soon.
+#   requests.  It's going to turn into a mess soon.  Maybe I should split it out
+#   into a separate module...
 
 # Load modules.
 import argparse
@@ -215,6 +216,11 @@ def build_local_media_library():
     media_library["songs"] = kodi_library.get_songs(kodi)
     media_library["movies"] = kodi_library.get_movies(kodi)
     media_library["tv"] = kodi_library.get_tv_shows(kodi)
+
+    # Load the genres Kodi knows about, which are kept separate from the rest
+    # of the media metadata.
+    media_library["audio_genres"] = kodi_library.get_audio_genres(kodi)
+    media_library["video_genres"] = kodi_library.get_video_genres(kodi)
 
     return media_library
 
@@ -449,7 +455,7 @@ while True:
             reply = "I think you're asking me to search for an album title.  Just a moment, please..."
             send_message_to_user(reply)
 
-            search_result = kodi_library.search_media_library(user_command, media_library["albums"])
+            search_result = kodi_library.search_media_library_albums(user_command, media_library["albums"])
 
             # Set the media type for later.
             search_result["type"] = "albums"
@@ -461,6 +467,26 @@ while True:
                 reply = "I think I found what you're looking for in your library: %s" % search_result["label"]
             else:
                 reply = "I'm not too sure about it, but I may have found something vaguely matching %s is in your media library." % search_result["label"]
+
+        # If the user is asking to search the media library for a
+        # particular artist, do the thing.
+        if parsed_command["match"] == "search_requests_artists":
+            logging.debug("Matched search_requests_artists.")
+            reply = "I think you're asking me to search for a particular artist or performer.  Just a moment, please..."
+            send_message_to_user(reply)
+
+            search_result = kodi_library.search_media_library_artists(user_command, media_library["artists"])
+
+            # Set the media type for later.
+            search_result["type"] = "artists"
+
+            # Figure out how confident we are in the search result's accuracy.
+            if search_result["confidence"] == 100:
+                reply = "I found it!  You have stuff by %s in your media library." % search_result["artist"]
+            elif search_result["confidence"] >= minimum_confidence:
+                reply = "I think I found who you're looking for: %s" % search_result["artist"]
+            else:
+                reply = "I'm not too sure, but I may have found someone vaguely matching %s in your media library." % search_result["artist"]
 
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.

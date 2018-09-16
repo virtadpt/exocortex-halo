@@ -146,7 +146,12 @@ def get_artists(kodi):
     artists = None
     list_of_artists = []
 
-    artists = kodi.AudioLibrary.GetArtists()
+    try:
+        artists = kodi.AudioLibrary.GetArtists()
+    except:
+        logging.debug("No artists in audio library - that's weird.")
+        return None
+
     if "artists" not in artists["result"]:
         logging.warn("No artists found in library.")
         return None
@@ -166,7 +171,12 @@ def get_albums(kodi):
     albums = None
     list_of_albums = []
 
-    albums = kodi.AudioLibrary.GetAlbums()
+    try:
+        albums = kodi.AudioLibrary.GetAlbums()
+    except:
+        logging.debug("No albums in audio library - that's weird.")
+        return None
+
     if "albums" not in albums["result"]:
         logging.warn("No albums found in library.")
         return None
@@ -186,7 +196,12 @@ def get_songs(kodi):
     songs = None
     list_of_songs = []
 
-    songs = kodi.AudioLibrary.GetSongs()
+    try:
+        songs = kodi.AudioLibrary.GetSongs()
+    except:
+        logging.debug("No songs in audio library - that's weird.")
+        return None
+
     if "songs" not in songs["result"]:
         logging.warn("No songs found in library.")
         return None
@@ -206,7 +221,12 @@ def get_movies(kodi):
     movies = None
     list_of_movies = []
 
-    movies = kodi.VideoLibrary.GetMovies()
+    try:
+        movies = kodi.VideoLibrary.GetMovies()
+    except:
+        logging.debug("No movies in video library - that's weird.")
+        return None
+
     if "movie" not in movies["result"]:
         logging.warn("No movies found in library.")
         return None
@@ -226,7 +246,12 @@ def get_tv_shows(kodi):
     tv = None
     list_of_tv_shows = []
 
-    tv = kodi.VideoLibrary.GetTVShows()
+    try:
+        tv = kodi.VideoLibrary.GetTVShows()
+    except:
+        logging.debug("No genres in video library - that's weird.")
+        return None
+
     if "tv" not in tv["result"]:
         logging.warn("No television shows found in library.")
         return None
@@ -239,11 +264,64 @@ def get_tv_shows(kodi):
 
     return list_of_tv_shows
 
-# search_media_library(): Takes a search term and a reference into a section of
-#   the media library and scans for matches.  Returns a hash table containing
-#   the media's internal entry.
-def search_media_library(search_term, media_library):
-    logging.debug("Entered kodi_library.search_media_library.")
+# get_audio_genres(): Gets the directory of genres of audio media from the
+#   Kodi media database.  Takes one argument, a Kodi client object.  Returns an
+#   array of genres and genre ID codes.  Why this isn't part of the media
+#   library itself, I don't know.
+def get_audio_genres(kodi):
+    logging.debug("Entered kodi_library.get_audio_genres().")
+    genres = None
+    list_of_genres = []
+
+    try:
+        genres = kodi.AudioLibrary.GetGenres()
+    except:
+        logging.debug("No genres in audio library - that's weird.")
+        return None
+
+    if "genres" not in genres["result"]:
+        logging.warn("No audio genres found in library.")
+        return None
+
+    for i in genres["result"]["genres"]:
+        tmp = {}
+        tmp["genreid"] = i["genreid"]
+        tmp["label"] = i["label"]
+        list_of_genres.append(tmp)
+
+    return list_of_genres
+
+# get_video_genres(): Gets the directory of genres of video media from the
+#   Kodi media database.  Takes one argument, a Kodi client object.  Returns an
+#   array of genres and genre ID codes.
+def get_video_genres(kodi):
+    logging.debug("Entered kodi_library.get_video_genres().")
+    genres = None
+    list_of_genres = []
+
+    try:
+        genres = kodi.VideoLibrary.GetGenres()
+    except:
+        logging.debug("No genres in video library - that's weird.")
+        return None
+
+    if "genres" not in genres["result"]:
+        logging.warn("No video genres found in library.")
+        return None
+
+    for i in genres["result"]["genres"]:
+        tmp = {}
+        tmp["genreid"] = i["genreid"]
+        tmp["label"] = i["label"]
+        list_of_genres.append(tmp)
+
+    return list_of_genres
+
+# search_media_library_albums(): Takes a search term and a reference into a
+#   section of the media library and scans for matches.  Returns a hash table
+#   containing the media's internal entry.
+def search_media_library_albums(search_term, media_library):
+    logging.debug("Entered kodi_library.search_media_library_albums.")
 
     match = 0
     result = {}
@@ -255,6 +333,33 @@ def search_media_library(search_term, media_library):
             logging.debug("Replacing match with one of a higher confidence.")
             result["albumid"] = i["albumid"]
             result["label"] = i["label"]
+            result["confidence"] = match
+
+            # Short-circuit the search if we find a perfect match.
+            if result["confidence"] == 100:
+                logging.debug("Hot dog - perfect match!")
+                break
+
+    return result
+
+# search_media_library_artists(): Takes a search term and a reference into a
+#   section of the media library and scans for matches.  Returns a hash table
+#   containing the media's internal entry.  This is a separate function because
+#   the "artists" part of the media library doesn't use "label" as a key, so
+#   there's no good generic way of doing it generically.
+def search_media_library_artists(search_term, media_library):
+    logging.debug("Entered kodi_library.search_media_library_artists.")
+
+    match = 0
+    result = {}
+    result["confidence"] = 0
+
+    for i in media_library:
+        match = fuzz.token_sort_ratio(search_term.lower(), i["artist"].lower())
+        if match > result["confidence"]:
+            logging.debug("Replacing match with one of a higher confidence.")
+            result["artistid"] = i["artistid"]
+            result["artist"] = i["artist"]
             result["confidence"] = match
 
             # Short-circuit the search if we find a perfect match.
