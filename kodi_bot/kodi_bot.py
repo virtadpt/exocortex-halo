@@ -78,7 +78,10 @@ bot_name = ""
 polling_time = 10
 
 # String that holds the command from the user prior to parsing.
-user_command = None
+user_command = ""
+
+# String that holds the user's extracted search term.
+search_term = ""
 
 # Handle to a parsed user command.
 parsed_command = None
@@ -97,6 +100,10 @@ corpora_dir = ""
 
 # Minimum statistical confidence in a match.  Defaults to 25 out of 100.
 minimum_confidence = 25
+
+# Minimum statistical confidence in proper name matching.  Defaults to 80 out
+# of 100.
+match_confidence = 80
 
 # Handle to a Kodi client connection.
 kodi = None
@@ -171,6 +178,7 @@ def kodi_settings():
     reply = reply + "Kodi box that I control: %s:%d\n" % (kodi_host, kodi_port)
     reply = reply + "Directories on the server I'm not checking for media to play back: %s\n" % exclude_dirs
     reply = reply + "Minimum confidence in my understanding of your commands before I'll act on them: %d percent\n" % minimum_confidence
+    reply = reply + "Minimum confidence in my searches of names, titles, and other proper names: %d percent\n" % match_confidence
     reply = reply + "Media sources I know about on the Kodi server: %s\n" % sources
     reply = reply + "When you tell me to change the volume, I change it by %d points each time.\n" % volume_step
     reply = reply + "I store local backup copies of the media library here: %s\n" % local_library
@@ -223,6 +231,41 @@ def build_local_media_library():
     media_library["video_genres"] = kodi_library.get_video_genres(kodi)
 
     return media_library
+
+# extract_search_term(): Takes two strings, a search term and a matching string
+#   from a corpus.  Subtracts the latter from the former, hopefully leaving
+#   just the user's actual search term (a name, a title, whatever).  Returns a
+#   string.
+def extract_search_term(search_term, matching_string):
+    logging.debug("Entered kodi_bot.extract_search_term.")
+    logging.debug("Search term: %s" % search_term)
+    logging.debug("Matching string from the corpus: %s" % matching_string)
+
+    result = None
+
+    # Clean up the search term.
+    search_term = search_term.strip()
+    search_term = search_term.strip("?")
+    search_term = search_term.strip("!")
+    search_term = search_term.strip(".")
+    search_term = search_term.strip(":")
+    search_term = search_term.strip(";")
+    search_term = search_term.split()
+
+    # Clean up the matching string from the corpus.
+    matching_string = matching_string.strip()
+    matching_string = matching_string.strip("?")
+    matching_string = matching_string.strip("!")
+    matching_string = matching_string.strip(".")
+    matching_string = matching_string.strip(":")
+    matching_string = matching_string.strip(";")
+    matching_string = matching_string.split()
+
+    result = list(set(search_term) - set(matching_string))
+    result = " ".join(result)
+    logging.debug("Extracted search term: %s" % result)
+
+    return result
 
 # Core code... let's do this.
 
@@ -305,6 +348,7 @@ except:
     pass
 corpora_dir = config.get("DEFAULT", "corpora_dir")
 minimum_confidence = int(config.get("DEFAULT", "minimum_confidence"))
+match_confidence = int(config.get("DEFAULT", "match_confidence"))
 commands_tmp = config.get("DEFAULT", "command_types").split(",")
 volume_step = int(config.get("DEFAULT", "volume_step"))
 try:
@@ -329,6 +373,7 @@ logger.debug("Kodi password: %s" % kodi_password)
 logger.debug("Directories to skip over: %s" % exclude_dirs)
 logger.debug("Corpora to train the parser with: %s" % corpora_dir)
 logger.debug("Minimum statistical match confidence: %d" % minimum_confidence)
+logger.debug("Minimum statistical match confidence in proper names: %d" % match_confidence)
 logger.debug("Volume change step size: %d" % volume_step)
 if args.no_media_library:
     logger.debug("Not building a media library.")
@@ -382,6 +427,7 @@ logger.debug("Entering main loop to handle requests.")
 send_message_to_user(bot_name + " now online.")
 while True:
     user_command = None
+    search_term = ""
     reply = ""
 
     # Check the message queue for index requests.
@@ -455,38 +501,110 @@ while True:
             reply = "I think you're asking me to search for an album title.  Just a moment, please..."
             send_message_to_user(reply)
 
-            search_result = kodi_library.search_media_library_albums(user_command, media_library["albums"])
+            # Extract just the search term.
+            search_term = extract_search_term(user_command, parsed_command["corpus"])
+
+            # Run the search.
+            search_result = kodi_library.search_media_library_albums(search_term, media_library["albums"], match_confidence)
 
             # Set the media type for later.
             search_result["type"] = "albums"
 
             # Figure out how confident we are in the search result's accuracy.
-            if search_result["confidence"] == 100:
+            if not search_result["confidence"]:
+                reply = "I didn't find any matches."
+            elif search_result["confidence"] == 100:
                 reply = "I found it!  %s is in your media library." % search_result["label"]
             elif search_result["confidence"] >= minimum_confidence:
                 reply = "I think I found what you're looking for in your library: %s" % search_result["label"]
             else:
                 reply = "I'm not too sure about it, but I may have found something vaguely matching %s is in your media library." % search_result["label"]
 
-        # If the user is asking to search the media library for a
-        # particular artist, do the thing.
+            # Store a reference to the media to play because later I want the
+            # bot to be able to play what it found.
+            media_to_play = search_result
+            send_message_to_user(reply)
+            continue
+
+        # If the user is asking to search the media library for a particular
+        # artist, do the thing.
         if parsed_command["match"] == "search_requests_artists":
             logging.debug("Matched search_requests_artists.")
             reply = "I think you're asking me to search for a particular artist or performer.  Just a moment, please..."
             send_message_to_user(reply)
 
-            search_result = kodi_library.search_media_library_artists(user_command, media_library["artists"])
+            # Extract just the search term.
+            search_term = extract_search_term(user_command, parsed_command["corpus"])
+
+            # Run the search.
+            search_result = kodi_library.search_media_library_artists(search_term, media_library["artists"])
 
             # Set the media type for later.
             search_result["type"] = "artists"
 
             # Figure out how confident we are in the search result's accuracy.
-            if search_result["confidence"] == 100:
+            if not search_result["confidence"]:
+                reply = "I didn't find any matches."
+            elif search_result["confidence"] == 100:
                 reply = "I found it!  You have stuff by %s in your media library." % search_result["artist"]
             elif search_result["confidence"] >= minimum_confidence:
                 reply = "I think I found who you're looking for: %s" % search_result["artist"]
             else:
                 reply = "I'm not too sure, but I may have found someone vaguely matching %s in your media library." % search_result["artist"]
+
+            # Store a reference to the media to play because later I want the
+            # bot to be able to play what it found.
+            media_to_play = search_result
+            send_message_to_user(reply)
+            continue
+
+        # If the user is asking to search the media library for a particular
+        # genre of music, do the thing.
+        if parsed_command["match"] == "search_requests_genres":
+            logging.debug("Matched search_requests_genres.")
+            reply = "I think you're asking me to search for a particular genre of music.  Just a moment, please..."
+            send_message_to_user(reply)
+
+            # Extract just the search term.
+            search_term = extract_search_term(user_command, parsed_command["corpus"])
+
+            # Run the search.
+            search_result = kodi_library.search_media_library_genres(search_term, media_library["audio_genres"], match_confidence)
+
+            # Build a reply to the user.
+            if not len(search_result):
+                reply = "It doesn't look like I found any matching genres in your media library.  You either don't have any, or your media's genre tags aren't amenable to searching and matching."
+            if len(search_result) == 1:
+                reply = "I found only one hit for that genre."
+            if len(search_result) > 1:
+                reply = "I found %d possible matching genres in your library.  I'm fairly sure that they're all minor variants of each other so I'm going to consider all of them valid." % len(search_result)
+
+            # Store a reference to the media to play because later I want the
+            # bot to be able to play what it found.
+            media_to_play = search_result
+            send_message_to_user(reply)
+            continue
+
+        # If the user is asking to search the media library for a particular
+        # song or track title, do the thing.
+        if parsed_command["match"] == "search_requests_songs":
+            logging.debug("Matched search_requests_songs.")
+            reply = "I think you're asking me to search for a particular song or track title.  Just a moment, please..."
+            send_message_to_user(reply)
+
+            # Extract just the search term.
+            search_term = extract_search_term(user_command, parsed_command["corpus"])
+
+            # Run the search.
+            search_result = kodi_library.search_media_library_songs(search_term, media_library["songs"], match_confidence)
+
+            # Build a reply to the user.
+            if not len(search_result):
+                reply = "It doesn't look like I found any matching tracks in your media library.  You might not have it, it may not have that title, or you mis-remembered the title somehow."
+            if len(search_result) == 1:
+                reply = "I found the song for you."
+            if len(search_result) > 1:
+                reply = "I found %d possible matching tracks." % len(search_result)
 
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.

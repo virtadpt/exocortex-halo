@@ -34,6 +34,11 @@ corpora_dir = corpora/
 # 100.
 minimum_confidence = 25
 
+# Minimum confidence in title and proper name matches.  This is for situations
+# in which the minimum overall confidence is way too low to be useful.  This
+# defaults to 80 out of a possible 100.
+match_confidence = 80
+
 # A list of the different command categories the bot can parse.  Each string
 # corresponds to a command parser inside the bot on a 1:1 basis, so while the
 # contents can (and probably should) differ the names must remain the same.

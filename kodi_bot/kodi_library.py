@@ -317,19 +317,20 @@ def get_video_genres(kodi):
 
     return list_of_genres
 
-# search_media_library_albums(): Takes a search term and a reference into a
-#   section of the media library and scans for matches.  Returns a hash table
-#   containing the media's internal entry.
-def search_media_library_albums(search_term, media_library):
+# search_media_library_albums(): Takes a search term, a reference into a
+#   section of the media library, and a minimum confidence and scans for
+#   matches.  Returns a hash table containing the media's internal entry.
+def search_media_library_albums(search_term, media_library, confidence):
     logging.debug("Entered kodi_library.search_media_library_albums.")
 
     match = 0
     result = {}
     result["confidence"] = 0
+    result["label"] = ""
 
     for i in media_library:
         match = fuzz.token_sort_ratio(search_term.lower(), i["label"].lower())
-        if match > result["confidence"]:
+        if match >= confidence and match > result["confidence"]:
             logging.debug("Replacing match with one of a higher confidence.")
             result["albumid"] = i["albumid"]
             result["label"] = i["label"]
@@ -340,19 +341,22 @@ def search_media_library_albums(search_term, media_library):
                 logging.debug("Hot dog - perfect match!")
                 break
 
+    logging.debug("Value of result: %s" % str(result))
     return result
 
-# search_media_library_artists(): Takes a search term and a reference into a
-#   section of the media library and scans for matches.  Returns a hash table
-#   containing the media's internal entry.  This is a separate function because
-#   the "artists" part of the media library doesn't use "label" as a key, so
-#   there's no good generic way of doing it generically.
-def search_media_library_artists(search_term, media_library):
+# search_media_library_artists(): Takes a search term, a reference into a
+#   section of the media library, and a minimum match confidence and scans for
+#   matches.  Returns a hash table containing the media's internal entry.  This
+#   is a separate function because the "artists" part of the media library
+#   doesn't use "label" as a key, so there's no good generic way of doing it
+#   generically.
+def search_media_library_artists(search_term, media_library, confidence):
     logging.debug("Entered kodi_library.search_media_library_artists.")
 
     match = 0
     result = {}
     result["confidence"] = 0
+    result["artist"] = ""
 
     for i in media_library:
         match = fuzz.token_sort_ratio(search_term.lower(), i["artist"].lower())
@@ -367,7 +371,60 @@ def search_media_library_artists(search_term, media_library):
                 logging.debug("Hot dog - perfect match!")
                 break
 
+    logging.debug("Value of result: %s" % str(result))
     return result
+
+# search_media_library_genres(): Takes a search term, a reference into a
+#   section of the media library, and the minimum confidence in the match and
+#   scans for matches.  Returns an array containing matching genres and
+#   genre ID codes because it's quite common to have the same genre represented
+#   with different equivalent spellings, because nobody uses the official list
+#   of ID3 genre codes (https://en.wikipedia.org/wiki/List_of_ID3v1_Genres).
+def search_media_library_genres(search_term, media_library, confidence):
+    logging.debug("Entered kodi_library.search_media_library_genres.")
+    logging.debug("My minimum match confidence metric is %d." % confidence)
+
+    match = 0
+    result = []
+
+    for i in media_library:
+        match = fuzz.token_set_ratio(search_term.lower(), i["label"].lower())
+        if match > confidence:
+            logging.debug("Found a fairly decent genre match for %s: %s" % (search_term, i["label"]))
+            tmp = {}
+            tmp["label"] = i["label"]
+            tmp["genreid"] = i["genreid"]
+            result.append(tmp)
+
+    logging.debug("It looks like I got %d possible matches for the genre %s." % (len(result), search_term))
+    return result
+
+# search_media_library_songs(): Takes a search term, a reference into a
+#   section of the media library, and the minimum confidence in the match and
+#   scans for matches.  Returns a sorted array containing matching song titles
+#   and song ID codes because it's possible to have duplicates as well as
+#   multiple different yet valid matches (such as chapters of an audiobook).
+def search_media_library_songs(search_term, media_library, confidence):
+    logging.debug("Entered kodi_library.search_media_library_songs.")
+
+    match = 0
+    result = []
+
+    for i in media_library:
+        match = fuzz.token_set_ratio(search_term.lower(), i["label"].lower())
+        if match > confidence:
+            logging.debug("Found a fairly decent track title match for %s with a confidence metric of %d: %s" % (search_term, match, i["label"]))
+            tmp = {}
+            tmp["label"] = i["label"]
+            tmp["songid"] = i["songid"]
+            result.append(tmp)
+
+        # Short-circuit the search if we find a perfect match.
+        if match == 100:
+            logging.debug("Hot dog - perfect match!")
+
+    logging.debug("It looks like I got %d possible matches for the song %s." % (len(result), search_term))
+    return sorted(result)
 
 if "__name__" == "__main__":
     pass

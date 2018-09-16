@@ -159,6 +159,7 @@ def parse(command, possible_commands):
                 logging.debug("Confidence of new match: %d" % tmp)
                 parsed_command["confidence"] = tmp
                 parsed_command["match"] = command_type
+                parsed_command["corpus"] = i
 
             # Short-circuit evaluation by bouncing if we reach maximum
             # confidence.
