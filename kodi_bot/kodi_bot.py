@@ -243,7 +243,8 @@ def extract_search_term(search_term, matching_string):
 
     result = None
 
-    # Clean up the search term.
+    # Normalize and clean up the search term.
+    search_term = search_term.lower()
     search_term = search_term.strip()
     search_term = search_term.strip("?")
     search_term = search_term.strip("!")
@@ -252,7 +253,8 @@ def extract_search_term(search_term, matching_string):
     search_term = search_term.strip(";")
     search_term = search_term.split()
 
-    # Clean up the matching string from the corpus.
+    # Normalize and clean up the matching string from the corpus.
+    matching_string = matching_string.lower()
     matching_string = matching_string.strip()
     matching_string = matching_string.strip("?")
     matching_string = matching_string.strip("!")
@@ -629,14 +631,32 @@ while True:
             send_message_to_user(reply)
             continue
 
-        # Tell the user what the bot is about to do.
-        #reply = "Doing the thing.  Please stand by."
-        #send_message_to_user(reply)
-        #parsed_command = do_the_thing(parsed_command)
+        # If the user is asking to search the media library for a particular
+        # video file, do the thing.
+        if parsed_command["match"] == "search_requests_videos":
+            logging.debug("Matched search_requests_videos.")
+            reply = "I think you're asking me to search for a video file.  Just a moment, please..."
+            send_message_to_user(reply)
 
-        # Reply that it was successful.
-        #reply = "Tell the user that it was successful."
-        #send_message_to_user(reply)
+            # Extract just the search term.
+            search_term = extract_search_term(user_command, parsed_command["corpus"])
+
+            # Run the search.
+            search_result = kodi_library.search_media_library_video(search_term, media_library["video"], match_confidence)
+
+            # Build a reply to the user.
+            if not len(search_result):
+                reply = "It doesn't look like I found any matching filenames in your media library.  You either don't have it, or your filenames need cleaning up."
+            if len(search_result) == 1:
+                reply = "I found only one matching filename."
+            if len(search_result) > 1:
+                reply = "I found %d possible matching filenames in your video library." % len(search_result)
+
+            # Store a reference to the media to play because later I want the
+            # bot to be able to play what it found.
+            media_to_play = search_result
+            send_message_to_user(reply)
+            continue
 
     # Message queue not found.
     if request.status_code == 404:

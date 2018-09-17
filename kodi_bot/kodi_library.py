@@ -451,5 +451,30 @@ def search_media_library_music(search_term, media_library, confidence):
     logging.debug("It looks like I got %d possible matches for the song %s." % (len(result), search_term))
     return sorted(result)
 
+# search_media_library_video(): Takes a search term, a reference into a
+#   section of the media library, and the minimum confidence in the match and
+#   scans for matches.  Returns a sorted array containing matching titles and
+#   filenames (with full paths).
+def search_media_library_video(search_term, media_library, confidence):
+    logging.debug("Entered kodi_library.search_media_library_video.")
+
+    match = 0
+    result = []
+
+    for i in media_library:
+        match = fuzz.token_set_ratio(search_term.lower(), i["label"].lower())
+        if match > confidence:
+            logging.debug("Found a fairly decent track title match for %s with a confidence metric of %d: %s" % (search_term, match, i["label"]))
+            tmp = {}
+            tmp["label"] = i["label"]
+            tmp["file"] = i["file"]
+            result.append(tmp)
+
+        if match == 100:
+            logging.debug("Hot dog - perfect match!")
+
+    logging.debug("It looks like I got %d possible matches for the video file %s." % (len(result), search_term))
+    return sorted(result)
+
 if "__name__" == "__main__":
     pass
