@@ -537,7 +537,7 @@ while True:
             search_term = extract_search_term(user_command, parsed_command["corpus"])
 
             # Run the search.
-            search_result = kodi_library.search_media_library_artists(search_term, media_library["artists"])
+            search_result = kodi_library.search_media_library_artists(search_term, media_library["artists"], match_confidence)
 
             # Set the media type for later.
             search_result["type"] = "artists"
@@ -595,8 +595,25 @@ while True:
             # Extract just the search term.
             search_term = extract_search_term(user_command, parsed_command["corpus"])
 
-            # Run the search.
+            # Run the search.  Start with the song library.
             search_result = kodi_library.search_media_library_songs(search_term, media_library["songs"], match_confidence)
+
+            # Now check the music library.  Why this is a different thing, I
+            # don't know.
+            search_result = search_result + kodi_library.search_media_library_music(search_term, media_library["music"], match_confidence)
+
+            # Deduplicate the search results because this might return identical
+            # track titles.
+            # After dorking around with this for too long, I went with this
+            # solution.  Thanks, dnit13!
+            # https://stackoverflow.com/questions/36486039/python-deduplicate-list-of-dictionaries-by-value-of-a-key
+            delist = []
+            tmplist = []
+            for i in search_result:
+                if i["label"] not in delist:
+                    delist.append(i["label"])
+                    tmplist.append(i)
+            search_result = tmplist
 
             # Build a reply to the user.
             if not len(search_result):
