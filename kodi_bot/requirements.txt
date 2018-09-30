@@ -1,5 +1,4 @@
 fuzzywuzzy
 humanfriendly
-kodipydent
 python-Levenshtein
 requests
