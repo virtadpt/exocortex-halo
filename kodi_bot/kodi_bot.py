@@ -29,6 +29,8 @@
 # - Refactor the part of the do-stuff loop where the bot handles search
 #   requests.  It's going to turn into a mess soon.  Maybe I should split it out
 #   into a separate module...
+# - Consider not running commands other than requests  for help if the
+#   confidence is too low.
 
 # Load modules.
 import argparse
@@ -511,8 +513,6 @@ while True:
 
         # If the bot's confidence interval on the match is below the minimum,
         # warn the user.
-        # MOOF MOOF MOOF - Consider not running commands other than requests
-        # for help if the confidence is too low.
         if parsed_command["confidence"] <= minimum_confidence:
             logging.debug("Sending warning about insufficient confidence.")
 
@@ -585,10 +585,12 @@ while True:
             send_message_to_user(reply)
 
             # Extract just the search term.
-            search_term = extract_search_term(user_command, parsed_command["corpus"])
+            search_term = extract_search_term(user_command,
+                parsed_command["corpus"])
 
             # Run the search.
-            search_result = kodi_library.search_media_library_artists(search_term, media_library["artists"], match_confidence)
+            search_result = kodi_library.search_media_library_artists(search_term,
+                media_library["artists"], match_confidence)
 
             # Set the media type for later.
             search_result["type"] = "artists"
@@ -617,10 +619,12 @@ while True:
             send_message_to_user(reply)
 
             # Extract just the search term.
-            search_term = extract_search_term(user_command, parsed_command["corpus"])
+            search_term = extract_search_term(user_command,
+                parsed_command["corpus"])
 
             # Run the search.
-            search_result = kodi_library.search_media_library_genres(search_term, media_library["audio_genres"], match_confidence)
+            search_result = kodi_library.search_media_library_genres(search_term,
+                media_library["audio_genres"], match_confidence)
 
             # Build a reply to the user.
             if not len(search_result):
@@ -644,14 +648,17 @@ while True:
             send_message_to_user(reply)
 
             # Extract just the search term.
-            search_term = extract_search_term(user_command, parsed_command["corpus"])
+            search_term = extract_search_term(user_command,
+                parsed_command["corpus"])
 
             # Run the search.  Start with the song library.
-            search_result = kodi_library.search_media_library_songs(search_term, media_library["songs"], match_confidence)
+            search_result = kodi_library.search_media_library_songs(search_term,
+                media_library["songs"], match_confidence)
 
             # Now check the music library.  Why this is a different thing, I
             # don't know.
-            search_result = search_result + kodi_library.search_media_library_music(search_term, media_library["music"], match_confidence)
+            search_result = search_result + kodi_library.search_media_library_music(search_term,
+                media_library["music"], match_confidence)
 
             # Deduplicate the search results because this might return identical
             # track titles.
@@ -688,10 +695,12 @@ while True:
             send_message_to_user(reply)
 
             # Extract just the search term.
-            search_term = extract_search_term(user_command, parsed_command["corpus"])
+            search_term = extract_search_term(user_command,
+                parsed_command["corpus"])
 
             # Run the search.
-            search_result = kodi_library.search_media_library_video(search_term, media_library["video"], match_confidence)
+            search_result = kodi_library.search_media_library_video(search_term,
+                media_library["video"], match_confidence)
 
             # Build a reply to the user.
             if not len(search_result):
