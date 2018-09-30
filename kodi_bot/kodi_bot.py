@@ -16,10 +16,11 @@
 
 # License: GPLv3
 
+# v2.0 - Removed kodipydent, replaced it with direct HTTP calls to the Kodi
+#   JSON RPC API using Requests.
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Checkpoint the media database to disk occasionally to shorten load times.
 # - Figure out how to let the user add to and remove from the various corpora to
 #   personalize the bots without having to shut down, edit the files manually,
 #   and restart the bot.
@@ -40,7 +41,7 @@ import requests
 import sys
 import time
 
-from kodipydent import Kodi
+from requests.auth import HTTPBasicAuth
 
 import help
 import kodi_library
@@ -50,7 +51,7 @@ import parser
 
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
-custom_headers = {'Content-Type': 'application/json'}
+headers = {'Content-Type': 'application/json'}
 
 # Global variables.
 
@@ -105,8 +106,8 @@ minimum_confidence = 25
 # of 100.
 match_confidence = 80
 
-# Handle to a Kodi client connection.
-kodi = None
+# Handle to a Requests object.
+request = None
 
 # Types of commands the bot can parse and act on.
 commands_tmp = []
@@ -131,6 +132,15 @@ search_result = None
 
 # Handle to the thing you want to play.
 media_to_play = None
+
+# Hash of the enabled media playback subsystems on this Kodi instance.
+active_players = {}
+
+# Full URL to a Kodi instance.
+kodi_url = ""
+
+# Handle to an HTTP basic auth object.
+kodi_auth = None
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -212,25 +222,51 @@ def build_local_media_library():
 
     media_library = {}
 
-    media_library = kodi_library.build_media_library(kodi, sources,
-        media_library, exclude_dirs)
+    media_library = kodi_library.build_media_library(kodi_url, kodi_auth,
+        headers, sources, exclude_dirs)
 
     # Load the media library from Kodi in steps, because there are multiple
     # library databases inside of Kodi.  This is simultaneously interesting,
     # opaque, and frustrating because I've been dorking around with this all
     # night.
-    media_library["artists"] = kodi_library.get_artists(kodi)
-    media_library["albums"] = kodi_library.get_albums(kodi)
-    media_library["songs"] = kodi_library.get_songs(kodi)
-    media_library["movies"] = kodi_library.get_movies(kodi)
-    media_library["tv"] = kodi_library.get_tv_shows(kodi)
+    media_library["artists"] = kodi_library.get_artists(kodi_url, kodi_auth,
+        headers)
+    media_library["albums"] = kodi_library.get_albums(kodi_url, kodi_auth,
+        headers)
+    media_library["songs"] = kodi_library.get_songs(kodi_url, kodi_auth,
+        headers)
+    media_library["movies"] = kodi_library.get_movies(kodi_url, kodi_auth,
+        headers)
+    media_library["tv"] = kodi_library.get_tv_shows(kodi_url, kodi_auth,
+        headers)
 
     # Load the genres Kodi knows about, which are kept separate from the rest
     # of the media metadata.
-    media_library["audio_genres"] = kodi_library.get_audio_genres(kodi)
-    media_library["video_genres"] = kodi_library.get_video_genres(kodi)
+    media_library["audio_genres"] = kodi_library.get_audio_genres(kodi_url,
+        kodi_auth, headers)
+    media_library["video_genres"] = kodi_library.get_video_genres(kodi_url,
+        kodi_auth, headers)
 
     return media_library
+
+# get_active_players: Function that gets from Kodi a list of usable media
+#   playback modules.  Takes three arguments, a Kodi URL, an HTTP Basic Auth
+#   object, and a set of custom headers.  Returns
+def get_active_players(kodi_url, kodi_auth, headers):
+    request = None
+    active_players = None
+
+    # Build a command to POST to Kodi.
+    command = {}
+    command["id"] = 1
+    command["jsonrpc"] = "2.0"
+    command["method"] = "Player.GetPlayers"
+
+    request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+        data=json.dumps(command))
+    active_players = request.json()
+
+    return active_players["result"]
 
 # extract_search_term(): Takes two strings, a search term and a matching string
 #   from a corpus.  Subtracts the latter from the former, hopefully leaving
@@ -360,6 +396,9 @@ except:
     # This is optional.
     pass
 
+# Build the Kodi URL.
+kodi_url = "http://" + kodi_host + ":" + str(kodi_port) + "/jsonrpc"
+
 # Debugging output, if required.
 logger.info("Everything is set up.")
 logger.debug("Values of configuration variables as of right now:")
@@ -370,6 +409,7 @@ logger.debug("Bot name to respond to search requests with: %s" % bot_name)
 logger.debug("Time in seconds for polling the message queue: %d" % polling_time)
 logger.debug("Kodi host: %s" % kodi_host)
 logger.debug("Kodi port: %s" % kodi_port)
+logger.debug("Kodi URL: %s" % kodi_url)
 logger.debug("Kodi username: %s" % kodi_user)
 logger.debug("Kodi password: %s" % kodi_password)
 logger.debug("Directories to skip over: %s" % exclude_dirs)
@@ -382,12 +422,14 @@ if args.no_media_library:
 if local_library:
     logger.debug("Location of local library dump: %s" % local_library)
 
+# Build an HTTP basic auth object for Kodi.
+kodi_auth = HTTPBasicAuth(kodi_user, kodi_password)
+
 # Connect to a Kodi instance.
 try:
-    kodi = Kodi(kodi_host, port=int(kodi_port), username=kodi_user,
-        password=kodi_password)
+    request = requests.get(kodi_url, auth=kodi_auth, headers=headers)
 except:
-    logger.error("Unable to connect to Kodi instance at %s:%d/tcp with username %s and password %s.  Please check your configuration file." % (kodi_host, kodi_port, kodi_user, kodi_password))
+    logger.error("Unable to connect to Kodi instance at %s with username %s and password %s.  Please check your configuration file." % (kodi_url, kodi_user, kodi_password))
     sys.exit(1)
 
 # Load the corpora into a hash table where the keys are categories of commands
@@ -408,7 +450,8 @@ if args.no_media_library == False:
         # Generate a list of media sources on the Kodi box.  From the Kodi docs,
         # there are only two we have to care about, video and music.  I'm using
         # the canonical Kodi names for consistency's sake.
-        sources = kodi_library.get_media_sources(kodi)
+        sources = kodi_library.get_media_sources(kodi_url, kodi_auth,
+            headers)
 
         # Build a local copy of the Kodi box's media library, because there is
         # no way to run a search on it.
@@ -422,6 +465,12 @@ if args.no_media_library == False:
             logger.debug("Done.  File size is %s." % humanfriendly.format_size(os.path.getsize(local_library)))
 else:
     logger.info("Skipping media library generation by request.")
+
+# Get the media playback modules this Kodi server supports.
+active_players = get_active_players(kodi_url, kodi_auth, headers)
+if not active_players:
+    logging.fatal("No active media players detected.")
+    sys.exit(1)
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -657,6 +706,25 @@ while True:
             media_to_play = search_result
             send_message_to_user(reply)
             continue
+
+        # If the user is asking the bot to start playback, figure out how to
+        # do that.
+        if parsed_command["match"] == "commands_play":
+            logging.debug("Matched commands_play.")
+            reply = "I think you're asking me to start playback.  Just a moment, please..."
+            send_message_to_user(reply)
+
+            # Case: Start playback of cached search results.
+            # We don't seem to want to use the Songs database.
+
+            # Figure out what the cached search results are - audio?  Video?
+            # A playlist?
+            # From that, call the proper playback method.
+
+            # Case: Start playback of something the user knows exists on the
+            # Kodi box.
+            # Quietly run a search on the library to see if it exists.  Check
+            # every part of the local database and go with the best match.
 
     # Message queue not found.
     if request.status_code == 404:
