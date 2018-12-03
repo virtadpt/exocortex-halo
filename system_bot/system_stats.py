@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v3.1 - Added function to get the local IP address of the host.
 # v3.0 - Added real statistics support.
 # v2.2 - Added function to get public IP address of host.
 #      - Added function that gets network traffic stats.
@@ -290,6 +291,37 @@ def current_ip_address(ip_addr_service):
     # life easier in other modules.
     logging.debug("Got current IP address of host: " + str(request.text))
     return str(request.text)
+
+# local_ip_address(): Function that returns the local IP address of the system
+#   by querying the primary network interface.  Takes no arguments.  Returns
+#   the IP address as a string or None if it didn't work.
+def local_ip_address():
+    nics = psutil.net_if_addrs()
+    primary_nic = None
+    nic = None
+    addr = None
+
+    # Remove the loopback interface from the hash.  If this results in an
+    # empty hash, return None.
+    del nics["lo"]
+    if not nics:
+        logging.debug("")
+        return None
+
+    # Search the hash for the primary NIC.
+    for nic in nics.keys():
+        for addr in nics[nic]:
+            # We want AF_INET.
+            if addr.family == 2:
+                primary_nic = addr
+
+    # Return the IP address if we have one, an error message if not.
+    if primary_nic:
+        logging.debug("Got primary IP address of system: " + primary_nic.address)
+        return primary_nic.address
+    else:
+        logging.err("Unable to get primary IP address.  Something went wrong.")
+        return "unknown.  Something went wrong"
 
 # convert_bytes(): Function that takes an arbitrary number of bytes and
 #   converts them to kilobytes, megabytes, gigabytes... taken from here:

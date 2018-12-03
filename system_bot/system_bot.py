@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v3.1 - Added the ability to get the local IP of the host (not the public IP).
 # v3.0 - Added real statistics support.  Parameterized stuff to eliminate some
 #        magick numbers.
 # v2.3 - Added capability to monitor and restart processes if they die.
@@ -173,7 +174,8 @@ def online_help():
     disk/disk usage/storage - Enumerate disk devices on the system and amount of storage free.
     memory/free memory/RAM/free ram - Amount of free memory.
     uptime - How long the system has been online, in days, hours, minutes, and seconds.
-    IP/IP address/public IP/IP addr/public IP address/addr - Current publically routable IP address of this host.
+    IP address/public IP/IP addr/public IP address/addr - Current publically routable IP address of this host.
+    IP/local IP/ local addr - Current (internal) IP of this host.
     network traffic/traffic volume/network stats/traffic stats/traffic count - Bytes sent and received per network interface.
 
     All commands are case-insensitive.
@@ -408,6 +410,11 @@ while True:
             if command == "ip":
                 info = system_stats.current_ip_address(ip_addr_web_service)
                 message = "The system's current public IP address is " + info + "."
+                send_message_to_user(message)
+
+            if command == "local ip":
+                info = system_stats.local_ip_address()
+                message = "The system's local IP address is " + info + "."
                 send_message_to_user(message)
 
             if command == "traffic":

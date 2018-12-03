@@ -31,6 +31,8 @@
 #   into a separate module...
 # - Consider not running commands other than requests  for help if the
 #   confidence is too low.
+# - Figure out how to detect the case where the media database for one Kodi
+#   instance is being used with a different instance.
 
 # Load modules.
 import argparse

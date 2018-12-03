@@ -134,7 +134,7 @@ def build_media_library(kodi_url, kodi_auth, headers, sources, exclude_dirs):
 
             # Get the contents of the directory.
             command["params"]["directory"] = directory
-            request = request.post(kodi_url, auth=kodi_auth,
+            request = requests.post(kodi_url, auth=kodi_auth,
                 data=json.dumps(command), headers=headers)
             tmp = request.json()
 

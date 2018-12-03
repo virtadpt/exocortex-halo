@@ -10,6 +10,9 @@
 
 # License: GPLv3
 
+# v2.3 - Added function to request local IP address of host.
+#         - Split off IP command from public address so it can be applied to
+#           the local IP address command.
 # v2.2 - Added function to get public IP address of host.
 #      - Added function that gets network traffic stats.
 # v2.1 - Added system uptime.
@@ -17,7 +20,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - 
+# -
 
 # Load modules.
 import logging
@@ -63,9 +66,14 @@ ip_address_command = ip_command + address_command
 public_ip_command = public_command + ip_command
 addr_command = pp.CaselessLiteral("addr")
 ip_addr_command = ip_command + addr_command
+local_command = pp.CaselessLiteral("local")
+local_ip_command = local_command + ip_command
+local_addr_command = local_command + addr_command
 public_ip_address_command = public_command + ip_command + address_command
-ip_address_commands = pp.Or([ip_command, ip_address_command, public_ip_command,
+ip_address_commands = pp.Or([ip_address_command, public_ip_command,
     ip_addr_command, public_ip_address_command, addr_command])
+local_ip_address_commands = pp.Or([ip_command, local_ip_command,
+    local_addr_command])
 
 network_command = pp.CaselessLiteral("network")
 traffic_command = pp.CaselessLiteral("traffic")
@@ -149,13 +157,22 @@ def parse_uptime(command):
     except:
         return None
 
-# parse_ip_address(): Function that matches the strings "ip", "ip address",
+# parse_ip_address(): Function that matches the strings "ip address",
 #   "public ip", "ip addr", "public ip address", "addr".  Returns the string
 #   "ip" on a match and None if not.
 def parse_ip_address(command):
     try:
         parsed_command = ip_address_commands.parseString(command)
         return "ip"
+    except:
+        return None
+
+# parse_local_ip_address(): Function that matches the strings "ip", "local ip",
+#   "local addr".  Returns the string "local ip" on a match and None if not.
+def parse_local_ip_address(command):
+    try:
+        parsed_command = local_ip_address_commands.parseString(command)
+        return "local ip"
     except:
         return None
 
@@ -227,6 +244,11 @@ def parse_command(command):
     if parsed_command == "ip":
         return parsed_command
 
+    # Local IP address?
+    parsed_command = parse_local_ip_address(command)
+    if parsed_command == "local ip":
+        return parsed_command
+
     # Network traffic stats?
     parsed_command = parse_network_traffic(command)
     if parsed_command == "traffic":
@@ -237,4 +259,3 @@ def parse_command(command):
 
 if "__name__" == "__main__":
     pass
-
