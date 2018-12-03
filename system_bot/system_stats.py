@@ -313,7 +313,9 @@ def local_ip_address():
         for addr in nics[nic]:
             # We want AF_INET.
             if addr.family == 2:
-                primary_nic = addr
+                # Only the primary has a broadcast address.
+                if addr.broadcast:
+                    primary_nic = addr
 
     # Return the IP address if we have one, an error message if not.
     if primary_nic:
