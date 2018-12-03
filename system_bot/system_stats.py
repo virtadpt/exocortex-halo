@@ -310,6 +310,10 @@ def local_ip_address():
 
     # Search the hash for the primary NIC.
     for nic in nics.keys():
+        # Make sure we filter out VPN interfaces.
+        if "tun" in nic:
+            continue
+
         for addr in nics[nic]:
             # We want AF_INET.
             if addr.family == 2:
