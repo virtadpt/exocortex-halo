@@ -70,7 +70,7 @@ This breaks down to "If the command `test_bot.py --loglevel` is not found in the
 
 Included with the bot is a sample [supervisord](http://supervisord.org/) configuration file which will automatically start and manage the bot for you if you happen to be using it on your system.  It's much easier to wrangle than a huge .screenrc file, initscripts, or systemd service files.  If you want to use this file, install supervisord on the system, ideally from the default package repository (it's usually called **supervisor**).  Enable and start the supervisord service per your distribution's instructions.  Copy the **system_bot.conf.supervisord** file as **system_bot.conf** into your system's supervisord supplementary configuration file directory; on Raspbian this is */etc/supervisor/conf.d*.  Edit the file so that paths in the *command* and *directory* directives reflect where you checked out the source code.  Also set the *user* directive to the username that'll be running this bot (probably yourself).  For example, the */etc/supervisor/conf.d/systembot.conf* file on my test machine looks like this:
 
-```\[program:systembot\]
+```[ program:systembot ]
 command=/home/pi/exocortex-halo/system_bot/run.sh
 directory=/home/pi/exocortex-halo/system_bot
 startsecs=30
