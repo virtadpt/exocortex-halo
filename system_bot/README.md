@@ -5,6 +5,7 @@ To install it you'll need to have the following Python modules available, either
 * [psutil](https://github.com/giampaolo/psutil)
 * [pyParsing](http://pyparsing.wikispaces.com/)
 * [requests](http://docs.python-requests.org/en/master/)
+* [statistics](https://github.com/digitalemagine/py-statistics)
 
 To set up a virtualenv:
 
@@ -41,12 +42,15 @@ Right now, these are the system stats Systembot keeps tabs on, and how to access
 * Current system uptime:
   * <bot's name>, uptime.
 * Current public routable IP address:
-  * <bot's name>, IP.
   * <bot's name>, IP address.
   * <bot's name>, public IP.
   * <bot's name>, IP addr.
   * <bot's name>, public IP address.
   * <bot's name>, addr.
+* Current internal or local IP address:
+  * <bot's name>, IP.
+  * <bot's name>, local IP.
+  * <bot's name>, local addr.
 * System's network traffic stats:
   * <bot's name>, network traffic.
   * <bot's name>, traffic volume.
@@ -63,4 +67,3 @@ This bot is also capable of optionally monitoring certain processes running on t
 process1 = test_bot.py --loglevel,python2 /home/drwho/exocortex-halo/test_bot/test_bot.py --loglevel debug
 
 This breaks down to "If the command `test_bot.py --loglevel` is not found in the process tbale, then run the command `python2 /home/drwho/exocortex-halo/test_bot/test_bot.py --loglevel debug`."  The command can be anything, not just a process restart.  Look at the sample configuration file for more details.
-
