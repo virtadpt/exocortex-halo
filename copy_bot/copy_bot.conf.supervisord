@@ -1,0 +1,8 @@
+[program:copybot]
+command=/home/username/exocortex-halo/copy_bot/run.sh
+directory=/home/username/exocortex-halo/copy_bot
+startsecs=30
+user=username
+redirect_stderr=true
+process_name=copybot
+startretries=0
