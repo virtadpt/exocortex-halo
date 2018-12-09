@@ -38,3 +38,21 @@ To make this bot work reliably, you'll probably have to create an *advancedsetti
 Then restart Kodi.  I've found that this modification makes it much easier for the bot to generate a media library.  Why doesn't Kodi have an API to do this?  I don't know.
 
 Please note that if you have any filenames with broken character encodings, Python will not be able to decode the bytestring and will barf.  By "broken" I mean filenames that look like this: **The.X-Files.S09E03.D'$'\346''monicus.WEBRip.x264-FUM.mp4**
+
+Includes is a `run.sh` shell script which automates starting up kodi_bot.py somewhat if you're using a virtualenv.  It requires that you called your virtualenv `env` and you created it inside of the kodi_bot/ directory.  Please see the contents of the shell script for more details (of which there are few - I tried to keep it as short and simple as I could).
+
+Included with the bot is a sample [supervisord](http://supervisord.org/) configuration file which will automatically start and manage the bot for you if you happen to be using it on your system.  It's much easier to wrangle than a huge .screenrc file, initscripts, or systemd service files.  If you want to use this file, install supervisord on the system, ideally from the default package repository (it's usually called **supervisor**).  Enable and start the supervisord service per your distribution's instructions.  Copy the **kodi_bot.conf.supervisord** file as **kodi_bot.conf** into your system's supervisord supplementary configuration file directory; on Raspbian this is */etc/supervisor/conf.d*.  Edit the file so that paths in the *command* and *directory* directives reflect where you checked out the source code.  Also set the *user* directive to the username that'll be running this bot (probably yourself).  For example, the */etc/supervisor/conf.d/kodibot.conf* file on my test machine looks like this:
+
+```[program:kodibot]
+command=/home/pi/exocortex-halo/kodi_bot/run.sh
+directory=/home/pi/exocortex-halo/kodi_bot
+startsecs=30
+user=pi
+redirect_stderr=true
+process_name=kodibot
+startretries=0
+```
+
+Then tell supervisord to look for new configuration directives and automatically start anything it finds: **sudo supervisorctl update**
+
+supervisord will read the new config file and start Kodibot for you.
