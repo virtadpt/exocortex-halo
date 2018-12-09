@@ -1,0 +1,8 @@
+[program:webindexbot]
+command=/home/pi/exocortex-halo/web_index_bot/run.sh
+directory=/home/pi/exocortex-halo/web_index_bot
+startsecs=30
+user=pi
+redirect_stderr=true
+process_name=webindexbot
+startretries=0
