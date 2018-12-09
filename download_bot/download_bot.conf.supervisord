@@ -1,8 +1,8 @@
 [program:downloadbot]
-command=/home/pi/exocortex-halo/download_bot/run.sh
-directory=/home/pi/exocortex-halo/download_bot
+command=/home/username/exocortex-halo/download_bot/run.sh
+directory=/home/username/exocortex-halo/download_bot
 startsecs=30
-user=pi
+user=username
 redirect_stderr=true
 process_name=downloadbot
 startretries=0
