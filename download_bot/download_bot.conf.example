@@ -17,5 +17,6 @@ loglevel = info
 download_directory = ~/Downloads
 
 # Path to the ffmpeg executable.  This will enable only downloading the audio
-# track of a media stream, i.e., save as an MP3.
-# ffmpeg = /bin/ffmpeg
+# track of a media stream, i.e., save as an MP3.  If you don't intend to use
+# this, leave the next line as-is.
+ffmpeg = 
