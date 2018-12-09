@@ -36,3 +36,17 @@ If you make a request to / (just a forward slash) you'll get a JSON document dis
 
 Commands are returned in FIFO (first-in-first-out) order.
 
+Included with the bot is a sample [supervisord](http://supervisord.org/) configuration file which will automatically start and manage the bot for you if you happen to be using it on your system.  It's much easier to wrangle than a huge .screenrc file, initscripts, or systemd service files.  If you want to use this file, install supervisord on the system, ideally from the default package repository (it's usually called **supervisor**).  Enable and start the supervisord service per your distribution's instructions.  Copy the **exocortex_xmpp_bridge.conf.supervisord** file as **exocortex_xmpp_bridge.conf** into your system's supervisord supplementary configuration file directory; on Raspbian this is */etc/supervisor/conf.d*.  Edit the file so that paths in the *command* and *directory* directives reflect where you checked out the source code.  Also set the *user* directive to the username that'll be running this bot (probably yourself).  For example, the */etc/supervisor/conf.d/exocortex_xmpp_bridge.conf* file on my test machine looks like this:
+
+```[program:XMPPbridge]
+command=/home/pi/exocortex-halo/exocortex_xmpp_bridge/run.sh
+directory=/home/pi/exocortex-halo/exocortex_xmpp_bridge
+startsecs=30
+user=pi
+redirect_stderr=true
+process_name=XMPPbridge
+```
+
+Then tell supervisord to look for new configuration directives and automatically start anything it finds: **sudo supervisorctl update**
+
+supervisord will read the new config file and start the XMPP bridge for you.

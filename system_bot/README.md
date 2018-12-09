@@ -79,4 +79,7 @@ redirect_stderr=true
 process_name=systembot
 startretries=0
 ```
+
 Then tell supervisord to look for new configuration directives and automatically start anything it finds: **sudo supervisorctl update**
+
+supervisord will read the new config file and start Systembot for you.
