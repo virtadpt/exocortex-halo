@@ -1,0 +1,8 @@
+[program:SMTPbridge]
+command=/home/pi/exocortex-halo/smtp_bridge/run.sh
+directory=/home/pi/exocortex-halo/smtp_bridge
+startsecs=30
+user=root
+redirect_stderr=true
+process_name=SMTPbridge
+startretries=0
