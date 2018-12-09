@@ -1,0 +1,8 @@
+[program:websearchbot]
+command=/home/pi/exocortex-halo/web_search_bot/run.sh
+directory=/home/pi/exocortex-halo/web_search_bot
+startsecs=30
+user=pi
+redirect_stderr=true
+process_name=websearchbot
+startretries=0

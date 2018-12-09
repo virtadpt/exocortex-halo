@@ -10,3 +10,18 @@ web_search_bot.py currently only supports up to fifty (50) search results.  Spec
 
 web_index_bot.py is a bot which does the reverse - when you send it a URL it submits it to whatever search engines you have defined in its configuration file.  This could be something like an instance of [YaCy](http://yacy.de/) running on the same host or it could be [the Internet Archive's Wayback Machine](https://web.archive.org/).
 
+Included with the bot is a sample [supervisord](http://supervisord.org/) configuration file which will automatically start and manage the bot for you if you happen to be using it on your system.  It's much easier to wrangle than a huge .screenrc file, initscripts, or systemd service files.  If you want to use this file, install supervisord on the system, ideally from the default package repository (it's usually called **supervisor**).  Enable and start the supervisord service per your distribution's instructions.  Copy the **web_search_bot.conf.supervisord** file as **web_search_bot.conf** into your system's supervisord supplementary configuration file directory; on Raspbian this is */etc/supervisor/conf.d*.  Edit the file so that paths in the *command* and *directory* directives reflect where you checked out the source code.  Also set the *user* directive to the username that'll be running this bot (probably yourself).  For example, the */etc/supervisor/conf.d/web_search_bot.conf* file on my test machine looks like this:
+
+```[program:websearchbot]
+command=/home/pi/exocortex-halo/web_search_bot/run.sh
+directory=/home/pi/exocortex-halo/web_search_bot
+startsecs=30
+user=pi
+redirect_stderr=true
+process_name=websearchbot
+startretries=0
+```
+
+Then tell supervisord to look for new configuration directives and automatically start anything it finds: **sudo supervisorctl update**
+
+supervisord will read the new config file and start Web Search Bot for you.
