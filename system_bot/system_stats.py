@@ -10,6 +10,8 @@
 
 # License: GPLv3
 
+# v3.2 - Changed "disk free" to "disk used," so it's more like the output of.
+#           `df`.
 # v3.1 - Added function to get the local IP address of the host.
 # v3.0 - Added real statistics support.
 # v2.2 - Added function to get public IP address of host.
@@ -165,33 +167,24 @@ def check_cpu_idle_time(cpu_idle_time_counter, time_between_alerts,
 # disk_usage(): Takes no arguments.  Returns a hash table containing the disk
 #   device name as the key and percentage used as the value.
 def disk_usage():
-    disk_free = {}
+    disk_used = {}
     disk_partitions = None
     disk_device = None
     max = 0.0
-    free = 0.0
+    used = 0.0
 
     # Prime the hash with the names of the mounted disk partitions.
     disk_partitions = psutil.disk_partitions()
     for i in disk_partitions:
-        disk_free[i.mountpoint] = ""
+        disk_used[i.mountpoint] = ""
 
     # Calculate the maximum and free bytes of each disk device.
-    for i in disk_free.keys():
-        disk_device = os.statvfs(i)
+    for i in disk_used.keys():
+        disk_used[i] = psutil.disk_usage(i).percent
 
-        # blocks * bytes per block
-        max = float(disk_device.f_blocks * disk_device.f_bsize)
+    return disk_used
 
-        # blocks unused * bytes per block
-        free = float(disk_device.f_bavail * disk_device.f_bsize)
-
-        # Calculate bytes free as a percentage.
-        disk_free[i] = (free / max) * 100
-
-    return disk_free
-
-# check_disk_usage(): Pull the amount of free storage for each disk device on
+# check_disk_usage(): Pull the amount of used storage for each disk device on
 #   the system and send the bot's owner an alert if one of the disks gets too
 #   full.  Takes as arguments the values of disk_usage_counter,
 #   time_between_alerts, and status polling.  Returns an updated value for
@@ -203,8 +196,8 @@ def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling):
     # Check the amount of space free on each disk device.  For each disk that's
     # running low on space construct a line of the message.
     for disk in disk_space_free.keys():
-        if disk_space_free[disk] < 20.0:
-            message = message + "WARNING: Disk device " + disk + " has " + str(disk_space_free[disk]) + "% of its capacity left.\n"
+        if disk_space_free[disk] > 80.0:
+            message = message + "WARNING: Disk device " + disk + " has " + str(100.0 - disk_space_free[disk]) + "% of its capacity left.\n"
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, sent the bot's owner

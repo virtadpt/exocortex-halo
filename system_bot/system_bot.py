@@ -11,6 +11,8 @@
 
 # License: GPLv3
 
+# v3.2 - Changed "disk free" to "disk used," so that it's more like the output
+#           of `df`.
 # v3.1 - Added the ability to get the local IP of the host (not the public IP).
 # v3.0 - Added real statistics support.  Parameterized stuff to eliminate some
 #        magick numbers.
@@ -30,6 +32,7 @@
 #   normal, automatically flip the "alert acknowledged" flag back.
 # - Make the delay in between warning messages (which is currently polling_time
 #   x20) configurable in the config file.
+# - Consider adding lm_sensors support.
 
 # Load modules.
 import argparse
@@ -392,9 +395,9 @@ while True:
 
             if command == "disk":
                 info = system_stats.disk_usage()
-                message = "The system has the following amounts of disk space free:\n"
+                message = "System disk space usage:\n"
                 for key in info.keys():
-                    message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "%\n"
+                    message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "% in use.\n"
                 send_message_to_user(message)
 
             if command == "memory":
