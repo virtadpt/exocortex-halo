@@ -1,0 +1,8 @@
+[program:exocortex_sip_client]
+command = /home/username/exocortex-halo/exocortex_sip_client/exocortex_web_to_speech.py
+process_name = exocortex_sip_client
+directory = /home/username/exocortex-halo/exocortex_sip_client
+autostart = true
+startsecs = 30
+user = username
+redirect_stderr = true
