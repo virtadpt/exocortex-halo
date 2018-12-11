@@ -13,6 +13,11 @@
 # as this happens.
 source env/bin/activate
 
+# Grab the first command line argument (which should be a number) and sleep
+# that many seconds.  This is totally a yucky hack.
+sleep $1
+shift
+
 # Call the bot with the remaining command line args.
 python ./system_bot.py $@
 
