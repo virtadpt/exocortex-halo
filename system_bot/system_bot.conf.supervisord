@@ -5,4 +5,3 @@ startsecs=30
 user=username
 redirect_stderr=true
 process_name=systembot
-startretries=0
