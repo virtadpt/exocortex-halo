@@ -10,6 +10,11 @@
 
 # License: GPLv3
 
+# v3.3 - Added a Centigrade-to-Fahrenheit utility function.
+#         - Added a function that periodically checks the current temperature
+#            of every sensor on the system and sends an alert to the user if
+#            the temperature reaches what the driver considers a dangerous or
+#            critical point.
 # v3.2 - Changed "disk free" to "disk used," so it's more like the output of.
 #           `df`.
 # v3.1 - Added function to get the local IP address of the host.
@@ -21,6 +26,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
+# - Optimize the temperature monitoring loop for the general case.
 
 # Load modules.
 import logging
@@ -39,6 +45,10 @@ from datetime import timedelta
 one_minute_average = []
 five_minute_average = []
 fifteen_minute_average = []
+
+# Running lists of device temperatures in case the drivers don't have a sense
+# of high or critical temperatures.
+device_temperatures = {}
 
 # Functions.
 # sysload(): Function that takes a snapshot of the current system load
@@ -298,7 +308,7 @@ def local_ip_address():
     # empty hash, return None.
     del nics["lo"]
     if not nics:
-        logging.debug("")
+        logging.debug("No network interfaces found.  That's weird.")
         return None
 
     # Search the hash for the primary NIC.
@@ -370,6 +380,153 @@ def network_traffic():
         logging.debug("Traffic volume to date for " + i + ": " + str(stats[i]))
 
     return stats
+
+# centigrade_to_fahrenheit: Function that takes a floating point value
+#   representing a temperature in degrees Celsius, and returns a floating
+#   point value representing the temperature in degrees Fahrenheit.
+def centigrade_to_fahrenheit(celsius):
+    logging.debug("Entered system_stats.centigrade_to_fahrenheit().")
+    logging.debug("Temperature in Centigrade: " + str(celsius))
+    fahrenheit = 0.0
+    fahrenheit = celsius * 9.0
+    fahrenheit = celsius / 5.0
+    fahrenheit = celsius + 32.0
+    logging.debug("Temperature in Fahrenheit: " + str(fahrenheit))
+    return fahrenheit
+
+# get_hardware_temperatures: Function that polls the temperature monitoring
+#   sensors available in the system.  Takes no arguments.  Returns a hash table
+#   containing the data.  Returns None if there are no sensors (i.e., this is a
+#   virtual machine).
+def get_hardware_temperatures():
+    return psutil.sensors_temperatures()
+
+# check_hardware_temperatures: Function that analyzes the values of the
+#   hardware temperatures and alerts the user if one of them has either reached
+#   a high or critical threshold.  Takes six arguments, the current values of
+#   temperature_counter, time_between_alerts, the value of status_polling, the
+#   number of standard deviations to calculate, and the minimum and maximum
+#   temperature stat queue lengths.  Returns an updated value for
+#   temperature_counter.
+def check_hardware_temperatures(temperature_counter, time_between_alerts,
+    status_polling, std_devs, sys_avg_min_len, sys_avg_max_len):
+    logging.debug("Entered function system_stats.check_hardware_temperatures().")
+
+    message = ""
+    label = ""
+    temperatures = get_hardware_temperatures()
+    fahrenheit = 0.0
+    no_critical = False
+    no_high = False
+    std_dev = 0.0
+
+    # If we're running in a virtual machine, we'll get an empty hash table.
+    if not temperatures:
+        logging.debug("Running on a virtual machine.  Bouncing.")
+        return 0
+
+    # If we've made it this far, we're probably running on real hardware with
+    # at least one hardware sensor.
+    for temp_sensor in temperatures.keys():
+        label = temp_sensor
+
+        # Temperature readings take the form of lists of tuples, where the
+        # tuples contain the actual data.
+        for i in temperatures[temp_sensor]:
+            no_high = False
+            no_critical = False
+
+            # Some sensors have internal names, some don't.  If this sensor
+            # has one, replace the label with it.
+            if i[0]:
+                label = i[0]
+            logging.debug("Name of sensor: " + label)
+
+            # Schema of tuples:
+            #   0: Internal label (can be blank)
+            #   1: Current temperature (in Centigrade)
+            #   2: Temperature the driver considers too high (can be None)
+            #   3: Temperature the driver considers dangerously high (can be
+            #       None)
+            # Check to see if the critical point is set and has been reached.
+            if i[3]:
+                if i[1] >= i[3]:
+                    fahrenheit = centigrade_to_fahrenheit(i[1])
+                    message = "WARNING: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit).  This is alarmingly high!"
+                    send_message_to_user(message)
+                    continue
+            else:
+                no_critical = True
+                logging.debug("Sensor " + label + " does not have a critical point defined.")
+
+            # Check to see if the too high point is set and has been reached.
+            # We only want one of these.
+            if i[2]:
+                if i[1] >= i[2]:
+                    fahrenheit = centigrade_to_fahrenheit(i[1])
+                    message = "DANGER: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit).  Critical temperature reached!  Investigate immediately!"
+                    send_message_to_user(message)
+                    continue
+            else:
+                no_high = True
+                logging.debug("Sensor " + label + " does not have a high point defined.")
+
+            # If there are no high or critical points defined by the driver, we
+            # have to fall back on a statistical analysis of temperature
+            # history.
+            if no_high or no_critical:
+                std_dev = 0.0
+
+                # If a list of device temperatures for this device doesn't
+                # exist, add it to the hash.
+                if label not in device_temperatures.keys():
+                    logging.debug("Creating temperature history for device " + label + ".")
+                    device_temperatures[label] = []
+
+                # Make sure the temperature makes sense.
+                if i[1] <= 0.0:
+                    logging.debug("Temperature for device " + label + " is negative.  This makes no sense.  Skipping.")
+                    continue
+
+                # Store the current temperature in Centigrade.
+                device_temperatures[label].append(i[1])
+                logging.debug("Length of device_temperatures[" + label + "]: " + str(len(device_temperatures[label])))
+
+                # Pop the oldest values out of the list to keep it at a
+                # manageable size.
+                if len(device_temperatures[label]) >= int(sys_avg_max_len):
+                    logging.debug("Removing oldest temperature for device_temperatures[" + label + "]."  )
+                    device_temperatures[label].pop(0)
+
+                # To calculate the standard deviation of a group of values,
+                # there need to be several available.  Make sure this is the
+                # case.
+                if len(device_temperatures[label]) < int(sys_avg_min_len):
+                    logging.debug("Need more than " + str(sys_avg_min_len) + " temperature samples.  Waiting.")
+                    continue
+
+                # Calculate the standard deviations of the three system loads
+                # and send an alert if there's been a spike.
+                std_dev = statistics.stdev(device_temperatures[label])
+                logging.debug("Standard deviation of temperature of sensor " + label + ": " + str(std_dev))
+                if std_dev > float(std_devs):
+                    message = message + "WARNING: The temperature of sensor " + label + " has spiked to " + str(i[1]) + " degrees Centigrade (" + centigrade_to_fahrenheit(i[1]) + " degrees Fahrenheit)!  Investigate immediately!"
+            # Bottom of cycle through sensors on this device.
+        # Bottom of cycle through temperature sensors on the system.
+
+    # If a message has been sent in the recent past, check to see if it's been
+    # longer than the last time a message was sent.  If so, reset the counter.
+    if message:
+        logging.debug("A temperature message has been sent to the user.")
+        if temperature_counter >= time_between_alerts:
+            logging.debug("Resetting time between alerts counter to 0.")
+            return 0
+
+        # If enough time between alerts hasn't passed yet, just increment the
+        # counter.
+        temperature_counter = temperature_counter + status_polling
+        logging.debug("Incrementing time between alerts counter.")
+    return temperature_counter
 
 if "__name__" == "__main__":
     pass

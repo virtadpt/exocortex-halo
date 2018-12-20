@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v2.4 - Added a set of commands to query the current system temperature.
 # v2.3 - Added function to request local IP address of host.
 #         - Split off IP command from public address so it can be applied to
 #           the local IP address command.
@@ -88,6 +89,19 @@ traffic_count_command = traffic_command + count_command
 network_traffic_stats_command = pp.Or([network_traffic_command,
     traffic_volume_command, network_stats_command, traffic_stats_command,
     traffic_count_command])
+
+system_command = pp.CaselessLiteral("system")
+core_command = pp.CaselessLiteral("core")
+temperature_command = pp.CaselessLiteral("temperature")
+temp_command = pp.CaselessLiteral("temp")
+overheating_command = pp.CaselessLiteral("overheating")
+system_temperature_command = system_command + temperature_command
+system_temp_command = system_command + temp_command
+core_temperature_command = core_command + temperature_command
+core_temp_command = core_command + temp_command
+system_temperature_commands = pp.Or([system_temperature_command,
+    system_temp_command, temperature_command, temp_command,
+    overheating_command, core_temperature_command, core_temp_command])
 
 # parse_help(): Function that matches the word "help" all by itself in an input
 #   string.  Returns the string "help" on a match and None if not.
@@ -186,12 +200,21 @@ def parse_network_traffic(command):
     except:
         return None
 
+# parse_system_temperature(): Function that matches the strings "system
+#   temperature", "system temp", "temperature", "temp", "overheating".
+#   Returns the string "temperature" on a match and None if not.
+def parse_system_temperature(command):
+    try:
+        parsed_command = system_temperature_commands.parseString(command)
+        return "temperature"
+    except:
+        return None
+
 # parse_command(): Function that parses commands from the message bus.
 #   Commands come as strings and are run through PyParsing to figure out what
 #   they are.  A single-word string is returned as a match or None on no match.
 #   Conditionals are short-circuited to speed up execution.
 def parse_command(command):
-
     parsed_command = None
 
     # Clean up the incoming command.
@@ -239,7 +262,7 @@ def parse_command(command):
     if parsed_command == "uptime":
         return parsed_command
 
-    # IP address?
+    # Public  IP address?
     parsed_command = parse_ip_address(command)
     if parsed_command == "ip":
         return parsed_command
@@ -252,6 +275,11 @@ def parse_command(command):
     # Network traffic stats?
     parsed_command = parse_network_traffic(command)
     if parsed_command == "traffic":
+        return parsed_command
+
+    # System temperature?
+    parsed_command = parse_system_temperature(command)
+    if parsed_command == "temperature":
         return parsed_command
 
     # Fall-through: Nothing matched.

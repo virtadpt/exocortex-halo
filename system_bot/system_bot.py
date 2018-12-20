@@ -11,6 +11,9 @@
 
 # License: GPLv3
 
+# v3.3 - Added a periodic check for all of the temperature sensors the psutil
+#           module knows about.
+#         - Added a command to query the current system temperature.
 # v3.2 - Changed "disk free" to "disk used," so that it's more like the output
 #           of `df`.
 # v3.1 - Added the ability to get the local IP of the host (not the public IP).
@@ -32,7 +35,6 @@
 #   normal, automatically flip the "alert acknowledged" flag back.
 # - Make the delay in between warning messages (which is currently polling_time
 #   x20) configurable in the config file.
-# - Consider adding lm_sensors support.
 
 # Load modules.
 import argparse
@@ -115,6 +117,7 @@ cpu_idle_time_counter = 0
 disk_usage_counter = 0
 memory_utilization_counter = 0
 memory_free_counter = 0
+temperature_counter = 0
 
 # List of dead processes on the system.  If it's ever populated something died
 # and needs attended to.
@@ -180,6 +183,7 @@ def online_help():
     IP address/public IP/IP addr/public IP address/addr - Current publically routable IP address of this host.
     IP/local IP/ local addr - Current (internal) IP of this host.
     network traffic/traffic volume/network stats/traffic stats/traffic count - Bytes sent and received per network interface.
+    System temperature/system temp/temperature/temp/overheating/core temperature/core temp - Hardware temperature in Centigrade and Fahrenheit, if temperature sensors are enabled.
 
     All commands are case-insensitive.
     """
@@ -277,6 +281,10 @@ if config.has_section("processes to monitor"):
         if "process" in i:
             processes_to_monitor.append(config.get("processes to monitor", i).split(','))
 
+# Test to see if there are temperature sensors that we can poll.  If so, set up
+# queues to hold the stats for the same kind of statistical analysis as we do
+# for the system load.
+
 # In debugging mode, dump the bot'd configuration.
 logger.info("Everything is configured.")
 logger.debug("Values of configuration variables as of right now:")
@@ -315,6 +323,9 @@ while True:
         time_between_alerts, status_polling)
     memory_free_counter = system_stats.check_memory_utilization(
         memory_free_counter, time_between_alerts, status_polling)
+    temperature_counter = system_stats.check_hardware_temperatures(
+        temperature_counter, time_between_alerts, status_polling,
+        standard_deviations, minimum_length, maximum_length)
 
     # Increment loop_counter by status_polling.  Seems obvious, but this makes
     # it easy to grep for.
@@ -383,16 +394,19 @@ while True:
                 message = "The current system load is " + str(load["one_minute"]) + " on the one minute average and " + str(load["five_minute"]) + " on the five minute average."
                 send_message_to_user(message)
 
+            # Basic system information.
             if command == "info":
                 info = system_stats.uname()
                 message = "System " + info["hostname"] + " in running kernel version " + info["version"] + " compiled by " + info["buildinfo"] + " on the " + info["arch"] + " processor architecture."
                 send_message_to_user(message)
 
+            # Number of CPUs on the system.
             if command == "cpus":
                 info = system_stats.cpus()
                 message = "The system has " + str(info) + " CPUs available to it."
                 send_message_to_user(message)
 
+            # Disk usage.
             if command == "disk":
                 info = system_stats.disk_usage()
                 message = "System disk space usage:\n"
@@ -400,26 +414,31 @@ while True:
                     message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "% in use.\n"
                 send_message_to_user(message)
 
+            # Memory utilization.
             if command == "memory":
                 info = system_stats.memory_utilization()
                 message = str(info) + "% of the system memory is free."
                 send_message_to_user(message)
 
+            # System uptime.
             if command == "uptime":
                 info = system_stats.uptime()
                 message = "The system has been online for " + info + "."
                 send_message_to_user(message)
 
+            # Public IP address.
             if command == "ip":
                 info = system_stats.current_ip_address(ip_addr_web_service)
                 message = "The system's current public IP address is " + info + "."
                 send_message_to_user(message)
 
+            # Local IP address.
             if command == "local ip":
                 info = system_stats.local_ip_address()
                 message = "The system's local IP address is " + info + "."
                 send_message_to_user(message)
 
+            # Network traffic stats per interface.
             if command == "traffic":
                 info = system_stats.network_traffic()
                 message = ""
@@ -433,6 +452,29 @@ while True:
                         message = message + "\n"
                 send_message_to_user(message)
 
+            # System temperature.
+            if command == "temperature":
+                info = system_stats.get_hardware_temperatures()
+                message = ""
+                if not info:
+                    message = "This system does not appear to have functioning temperature sensors.  This is common on virtual machines."
+                else:
+                    for sensor in info.keys():
+                        label = sensor
+                        for device in info[sensor]:
+                            # If the sensor has its own name, use that instead.
+                            if device[0]:
+                                label = device[0]
+
+                            # Skip buggy sensors that return negative
+                            # temperatures.
+                            if device[1] <= 0.0:
+                                continue
+
+                            message = message + "Temperature sensor " + label + ": " + str(device[1]) + " degrees Centigrade (" + str(system_stats.centigrade_to_fahrenheit(device[1])) + " degrees Fahrenheit)\n"
+                send_message_to_user(message)
+
+            # Fall-through.
             if command == "unknown":
                 message = "I didn't recognize that command."
                 send_message_to_user(message)
