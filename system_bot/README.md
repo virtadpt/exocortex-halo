@@ -18,7 +18,7 @@ I've included a `run.sh` script which will source the virtualenv and run system_
 Right now, these are the system stats Systembot keeps tabs on, and how to access them:
 
 * Get the bot's online help.
-  * help
+  * <bot's name>, help
 * Current system load:
   * <bot's name>, load.
   * <bot's name>, sysload.
@@ -30,7 +30,7 @@ Right now, these are the system stats Systembot keeps tabs on, and how to access
 * Number of CPUs on the system:
   * <bot's name>, cpus.
   * <bot's name>, CPUs.
-* Amount of free disk space per device:
+* Amount of used disk space per device:
   * <bot's name>, disk.
   * <bot's name>, disk usage.
   * <bot's name>, storage.
@@ -57,10 +57,20 @@ Right now, these are the system stats Systembot keeps tabs on, and how to access
   * <bot's name>, network stats.
   * <bot's name>, traffic stats.
   * <bot's name>, traffic count.
+* System hardware temperature:
+  * <bot's name>, system temperature.
+  * <bot's name>, system temp.
+  * <bot's name>, temperature.
+  * <bot's name>, temp.
+  * <bot's name>, overheating.
+  * <bot's name>, core temperature.
+  * <bot's name>, core temp.
 
 All of these commands (save the bot's name) are case insensitive.
 
 Systembot automatically tracks the current system load, CPU idle time (per core), amount of free disk space remaining, and remaining unused RAM.  If any of these scores hit 20% left or less, an alert will automatically be sent to the bot's owner.  I have to be honest, this functionality isn't very good yet, it's unreliable and really needs a proper implementation but I haven't had time to come up with something that doesn't suck.  It's on my to-do list.
+
+Systembot also automatically tracks temperatures reported by the hardware, if sensors are available.  If the sensors are configured to have a notion of high or critical temperatures, a notification will be automatically sent to the user.  If the sensors do not, Systembot will automatically analyze device temperature trends and send an alert if something changes more than the number of [standard deviations](https://www.mathsisfun.com/data/standard-deviation.html) specified in the configuration file (default: 2 sigma).  If Systembot is running on a virtual machine (which typically don't expose hardware sensors) or the bot isn't able to access those device nodes for some reason, it will silently skip them.
 
 This bot is also capable of optionally monitoring certain processes running on the system, specified in the configuration file.  If one or more of the processes is not found in the server's process table, it'll execute a command to restart it.  For example:
 
@@ -71,10 +81,10 @@ This breaks down to "If the command `test_bot.py --loglevel` is not found in the
 Included with the bot is a sample [supervisord](http://supervisord.org/) configuration file which will automatically start and manage the bot for you if you happen to be using it on your system.  It's much easier to wrangle than a huge .screenrc file, initscripts, or systemd service files.  If you want to use this file, install supervisord on the system, ideally from the default package repository (it's usually called **supervisor**).  Enable and start the supervisord service per your distribution's instructions.  Copy the **system_bot.conf.supervisord** file as **system_bot.conf** into your system's supervisord supplementary configuration file directory; on Raspbian this is */etc/supervisor/conf.d*.  Edit the file so that paths in the *command* and *directory* directives reflect where you checked out the source code.  Also set the *user* directive to the username that'll be running this bot (probably yourself).  For example, the */etc/supervisor/conf.d/systembot.conf* file on my test machine looks like this:
 
 ```[program:systembot]
-command=/home/pi/exocortex-halo/system_bot/run.sh
-directory=/home/pi/exocortex-halo/system_bot
+command=/home/username/exocortex-halo/system_bot/run.sh
+directory=/home/username/exocortex-halo/system_bot
 startsecs=30
-user=pi
+user=username
 redirect_stderr=true
 process_name=systembot
 startretries=0

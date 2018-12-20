@@ -177,7 +177,7 @@ def online_help():
     load/sysload/system load - Get current system load.
     uname/info/system info - Get system info.
     cpus/CPUs - Get number of CPUs in the system.
-    disk/disk usage/storage - Enumerate disk devices on the system and amount of storage free.
+    disk/disk usage/storage - Enumerate disk devices on the system and amount of storage used.
     memory/free memory/RAM/free ram - Amount of free memory.
     uptime - How long the system has been online, in days, hours, minutes, and seconds.
     IP address/public IP/IP addr/public IP address/addr - Current publically routable IP address of this host.
