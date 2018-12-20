@@ -1,8 +1,8 @@
 [program:websearchbot]
 command=/home/username/exocortex-halo/web_search_bot/run.sh
 directory=/home/username/exocortex-halo/web_search_bot
-startsecs=30
 user=username
 redirect_stderr=true
 process_name=websearchbot
 startretries=0
+priority = 255

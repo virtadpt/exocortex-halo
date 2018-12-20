@@ -1,7 +1,7 @@
 [program:systembot]
 command=/home/username/exocortex-halo/system_bot/run.sh
 directory=/home/username/exocortex-halo/system_bot
-startsecs=30
 user=username
 redirect_stderr=true
 process_name=systembot
+priority = 255
