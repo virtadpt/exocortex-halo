@@ -40,7 +40,7 @@ from fuzzywuzzy import fuzz
 # - Trigger playback of an existing playlist.
 #   Use cached list of playlists?
 #   Playlist.GetItems()
-# - See if Kodi is online.  Maybe do this periodically?
+# * See if Kodi is online.  Maybe do this periodically?
 #   JSONRPC.Ping()
 # - Ask what version of the JSON-RPC API is being used on the Kodi box.
 #   JSONRPC.Version()

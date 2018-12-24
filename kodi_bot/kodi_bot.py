@@ -57,7 +57,9 @@ import parser
 
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
-headers = {'Content-Type': 'application/json'}
+headers = {
+    "Content-Type": "application/json"
+    }
 
 # Global variables.
 
@@ -711,12 +713,13 @@ while True:
                 reply = "It doesn't look like I found any matching filenames in your media library.  You either don't have it, or your filenames need cleaning up."
             if len(search_result) == 1:
                 reply = "I found only one matching filename."
+                media_to_play = search_result
             if len(search_result) > 1:
                 reply = "I found %d possible matching filenames in your video library." % len(search_result)
+                media_to_play = search_result
 
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.
-            media_to_play = search_result
             send_message_to_user(reply)
             continue
 
@@ -726,7 +729,7 @@ while True:
             if kodi_library.pause_media(kodi_url, kodi_auth, headers):
                 reply = "Media paused.  Resume playback by telling me to unpause."
             else:
-                reply = "No media to pause."
+                reply = "Nothing is playing right now."
             send_message_to_user(reply)
             continue
 
@@ -736,7 +739,7 @@ while True:
             if kodi_library.unpause_media(kodi_url, kodi_auth, headers):
                 reply = "Media unpaused."
             else:
-                reply = "No media to unpause."
+                reply = "Nothing is playing right now."
             send_message_to_user(reply)
             continue
 
@@ -746,7 +749,28 @@ while True:
             if kodi_library.stop_media(kodi_url, kodi_auth, headers):
                 reply = "Media stopped."
             else:
-                reply = "No media to stop."
+                reply = "Nothing is playing right now."
+            send_message_to_user(reply)
+            continue
+
+        # The user wants to ping Kodi.
+        if parsed_command["match"] == "commands_ping":
+            logging.debug("Matched commands_ping.")
+            if kodi_library.ping_kodi(kodi_url, kodi_auth, headers):
+                reply = "Kodi appears to be running and responsive."
+            else:
+                reply = "Kodi does not seem to be responding."
+            send_message_to_user(reply)
+            continue
+
+        # The user wants to know what version of the API Kodi is running.
+        if parsed_command["match"] == "commands_version":
+            logging.debug("Matched commands_version.")
+            tmp = kodi_library.get_api_version(kodi_url, kodi_auth, headers)
+            if tmp:
+                reply = "Kodi is running " + tmp + " of the JSON RPC API."
+            else:
+                reply = "I can't tell what version of the API Kodi is using."
             send_message_to_user(reply)
             continue
 

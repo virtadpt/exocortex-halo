@@ -12,11 +12,13 @@
 # License: GPLv3
 
 # v2.1 - Added functions to pause, unpause, and stop whatever's playing.
+#         - Added ability to ping the Kodi JSON RPC server.
 # v2.0 - Removed kodipydent, replaced with raw HTTP requests using Requests.
 # v1.0 - Initial release.
 
 # TO-DO:
-# -
+# - Refactor all of the "make HTTP requests and check the result" code into a
+#   separate helper function.
 
 # Load modules.
 import json
@@ -574,11 +576,10 @@ def is_currently_playing(kodi_url, kodi_auth, headers):
     request = None
     result = {}
 
-    # Just in case, remove the "params" sub-hash if it exists.
-    if "params" in payload.keys():
-        del(payload["params"])
-
-    # Set the JSON RPC method to use.
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
     payload["method"] = "Player.GetActivePlayers"
 
     # Find out what, if anything is playing right now.
@@ -587,11 +588,11 @@ def is_currently_playing(kodi_url, kodi_auth, headers):
             data=json.dumps(payload))
         result = json.loads(request.text)
         result = result["result"]
-        logging.debug("Response from Kodi: %s" % str(request.text))
+        logging.debug("Response from Kodi: %s" % str(result))
     except:
         logging.warn("Failed to get response from Kodi!")
         return None
-    return result["result"]
+    return result
 
 # pause_media: If something is playing, pause it.  Takes three arguments, the
 #   Kodi JSON RPC URL, an HTTP Basic Auth object, and a hash of headers.
@@ -604,20 +605,17 @@ def pause_media(kodi_url, kodi_auth, headers):
     request = None
     result = []
 
-    # Just in case, remove the "params" sub-hash if it exists.
-    if "params" in payload.keys():
-        del(payload["params"])
-
     # Find out if anything is playing.
     is_playing =is_currently_playing(kodi_url, kodi_auth, headers)
     if not is_playing:
         logging.debug("Nothing is playing at this time.")
         return False
 
-    # Set the JSON RPC method to use.
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
     payload["method"] = "Player.PlayPause"
-
-    # Set up the command parameters in the payload.
     payload["params"] = {}
     payload["params"]["playerid"] = is_playing["playerid"]
     payload["params"]["play"] = False
@@ -628,7 +626,7 @@ def pause_media(kodi_url, kodi_auth, headers):
             data=json.dumps(payload))
         result = json.loads(request.text)
         result = result["result"]
-        logging.debug("Response from Kodi: %s" % str(request.text))
+        logging.debug("Response from Kodi: %s" % str(result))
     except:
         logging.warn("Failed to get response from Kodi!")
         return False
@@ -650,20 +648,17 @@ def unpause_media(kodi_url, kodi_auth, headers):
     request = None
     result = []
 
-    # Just in case, remove the "params" sub-hash if it exists.
-    if "params" in payload.keys():
-        del(payload["params"])
-
     # Find out if anything is playing.
     is_playing =is_currently_playing(kodi_url, kodi_auth, headers)
     if not is_playing:
         logging.debug("Nothing is playing at this time.")
         return False
 
-    # Set the JSON RPC method to use.
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
     payload["method"] = "Player.PlayPause"
-
-    # Set up the command parameters in the payload.
     payload["params"] = {}
     payload["params"]["playerid"] = is_playing["playerid"]
     payload["params"]["play"] = True
@@ -674,7 +669,7 @@ def unpause_media(kodi_url, kodi_auth, headers):
             data=json.dumps(payload))
         result = json.loads(request.text)
         result = result["result"]
-        logging.debug("Response from Kodi: %s" % str(request.text))
+        logging.debug("Response from Kodi: %s" % str(result))
     except:
         logging.warn("Failed to get response from Kodi!")
         return False
@@ -695,39 +690,100 @@ def stop_media(kodi_url, kodi_auth, headers):
     request = None
     result = {}
 
-    # Just in case, remove the "params" sub-hash if it exists.
-    if "params" in payload.keys():
-        del(payload["params"])
-
     # Find out if anything is playing.
-    is_playing =is_currently_playing(kodi_url, kodi_auth, headers)
+    is_playing = is_currently_playing(kodi_url, kodi_auth, headers)
     if not is_playing:
         logging.debug("Nothing is playing at this time.")
         return False
 
-    # Set the JSON RPC method to use.
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
     payload["method"] = "Player.Stop"
-
-    # Set up the command parameters in the payload.
     payload["params"] = {}
     payload["params"]["playerid"] = is_playing["playerid"]
 
     # If something is playing, stop` it.
-        try:
-            request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
-                data=json.dumps(payload))
-            result = json.loads(request.text)
-            result = result["result"]
-            logging.debug("Response from Kodi: %s" % str(request.text))
-        except:
-            logging.warn("Failed to get response from Kodi!")
-            return False
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]
+        logging.debug("Response from Kodi: %s" % str(result))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        result = None
 
     # Parse what comes back from Kodi.
     if result == "OK":
         return True
     else:
         return False
+
+# ping_kodi: Function that uses the JSON RPC API to ping Kodi.  Takes three
+#   arguments, the Kodi JSON RPC URL, an HTTP Basic Auth object, and a hash
+#   of headers.  Returns True if it can, False if it can't.
+def ping_kodi(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library.ping_kodi().")
+
+    request = None
+    result = {}
+
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
+    payload["method"] = "JSONRPC.Ping"
+
+    # Ping the JSON RPC server.
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]
+        logging.debug("Response from Kodi: %s" % str(result))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        result = None
+
+    # Parse the response from the server.
+    if result == "pong":
+        logging.debug("Successfully pinged Kodi.")
+        return True
+    else:
+        return False
+
+# get_api_version: Function that uses the JSON RPC API to ask Kodi what
+#   version of the JSON RPC API it's using.  Takes three arguments, the
+#   Kodi JSON RPC URL, an HTTP Basic Auth object, and a hash of headers.
+#   Returns "version x.y.z" if it can, None if it can't.
+def get_api_version(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library.get_api_version().")
+
+    request = None
+    result = {}
+
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
+    payload["method"] = "JSONRPC.Version"
+
+    # Ask the JSON RPC server what it thinks its version is.
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]["version"]
+        logging.debug("Response from Kodi: %s" % str(result))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        result = None
+
+    # Generate the response from the server.
+    result = "version " + str(result["major"]) + "." + str(result["minor"]) + "." + str(result["patch"])
+    return result
 
 if "__name__" == "__main__":
     pass
