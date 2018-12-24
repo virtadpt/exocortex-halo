@@ -1,0 +1,6 @@
+stop
+stop playback
+halt
+that's enough
+quit
+end

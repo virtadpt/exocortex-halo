@@ -2,18 +2,16 @@
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
-# media_library.py - Kodi Bot module which does the heavy lifting of acquiring,
+# kodi_library.py - Kodi Bot module which does the heavy lifting of acquiring,
 #   organizing, and manipulating a media library from Kodi.  Kodi doesn't offer
 #   any of this functionality so we have to do it ourselves.
-#
-#   This is part of the Exocortex Halo project
-#   (https://github.com/virtadpt/exocortex-halo/).
 
 # By: The Doctor <drwho at virtadpt dot net>
 #       0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
 
 # License: GPLv3
 
+# v2.1 - Added functions to pause, unpause, and stop whatever's playing.
 # v2.0 - Removed kodipydent, replaced with raw HTTP requests using Requests.
 # v1.0 - Initial release.
 
@@ -27,6 +25,13 @@ import os
 import requests
 
 from fuzzywuzzy import fuzz
+
+# Global variables.
+# JSON RPC payload template to send to the server.
+payload = {}
+payload["jsonrpc"] = "2.0"
+payload["method"] = ""
+payload["id"] = 1
 
 # Functions.
 
@@ -64,8 +69,10 @@ def get_media_sources(kodi_url, kodi_auth, headers):
             sources["video"].append(i["file"])
 
     # Build a list of music sources on the Kodi box.
-    #tmp = kodi.Files.GetSources("music")
     command["params"]["media"] = "music"
+    request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+        data=json.dumps(command))
+    tmp = request.json()
     if "sources" not in tmp["result"]:
         logging.warn("'music' is not a registered media source.")
     else:
@@ -321,7 +328,6 @@ def get_tv_shows(kodi_url, kodi_auth, headers):
         tmp["tvid"] = i["tvid"]
         tmp["label"] = i["label"]
         list_of_tv_shows.append(tmp)
-    print list_of_tv_shows
     return list_of_tv_shows
 
 # get_audio_genres(): Gets the directory of genres of audio media from the
@@ -353,7 +359,6 @@ def get_audio_genres(kodi_url, kodi_auth, headers):
         tmp["genreid"] = i["genreid"]
         tmp["label"] = i["label"]
         list_of_genres.append(tmp)
-    print list_of_genres
     return list_of_genres
 
 # get_video_genres(): Gets the directory of genres of video media from the
@@ -416,10 +421,10 @@ def search_media_library_albums(search_term, media_library, confidence):
             result["label"] = i["label"]
             result["confidence"] = match
 
-            # Short-circuit the search if we find a perfect match.
-            if result["confidence"] == 100:
-                logging.debug("Hot dog - perfect match!")
-                break
+        # Short-circuit the search if we find a perfect match.
+        if result["confidence"] == 100:
+            logging.debug("Hot dog - perfect match!")
+            break
 
     logging.debug("Value of result: %s" % str(result))
     return result
@@ -428,7 +433,7 @@ def search_media_library_albums(search_term, media_library, confidence):
 #   section of the media library, and a minimum match confidence and scans for
 #   matches.  Returns a hash table containing the media's internal entry.  This
 #   is a separate function because the "artists" part of the media library
-#   doesn't use "label" as a key, so there's no good generic way of doing it
+#   doesn't use "label" as a key, so there's no good way of doing it
 #   generically.
 def search_media_library_artists(search_term, media_library, confidence):
     logging.debug("Entered kodi_library.search_media_library_artists.")
@@ -446,10 +451,10 @@ def search_media_library_artists(search_term, media_library, confidence):
             result["artist"] = i["artist"]
             result["confidence"] = match
 
-            # Short-circuit the search if we find a perfect match.
-            if result["confidence"] == 100:
-                logging.debug("Hot dog - perfect match!")
-                break
+        # Short-circuit the search if we find a perfect match.
+        if result["confidence"] == 100:
+            logging.debug("Hot dog - perfect match!")
+            break
 
     logging.debug("Value of result: %s" % str(result))
     return result
@@ -469,7 +474,7 @@ def search_media_library_genres(search_term, media_library, confidence):
 
     for i in media_library:
         match = fuzz.token_set_ratio(search_term.lower(), i["label"].lower())
-        if match > confidence:
+        if match >= confidence:
             logging.debug("Found a fairly decent genre match for %s: %s" % (search_term, i["label"]))
             tmp = {}
             tmp["label"] = i["label"]
@@ -555,6 +560,174 @@ def search_media_library_video(search_term, media_library, confidence):
 
     logging.debug("It looks like I got %d possible matches for the video file %s." % (len(result), search_term))
     return sorted(result)
+
+# is_currently_playing: Function that queries which media playback system
+#   is currently running, if any.  If media is currently playing or paused, you
+#   will get an affirmative response, in the form of a JSON document saying
+#   which player it is.  If no media is playing (stopped), you'll get an empty
+#   array.  Takes three arguments, the Kodi JSON RPC URL, an HTTP
+#   Basic Auth object, and a hash of headers.  Returns the output from Kodi to
+#   be parsed and used elsewhere or None if there's an error.
+def is_currently_playing(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library.is_currently_playing().")
+
+    request = None
+    result = {}
+
+    # Just in case, remove the "params" sub-hash if it exists.
+    if "params" in payload.keys():
+        del(payload["params"])
+
+    # Set the JSON RPC method to use.
+    payload["method"] = "Player.GetActivePlayers"
+
+    # Find out what, if anything is playing right now.
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]
+        logging.debug("Response from Kodi: %s" % str(request.text))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        return None
+    return result["result"]
+
+# pause_media: If something is playing, pause it.  Takes three arguments, the
+#   Kodi JSON RPC URL, an HTTP Basic Auth object, and a hash of headers.
+#   Returns False if nothing is playing.  Returns True if something was playing
+#   and is now paused.
+def pause_media(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library.pause_media().")
+
+    is_playing = None
+    request = None
+    result = []
+
+    # Just in case, remove the "params" sub-hash if it exists.
+    if "params" in payload.keys():
+        del(payload["params"])
+
+    # Find out if anything is playing.
+    is_playing =is_currently_playing(kodi_url, kodi_auth, headers)
+    if not is_playing:
+        logging.debug("Nothing is playing at this time.")
+        return False
+
+    # Set the JSON RPC method to use.
+    payload["method"] = "Player.PlayPause"
+
+    # Set up the command parameters in the payload.
+    payload["params"] = {}
+    payload["params"]["playerid"] = is_playing["playerid"]
+    payload["params"]["play"] = False
+
+    # If something is playing, toggle it.
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]
+        logging.debug("Response from Kodi: %s" % str(request.text))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        return False
+    if result["speed"] == 0:
+        logging.debug("Successfully paused Kodi player subsystem %d." % payload["params"]["playerid"])
+        return True
+
+    # This seems kind of messy, but it's a fall-through for a no-op.
+    return False
+
+# unpause_media: If something is playing, pause it.  Takes three arguments, the
+#   Kodi JSON RPC URL, an HTTP Basic Auth object, and a hash of headers.
+#   Returns False if nothing is playing.  Returns True if something was paused
+#   and is now playing.
+def unpause_media(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library.unpause_media().")
+
+    is_playing = None
+    request = None
+    result = []
+
+    # Just in case, remove the "params" sub-hash if it exists.
+    if "params" in payload.keys():
+        del(payload["params"])
+
+    # Find out if anything is playing.
+    is_playing =is_currently_playing(kodi_url, kodi_auth, headers)
+    if not is_playing:
+        logging.debug("Nothing is playing at this time.")
+        return False
+
+    # Set the JSON RPC method to use.
+    payload["method"] = "Player.PlayPause"
+
+    # Set up the command parameters in the payload.
+    payload["params"] = {}
+    payload["params"]["playerid"] = is_playing["playerid"]
+    payload["params"]["play"] = True
+
+    # If something is playing, toggle it.
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]
+        logging.debug("Response from Kodi: %s" % str(request.text))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        return False
+    if result["speed"] >= 1:
+        logging.debug("Successfully unpaused Kodi player subsystem %d." % payload["params"]["playerid"])
+        return True
+
+    # This seems kind of messy, but it's a fall-through for a no-op.
+    return False
+
+# stop_media: Stop whatever's playing right now.  Takes three arguments, the
+#   Kodi JSON RPC URL, an HTTP Basic Auth object, and a hash of headers.
+#   Returns False if nothing is playing.  Returns True if something was stopped.
+def stop_media(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library.stop_media().")
+
+    is_playing = None
+    request = None
+    result = {}
+
+    # Just in case, remove the "params" sub-hash if it exists.
+    if "params" in payload.keys():
+        del(payload["params"])
+
+    # Find out if anything is playing.
+    is_playing =is_currently_playing(kodi_url, kodi_auth, headers)
+    if not is_playing:
+        logging.debug("Nothing is playing at this time.")
+        return False
+
+    # Set the JSON RPC method to use.
+    payload["method"] = "Player.Stop"
+
+    # Set up the command parameters in the payload.
+    payload["params"] = {}
+    payload["params"]["playerid"] = is_playing["playerid"]
+
+    # If something is playing, stop` it.
+        try:
+            request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+                data=json.dumps(payload))
+            result = json.loads(request.text)
+            result = result["result"]
+            logging.debug("Response from Kodi: %s" % str(request.text))
+        except:
+            logging.warn("Failed to get response from Kodi!")
+            return False
+
+    # Parse what comes back from Kodi.
+    if result == "OK":
+        return True
+    else:
+        return False
 
 if "__name__" == "__main__":
     pass

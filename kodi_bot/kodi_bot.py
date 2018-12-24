@@ -16,6 +16,8 @@
 
 # License: GPLv3
 
+# v2.1 - Added ability to pause, unpause, and stop whatever's playing.  Added
+#   corpora and helper methods to support this.
 # v2.0 - Removed kodipydent, replaced it with direct HTTP calls to the Kodi
 #   JSON RPC API using Requests.
 # v1.0 - Initial release.
@@ -29,7 +31,7 @@
 # - Refactor the part of the do-stuff loop where the bot handles search
 #   requests.  It's going to turn into a mess soon.  Maybe I should split it out
 #   into a separate module...
-# - Consider not running commands other than requests  for help if the
+# - Consider not running commands other than requests for help if the
 #   confidence is too low.
 # - Figure out how to detect the case where the media database for one Kodi
 #   instance is being used with a different instance.
@@ -138,7 +140,7 @@ search_result = None
 media_to_play = None
 
 # Hash of the enabled media playback subsystems on this Kodi instance.
-active_players = {}
+enabled_players = {}
 
 # Full URL to a Kodi instance.
 kodi_url = ""
@@ -253,12 +255,13 @@ def build_local_media_library():
 
     return media_library
 
-# get_active_players: Function that gets from Kodi a list of usable media
+# get_enabled_players: Function that gets from Kodi a list of usable media
 #   playback modules.  Takes three arguments, a Kodi URL, an HTTP Basic Auth
-#   object, and a set of custom headers.  Returns
-def get_active_players(kodi_url, kodi_auth, headers):
+#   object, and a set of custom headers.  Returns a list of currently active
+#   media players on the Kodi server.
+def get_enabled_players(kodi_url, kodi_auth, headers):
     request = None
-    active_players = None
+    enabled_players = None
 
     # Build a command to POST to Kodi.
     command = {}
@@ -268,9 +271,9 @@ def get_active_players(kodi_url, kodi_auth, headers):
 
     request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
         data=json.dumps(command))
-    active_players = request.json()
+    enabled_players = request.json()
 
-    return active_players["result"]
+    return enabled_players["result"]
 
 # extract_search_term(): Takes two strings, a search term and a matching string
 #   from a corpus.  Subtracts the latter from the former, hopefully leaving
@@ -448,22 +451,21 @@ logger.debug("Command classes supported by the parser: %s" % str(commands.keys()
 if args.no_media_library == False:
     # If a local copy of the media library exists, load it from disk.
     try:
+        logger.info("Trying to load local media library...")
         media_library = load_local_media_library(local_library)
         logger.info("Success!")
     except:
         # Generate a list of media sources on the Kodi box.  From the Kodi docs,
         # there are only two we have to care about, video and music.  I'm using
         # the canonical Kodi names for consistency's sake.
+        logger.info("No local media library loaded.  Generating a new one.")
         sources = kodi_library.get_media_sources(kodi_url, kodi_auth,
             headers)
-
-        # Build a local copy of the Kodi box's media library, because there is
-        # no way to run a search on it.
         media_library = build_local_media_library()
 
-        # Now make a local backup of the media library to make startup faster.
+        # Make a local backup of the media library to make startup faster.
         if local_library:
-            logger.debug("Now making a local copy of media library.")
+            logger.debug("Now making a local copy of media library for later.")
             with open(local_library, "w") as media_library_dump:
                 json.dump(media_library, media_library_dump)
             logger.debug("Done.  File size is %s." % humanfriendly.format_size(os.path.getsize(local_library)))
@@ -471,9 +473,9 @@ else:
     logger.info("Skipping media library generation by request.")
 
 # Get the media playback modules this Kodi server supports.
-active_players = get_active_players(kodi_url, kodi_auth, headers)
-if not active_players:
-    logging.fatal("No active media players detected.")
+enabled_players = get_enabled_players(kodi_url, kodi_auth, headers)
+if not enabled_players:
+    logging.fatal("No media players reported by Kodi.  This is weird.")
     sys.exit(1)
 
 # Go into a loop in which the bot polls the configured message queue with each
@@ -518,7 +520,7 @@ while True:
         if parsed_command["confidence"] <= minimum_confidence:
             logging.debug("Sending warning about insufficient confidence.")
 
-            reply = "I think you should know that I'm not entirely confident I know what you mean.  I'm only about %d percent sure of my interpretation." % parsed_command["confidence"]
+            reply = "I think you should know that I'm not entirely confident I know what you mean.  I'm only about %d percent sure of my interpretation.  Were you asking about %s?" % (parsed_command["confidence"], parsed_command["match"])
             send_message_to_user(reply)
 
         # If the user is requesting help, get and return that help text to the
@@ -677,7 +679,7 @@ while True:
 
             # Build a reply to the user.
             if not len(search_result):
-                reply = "It doesn't look like I found any matching tracks in your media library.  You might not have it, it may not have that title, or you mis-remembered the title somehow."
+                reply = "It doesn't look like I found any matching tracks in your media library.  You might not have it, it may not have that title, or you mis-remembered the title somehow.  Or maybe your music metadata needs to be curated."
             if len(search_result) == 1:
                 reply = "I found the song for you."
             if len(search_result) > 1:
@@ -715,6 +717,36 @@ while True:
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.
             media_to_play = search_result
+            send_message_to_user(reply)
+            continue
+
+        # The user wants to pause what's currently playing.
+        if parsed_command["match"] == "commands_pause":
+            logging.debug("Matched commands_pause.")
+            if kodi_library.pause_media(kodi_url, kodi_auth, headers):
+                reply = "Media paused.  Resume playback by telling me to unpause."
+            else:
+                reply = "No media to pause."
+            send_message_to_user(reply)
+            continue
+
+        # The user wants to unpause what's currently playing.
+        if parsed_command["match"] == "commands_unpause":
+            logging.debug("Matched commands_unpause.")
+            if kodi_library.unpause_media(kodi_url, kodi_auth, headers):
+                reply = "Media unpaused."
+            else:
+                reply = "No media to unpause."
+            send_message_to_user(reply)
+            continue
+
+        # The user wants to stop what's currently playing.
+        if parsed_command["match"] == "commands_stop":
+            logging.debug("Matched commands_stop.")
+            if kodi_library.stop_media(kodi_url, kodi_auth, headers):
+                reply = "Media stopped."
+            else:
+                reply = "No media to stop."
             send_message_to_user(reply)
             continue
 

@@ -24,13 +24,13 @@ import sys
 from fuzzywuzzy import fuzz
 
 # Commands to support:
-# - List all known media sources: video, pictures, music
+# * List all known media sources: video, pictures, music
 #   This is probably a helper method: The output will be used by other methods.
 #   Do this on startup and cache the results.
 #   Files.GetSources()
 # - List a particular media source: video, pictures, music
 #   Only support media sources found earlier/above.
-# - Search the Kodi box's library:
+# * Search the Kodi box's library:
 #   "Do I have any music by...?"
 #   "Do I have any videos with...?"
 #   "Do I have a song named...?"
@@ -50,22 +50,22 @@ from fuzzywuzzy import fuzz
 #   System.Shutdown()
 # - Restart Kodi.
 #   System.Reboot()
-# - Find out if something is playing, and if so what it is (video, audio).
+# * Find out if something is playing, and if so what it is (video, audio).
 #   This is a helper method.
 #   Player.GetActivePlayers()
-# - Build a list of usable players in the Kodi instance.
+# * Build a list of usable players in the Kodi instance.
 #   Players.GetPlayers()
 #   Cache the output.  Need both the type and the ID code, because Kodi uses
 #   the ID codes as identifiers.
 # - Initiate/terminate party mode.
 #   Player.SetPartymode([ID number of audio player], [True, False])
-# - Pause/unpause playback.
+# * Pause/unpause playback.
 #   Player.PlayPause([0, 1])
 # - "What is currently playing?"
 #   "What's currently playing?"
 #   Find out what is currently playing with Player.GetActivePlayers().  Then,
 #   Player.GetItem([ID code of running player])
-# - Figure out how to specify, in broad strokes, what you want to listen to.
+# * Figure out how to specify, in broad strokes, what you want to listen to.
 #   "Play the sisters of mercy."
 #   "Play information society."
 #   "Play an episode of foo."
@@ -76,7 +76,7 @@ from fuzzywuzzy import fuzz
 #   Get a list of artists with AudioLibrary.GetArtists()
 #   ...map what the user is asking for to the contents of that list.  This might
 #   need to be a fuzzy match.  I don't yet know how to do this.
-# - Stop what is currently playing.
+# * Stop what is currently playing.
 #   Find out what is currently playing with Player.GetActivePlayers().  Then,
 #   Player.Stop([ID code of running player])
 # - Update Kodi's databases.
