@@ -35,6 +35,9 @@
 #   confidence is too low.
 # - Figure out how to detect the case where the media database for one Kodi
 #   instance is being used with a different instance.
+# - Add use of VideoLibrary.Scan and AudioLibrary.Scan to update Kodi's
+#   internal database.  Then re-run the media library builder to update the
+#   local copy.
 
 # Load modules.
 import argparse

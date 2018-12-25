@@ -13,12 +13,23 @@
 
 # v2.1 - Added functions to pause, unpause, and stop whatever's playing.
 #         - Added ability to ping the Kodi JSON RPC server.
+#         - Renamed is_currently_playing() to _is_currently_playing() so that
+#            it looks like what it's supposed to be, i.e., a helper function.
+#         - Added helper function _clear_current_playlist() to clear the
+#           default playlist of entries.  This is something Kodi forces you to
+#           do when you change what you want to play.
 # v2.0 - Removed kodipydent, replaced with raw HTTP requests using Requests.
 # v1.0 - Initial release.
 
 # TO-DO:
 # - Refactor all of the "make HTTP requests and check the result" code into a
 #   separate helper function.
+# - Split the functions that don't actually build the media library but instead
+#   interact with it into a separate module.
+# - Split the repeated code that builds the payload{} hash over and over into
+#   a helper function to make maintenance easier.  Customization can always
+#   be done at the function level, and that usually takes the form of adding a
+#   params{} sub-hash.
 
 # Load modules.
 import json
@@ -27,6 +38,10 @@ import os
 import requests
 
 from fuzzywuzzy import fuzz
+
+# Global defaults.
+# In Kodi, the currently playing media is always in playlist #1.
+default_playlist = 1
 
 # Global variables.
 # JSON RPC payload template to send to the server.
@@ -563,15 +578,15 @@ def search_media_library_video(search_term, media_library, confidence):
     logging.debug("It looks like I got %d possible matches for the video file %s." % (len(result), search_term))
     return sorted(result)
 
-# is_currently_playing: Function that queries which media playback system
+# _is_currently_playing: Function that queries which media playback system
 #   is currently running, if any.  If media is currently playing or paused, you
 #   will get an affirmative response, in the form of a JSON document saying
 #   which player it is.  If no media is playing (stopped), you'll get an empty
 #   array.  Takes three arguments, the Kodi JSON RPC URL, an HTTP
 #   Basic Auth object, and a hash of headers.  Returns the output from Kodi to
 #   be parsed and used elsewhere or None if there's an error.
-def is_currently_playing(kodi_url, kodi_auth, headers):
-    logging.debug("Entered kodi_library.is_currently_playing().")
+def _is_currently_playing(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library._is_currently_playing().")
 
     request = None
     result = {}
@@ -606,10 +621,12 @@ def pause_media(kodi_url, kodi_auth, headers):
     result = []
 
     # Find out if anything is playing.
-    is_playing =is_currently_playing(kodi_url, kodi_auth, headers)
+    is_playing = _is_currently_playing(kodi_url, kodi_auth, headers)
     if not is_playing:
         logging.debug("Nothing is playing at this time.")
         return False
+    is_playing = is_playing[0]
+    logging.debug("Value of is_playing: %s" % str(is_playing))
 
     # Set up the payload.
     payload = {}
@@ -649,10 +666,12 @@ def unpause_media(kodi_url, kodi_auth, headers):
     result = []
 
     # Find out if anything is playing.
-    is_playing =is_currently_playing(kodi_url, kodi_auth, headers)
+    is_playing = _is_currently_playing(kodi_url, kodi_auth, headers)
     if not is_playing:
         logging.debug("Nothing is playing at this time.")
         return False
+    is_playing = is_playing[0]
+    logging.debug("Value of is_playing: %s" % str(is_playing))
 
     # Set up the payload.
     payload = {}
@@ -691,7 +710,7 @@ def stop_media(kodi_url, kodi_auth, headers):
     result = {}
 
     # Find out if anything is playing.
-    is_playing = is_currently_playing(kodi_url, kodi_auth, headers)
+    is_playing = _is_currently_playing(kodi_url, kodi_auth, headers)
     if not is_playing:
         logging.debug("Nothing is playing at this time.")
         return False
@@ -784,6 +803,41 @@ def get_api_version(kodi_url, kodi_auth, headers):
     # Generate the response from the server.
     result = "version " + str(result["major"]) + "." + str(result["minor"]) + "." + str(result["patch"])
     return result
+
+# _clear_current_playlist: Helper function that empties the current/default
+#   media playlist.  This is something you have to do every time you want to
+#   play something.  Takes three arguments, the Kodi JSON RPC URL, an HTTP
+#   Basic Auth object, and a hash of headers.  Returns True if it worked, False
+#   if it didn't for some reason.
+def _clear_current_playlist(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library._clear_current_playlist().")
+
+    request = None
+    result = {}
+
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
+    payload["method"] = "JSONRPC.Version"
+    payload["params"] = {}
+    payload["params"]["playlistid"] = default_playlist
+
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]
+        logging.debug("Response from Kodi: %s" % str(result))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        result = None
+
+    # Parse what comes back from Kodi.
+    if result == "OK":
+        return True
+    else:
+        return False
 
 if "__name__" == "__main__":
     pass
