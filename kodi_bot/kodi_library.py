@@ -714,6 +714,8 @@ def stop_media(kodi_url, kodi_auth, headers):
     if not is_playing:
         logging.debug("Nothing is playing at this time.")
         return False
+    is_playing = is_playing[0]
+    logging.debug("Value of is_playing: %s" % str(is_playing))
 
     # Set up the payload.
     payload = {}
