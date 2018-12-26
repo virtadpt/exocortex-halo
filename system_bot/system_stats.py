@@ -62,13 +62,14 @@ def sysload():
     return sysload
 
 # check_sysload: Function that pulls the current system load and tests the
-#   load averages to see if they're too high.  Takes six arguments, the
+#   load averages to see if they're too high.  Takes seven arguments, the
 #   sysload counter, the time between alerts, the value of status_polling, the
-#   number of standard deviations to calculate, and the minimum and maximum
-#   system stat queue lengths.  Sends a message to the user, returns an updated
+#   number of standard deviations to calculate, minimum and maximum system
+#   stat queue lengths, and the name of a function to send a message with.
+#   Sends a message to the user, returns an updated
 #   value for sysload_counter.
 def check_sysload(sysload_counter, time_between_alerts, status_polling,
-    std_devs, sys_avg_min_len, sys_avg_max_len):
+    std_devs, sys_avg_min_len, sys_avg_max_len, send_message_to_user):
     message = ""
     std_dev = 0.0
     current_load_avg = sysload()
@@ -150,11 +151,13 @@ def cpus():
 def cpu_idle_time():
     return psutil.cpu_times_percent()[3]
 
-# check_cpu_idle_time(): Takes no arguments.  Sends an alert to the bot's owner
-#   if the CPU idle time is too low.  Returns an updated value for
-#   cpu_idle_time_counter.
+# check_cpu_idle_time(): Monitors the amount of time the CPU(s) are idle.
+#   Takes four arguments: the CPU idle time counter, the time between alerts,
+#   the value of status_polling, and the name of a function to send a message
+#   with.  Sends an alert to the bot's owner if the CPU idle time is too low.
+#   Returns an updated value for cpu_idle_time_counter.
 def check_cpu_idle_time(cpu_idle_time_counter, time_between_alerts,
-        status_polling):
+        status_polling, send_message_to_user):
     message = ""
     idle_time = cpu_idle_time()
 
@@ -197,9 +200,10 @@ def disk_usage():
 # check_disk_usage(): Pull the amount of used storage for each disk device on
 #   the system and send the bot's owner an alert if one of the disks gets too
 #   full.  Takes as arguments the values of disk_usage_counter,
-#   time_between_alerts, and status polling.  Returns an updated value for
-#   disk_usage_counter.
-def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling):
+#   time_between_alerts, status polling, and the name of a function to send
+#   messages with.  Returns an updated value for disk_usage_counter.
+def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
+    send_message_to_user):
     message = ""
     disk_space_free = disk_usage()
 
@@ -228,11 +232,12 @@ def memory_utilization():
 
 # check_memory_utilization(): Function that checks how much memory is free on
 #   the system and alerts the bot's owner if it's below a certain amount.
-#   Takes three arguments, the current values of memory_free_counter and
-#   time_between_alerts, and the value of status_polling.  Returns an updated
-#   value for memory_free_counter.
+#   Takes four arguments, the current values of memory_free_counter and
+#   time_between_alerts, the value of status_polling, and the name of a
+#   function to send messages with.  Returns an updated value for
+#   memory_free_counter.
 def check_memory_utilization(memory_free_counter, time_between_alerts,
-        status_polling):
+        status_polling, send_message_to_user):
     message = ""
     memory_free = memory_utilization()
 
@@ -291,7 +296,7 @@ def current_ip_address(ip_addr_service):
         return None
 
     # Got the host's public IP address.  Explicitly cast to a string to make
-    # life easier in other modules.
+    # life easier four other modules.
     logging.debug("Got current IP address of host: " + str(request.text))
     return str(request.text)
 
@@ -369,12 +374,11 @@ def network_traffic():
 
     # Prime the network stats hash table with the remaining network interfaces.
     for i in nics.keys():
-        stats[i] = None
+        stats[i] = {}
 
     # For each network interface on the system, convert bytes_sent and
     # bytes_recv into human-readable strings.
     for i in nics.keys():
-        stats[i] = {}
         stats[i]["sent"] = convert_bytes(nics[i].bytes_sent)
         stats[i]["received"] = convert_bytes(nics[i].bytes_recv)
         logging.debug("Traffic volume to date for " + i + ": " + str(stats[i]))
@@ -403,13 +407,14 @@ def get_hardware_temperatures():
 
 # check_hardware_temperatures: Function that analyzes the values of the
 #   hardware temperatures and alerts the user if one of them has either reached
-#   a high or critical threshold.  Takes six arguments, the current values of
+#   a high or critical threshold.  Takes seven arguments, the current values of
 #   temperature_counter, time_between_alerts, the value of status_polling, the
-#   number of standard deviations to calculate, and the minimum and maximum
-#   temperature stat queue lengths.  Returns an updated value for
-#   temperature_counter.
+#   number of standard deviations to calculate, the minimum and maximum
+#   temperature stat queue lengths, and the name of a function to send
+#   messages with.  Returns an updated value for temperature_counter.
 def check_hardware_temperatures(temperature_counter, time_between_alerts,
-    status_polling, std_devs, sys_avg_min_len, sys_avg_max_len):
+    status_polling, std_devs, sys_avg_min_len, sys_avg_max_len,
+    send_message_to_user):
     logging.debug("Entered function system_stats.check_hardware_temperatures().")
 
     message = ""
@@ -510,15 +515,16 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
                 std_dev = statistics.stdev(device_temperatures[label])
                 logging.debug("Standard deviation of temperature of sensor " + label + ": " + str(std_dev))
                 if std_dev > float(std_devs):
-                    message = message + "WARNING: The temperature of sensor " + label + " has spiked to " + str(i[1]) + " degrees Centigrade (" + centigrade_to_fahrenheit(i[1]) + " degrees Fahrenheit)!  Investigate immediately!"
+                    fahrenheit = centigrade_to_fahrenheit(i[1])
+                    message = message + "WARNING: The temperature of sensor " + label + " has spiked to " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit)!  Investigate immediately!"
             # Bottom of cycle through sensors on this device.
         # Bottom of cycle through temperature sensors on the system.
 
     # If a message has been sent in the recent past, check to see if it's been
     # longer than the last time a message was sent.  If so, reset the counter.
     if message:
-        logging.debug("A temperature message has been sent to the user.")
         if temperature_counter >= time_between_alerts:
+            send_message_to_user(message)
             logging.debug("Resetting time between alerts counter to 0.")
             return 0
 

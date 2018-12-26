@@ -316,16 +316,19 @@ while True:
     # whack, send an alert via the XMPP bridge's response queue.
     sysload_counter = system_stats.check_sysload(sysload_counter,
         time_between_alerts, status_polling, standard_deviations,
-        minimum_length, maximum_length)
+        minimum_length, maximum_length, send_message_to_user)
     cpu_idle_time_counter = system_stats.check_cpu_idle_time(
-        cpu_idle_time_counter, time_between_alerts, status_polling)
+        cpu_idle_time_counter, time_between_alerts, status_polling,
+        send_message_to_user)
     disk_usage_counter = system_stats.check_disk_usage(disk_usage_counter,
-        time_between_alerts, status_polling)
+        time_between_alerts, status_polling, send_message_to_user)
     memory_free_counter = system_stats.check_memory_utilization(
-        memory_free_counter, time_between_alerts, status_polling)
+        memory_free_counter, time_between_alerts, status_polling,
+        send_message_to_user)
     temperature_counter = system_stats.check_hardware_temperatures(
         temperature_counter, time_between_alerts, status_polling,
-        standard_deviations, minimum_length, maximum_length)
+        standard_deviations, minimum_length, maximum_length,
+        send_message_to_user)
 
     # Increment loop_counter by status_polling.  Seems obvious, but this makes
     # it easy to grep for.

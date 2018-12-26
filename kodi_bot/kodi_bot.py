@@ -38,6 +38,7 @@
 # - Add use of VideoLibrary.Scan and AudioLibrary.Scan to update Kodi's
 #   internal database.  Then re-run the media library builder to update the
 #   local copy.
+# - Add the ability to ask the bot what's playing right now.
 
 # Load modules.
 import argparse
@@ -65,7 +66,6 @@ headers = {
     }
 
 # Global variables.
-
 # Handle to a logging object.
 logger = ""
 
@@ -103,6 +103,9 @@ kodi_host = ""
 kodi_port = 0
 kodi_user = ""
 kodi_password = ""
+
+# One or more media directories to search for media.
+media_dirs = ""
 
 # Directories to ignore.
 exclude_dirs = []
@@ -175,9 +178,6 @@ def set_loglevel(loglevel):
 #   send to the user.  Returns a True or False which delineates whether or not
 #   it worked.
 def send_message_to_user(message):
-    # Headers the XMPP bridge looks for for the message to be valid.
-    headers = {'Content-type': 'application/json'}
-
     # Set up a hash table of stuff that is used to build the HTTP request to
     # the XMPP bridge.
     reply = {}
@@ -197,7 +197,8 @@ def kodi_settings():
     reply = reply + "Message queue I report to: %s\n" % message_queue
     reply = reply + "Number of seconds in between polling for commands: %d\n" % polling_time
     reply = reply + "Kodi box that I control: %s:%d\n" % (kodi_host, kodi_port)
-    reply = reply + "Directories on the server I'm not checking for media to play back: %s\n" % exclude_dirs
+    reply = reply + "Media directories on the Kodi box that I look in for things to play: %s\n" % str(media_dirs)
+    reply = reply + "Directories on the server I'm not checking for media: %s\n" % exclude_dirs
     reply = reply + "Minimum confidence in my understanding of your commands before I'll act on them: %d percent\n" % minimum_confidence
     reply = reply + "Minimum confidence in my searches of names, titles, and other proper names: %d percent\n" % match_confidence
     reply = reply + "Media sources I know about on the Kodi server: %s\n" % sources
@@ -299,6 +300,7 @@ def extract_search_term(search_term, matching_string):
     search_term = search_term.strip(".")
     search_term = search_term.strip(":")
     search_term = search_term.strip(";")
+    search_term = search_term.strip("'")
     search_term = search_term.split()
 
     # Normalize and clean up the matching string from the corpus.
@@ -309,6 +311,7 @@ def extract_search_term(search_term, matching_string):
     matching_string = matching_string.strip(".")
     matching_string = matching_string.strip(":")
     matching_string = matching_string.strip(";")
+    matching_string = matching_string.strip("'")
     matching_string = matching_string.split()
 
     result = list(set(search_term) - set(matching_string))
@@ -391,6 +394,8 @@ kodi_host = config.get("DEFAULT", "kodi_host")
 kodi_port = int(config.get("DEFAULT", "kodi_port"))
 kodi_user = config.get("DEFAULT", "kodi_user")
 kodi_password = config.get("DEFAULT", "kodi_password")
+media_dirs = config.get("DEFAULT", "media_dirs")
+media_dirs = media_dirs.split()
 try:
     exclude_dirs = config.get("DEFAULT", "exclude_dirs").split(",")
 except:
@@ -424,6 +429,7 @@ logger.debug("Kodi port: %s" % kodi_port)
 logger.debug("Kodi URL: %s" % kodi_url)
 logger.debug("Kodi username: %s" % kodi_user)
 logger.debug("Kodi password: %s" % kodi_password)
+logger.debug("Media directories: %s" % str(media_dirs))
 logger.debug("Directories to skip over: %s" % exclude_dirs)
 logger.debug("Corpora to train the parser with: %s" % corpora_dir)
 logger.debug("Minimum statistical match confidence: %d" % minimum_confidence)
@@ -775,6 +781,13 @@ while True:
             else:
                 reply = "I can't tell what version of the API Kodi is using."
             send_message_to_user(reply)
+            continue
+
+        # The user is asking what's playing at this moment.
+        if parsed_command["match"] == "commands_whats_playing":
+            logging.debug("Matched commands_whats_playing.")
+            reply = kodi_library.whats_playing(kodi_url, kodi_auth, headers)
+            send_message_to_user(str(reply))
             continue
 
         # If the user is asking the bot to start playback, figure out how to

@@ -584,7 +584,13 @@ def search_media_library_video(search_term, media_library, confidence):
 #   which player it is.  If no media is playing (stopped), you'll get an empty
 #   array.  Takes three arguments, the Kodi JSON RPC URL, an HTTP
 #   Basic Auth object, and a hash of headers.  Returns the output from Kodi to
-#   be parsed and used elsewhere or None if there's an error.
+#   be parsed and used elsewhere or None if there's an error.  The output
+#   looks like this:
+#   {
+#
+#
+#
+#   }
 def _is_currently_playing(kodi_url, kodi_auth, headers):
     logging.debug("Entered kodi_library._is_currently_playing().")
 
@@ -608,6 +614,84 @@ def _is_currently_playing(kodi_url, kodi_auth, headers):
         logging.warn("Failed to get response from Kodi!")
         return None
     return result
+
+# _get_song_title: Helper function that queries the media database by song ID
+#   and returns the title.  Takes four arguments, the Kodi JSON RPC URL, an
+#   HTTP Basic Auth object, a hash of headers, and the song ID.  Returns a
+#   string on success or "None" if not.
+def _get_song_title(kodi_url, kodi_auth, headers, songid):
+    logging.debug("Entered kodi_library._get_song_title().")
+
+    request = None
+    result = {}
+
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
+    payload["method"] = "AudioLibrary.GetSongDetails"
+    payload["params"] = {}
+    payload["params"]["songid"] = songid
+
+    # Query the title of the song from Kodi.
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]["songdetails"]["label"]
+        logging.debug("Response from Kodi: %s" % str(result))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        return "Unknown"
+    return result
+
+# whats_playing: Function that queries Kodi to find out what's playing.
+#   Takes three arguments, the Kodi JSON RPC URL, an HTTP Basic Auth object,
+#   and a hash of headers.  Returns some information about what's playing right
+#   now or "Nothing."
+def whats_playing(kodi_url, kodi_auth, headers):
+    logging.debug("Entered kodi_library.whats_playing().")
+
+    is_playing = []
+    request = None
+    result = {}
+    media_information = ""
+    song_information = ""
+    video_information = ""
+
+    # Find out if anything is playing.
+    is_playing = _is_currently_playing(kodi_url, kodi_auth, headers)
+    if not is_playing:
+        logging.debug("Nothing is playing at this time.")
+        return False
+    is_playing = is_playing[0]
+    logging.debug("Value of is_playing: %s" % str(is_playing))
+
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
+    payload["method"] = "Player.GetItem"
+    payload["params"] = {}
+    payload["params"]["playerid"] = is_playing["playerid"]
+
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]["item"]
+        logging.debug("Response from Kodi: %s" % str(result))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        return "Nothing seems to be playing."
+
+    # Parse the output from Kodi.
+    media_information = "Now playing: "
+    if result["type"] == "song":
+        media_information = media_information + "The song " + result["label"] + " by "
+        song_information = _get_song_title(kodi_url, kodi_auth, headers,
+            result["id"])
+    return media_information
 
 # pause_media: If something is playing, pause it.  Takes three arguments, the
 #   Kodi JSON RPC URL, an HTTP Basic Auth object, and a hash of headers.
@@ -840,6 +924,30 @@ def _clear_current_playlist(kodi_url, kodi_auth, headers):
         return True
     else:
         return False
+
+def play_by_filename():
+
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
+    payload["method"] = "Player.Open"
+    payload["params"] = {}
+    payload["params"]["item"] = {}
+    payload["params"]["item"]["file"] = "/full/path/to/file.ext"
+
+    return
+
+def play_by_songid():
+
+    # Set up the payload.
+    payload = {}
+    payload["jsonrpc"] = "2.0"
+    payload["id"] = 1
+    payload["method"] = "Player.Open"
+    payload["params"] = {}
+    payload["params"]["item"] = {}
+    payload["params"]["item"]["songid"] = songid_from_library
 
 if "__name__" == "__main__":
     pass
