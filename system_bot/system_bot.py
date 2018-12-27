@@ -14,6 +14,11 @@
 # v3.3 - Added a periodic check for all of the temperature sensors the psutil
 #           module knows about.
 #         - Added a command to query the current system temperature.
+#         - Fixed a bug that prevented alerts from being sent.
+#         - Tweaking the value of time_between_alerts because deliberate high
+#            system loads can cause high CPU temperatures, which can result in
+#            a constant stream of warnings.  I'll probably have to make this
+#            variable configurable, instead.
 # v3.2 - Changed "disk free" to "disk used," so that it's more like the output
 #           of `df`.
 # v3.1 - Added the ability to get the local IP of the host (not the public IP).
@@ -272,7 +277,7 @@ status_polling = int(polling_time) / 4
 
 # Calculate the period of time that should pass in between sending alerts to
 # the user to keep from inundating them.
-time_between_alerts = polling_time * 20
+time_between_alerts = polling_time * 200
 
 # See if there's a list of processes to monitor in the configuration file, and
 # if so read it into the list.
