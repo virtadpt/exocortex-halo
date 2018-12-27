@@ -476,12 +476,9 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
             # Check to see if the critical point is set and has been reached.
             if i[3]:
                 if i[1] >= i[3]:
-                    # If time_between_alerts is zero, alerting has been
-                    # disabled so just move on.
                     if time_between_alerts == 0:
                         logging.debug("System temperature alerting disabled.")
                         continue
-
                     fahrenheit = centigrade_to_fahrenheit(i[1])
                     message = "WARNING: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit).  This is alarmingly high!"
                     send_message_to_user(message)
@@ -561,10 +558,6 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
     # If a message has been sent in the recent past, check to see if it's been
     # longer than the last time a message was sent.  If so, reset the counter.
     if message:
-        # If time_between_alerts is zero, alerting has been disabled so bounce.
-        if time_between_alerts == 0:
-            logging.debug("System temperature alerting disabled.")
-            return 0
         if temperature_counter >= time_between_alerts:
             send_message_to_user(message)
             logging.debug("Resetting time between alerts counter to 0.")

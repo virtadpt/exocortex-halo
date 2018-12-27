@@ -251,7 +251,7 @@ except:
     pass
 
 # Get the time between alerts (in seconds) from the config file.
-time_between_alerts = config.get("DEFAULT", "time_between_alerts")
+time_between_alerts = int(config.get("DEFAULT", "time_between_alerts"))
 
 # Get the number of standard deviations from the config file.
 standard_deviations = config.get("DEFAULT", "standard_deviations")
@@ -281,7 +281,7 @@ if args.polling:
 
 # Set the time between system alerts if set on the command line.
 if args.time_between_alerts:
-    time_between_alerts = args.time_between_alerts
+    time_between_alerts = int(args.time_between_alerts)
 
 # Calculate how often the bot checks the system stats.  This is how often the
 # main loop runs.
@@ -305,10 +305,10 @@ logger.debug("Number of standard deviations: " + str(standard_deviations))
 logger.debug("Minimum stat queue length: " + str(minimum_length))
 logger.debug("Maximum stat queue length: " + str(maximum_length))
 logger.debug("Value of polling_time (in seconds): " + str(polling_time))
-if time_between_alerts:
-    logger.debug("Value of time_between_alerts (in seconds): " + str(time_between_alerts))
+if time_between_alerts == 0:
+    logger.info("time_between_alerts is set to 0 - system alerting disabled!")
 else:
-    logger.warn("time_between_alerts is set to 0 - system alerting disabled!")
+    logger.debug("Value of time_between_alerts (in seconds): " + str(time_between_alerts))
 logger.debug("Value of loop_counter (in seconds): " + str(status_polling))
 logger.debug("URL of web service that returns public IP address: " + ip_addr_web_service)
 if len(processes_to_monitor):
