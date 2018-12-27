@@ -120,6 +120,11 @@ def check_sysload(sysload_counter, time_between_alerts, status_polling,
     # If a message has been constructed, check to see if it's been longer than
     # the last time a message was sent.  If so, send it and reset the counter.
     if message:
+        # If time_between_alerts is zero, alerting has been disabled so just
+        # return.
+        if time_between_alerts == 0:
+            logging.debug("System load alerting disabled.")
+            return 0
         if sysload_counter >= time_between_alerts:
             send_message_to_user(message)
             return 0
@@ -169,6 +174,11 @@ def check_cpu_idle_time(cpu_idle_time_counter, time_between_alerts,
     # If a message has been built, check to see if enough time in between
     # messages has passed.  If so, send the message.
     if message:
+        # If time_between_alerts is zero, alerting has been disabled so just
+        # return.
+        if time_between_alerts == 0:
+            logging.debug("CPU idle time alerting disabled.")
+            return 0
         if cpu_idle_time_counter >= time_between_alerts:
             send_message_to_user(message)
             return 0
@@ -217,6 +227,11 @@ def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
     # the last message was sent.  If enough time has, sent the bot's owner
     # the message.
     if message:
+        # If time_between_alerts is zero, alerting has been disabled so just
+        # return.
+        if time_between_alerts == 0:
+            logging.debug("Disk usage alerting disabled.")
+            return 0
         if disk_usage_counter >= time_between_alerts:
             send_message_to_user(message)
             return 0
@@ -250,6 +265,11 @@ def check_memory_utilization(memory_free_counter, time_between_alerts,
     # the last message was sent.  If enough time has, send the bot's owner the
     # message.
     if message:
+        # If time_between_alerts is zero, alerting has been disabled so just
+        # return.
+        if time_between_alerts == 0:
+            logging.debug("Memory utilization alerting disabled.")
+            return 0
         if memory_free_counter >= time_between_alerts:
             send_message_to_user(message)
             return 0
@@ -456,6 +476,12 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
             # Check to see if the critical point is set and has been reached.
             if i[3]:
                 if i[1] >= i[3]:
+                    # If time_between_alerts is zero, alerting has been
+                    # disabled so just move on.
+                    if time_between_alerts == 0:
+                        logging.debug("System temperature alerting disabled.")
+                        continue
+
                     fahrenheit = centigrade_to_fahrenheit(i[1])
                     message = "WARNING: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit).  This is alarmingly high!"
                     send_message_to_user(message)
@@ -468,6 +494,12 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
             # We only want one of these.
             if i[2]:
                 if i[1] >= i[2]:
+                    # If time_between_alerts is zero, alerting has been
+                    # disabled so just move on.
+                    if time_between_alerts == 0:
+                        logging.debug("System temperature alerting disabled.")
+                        continue
+
                     fahrenheit = centigrade_to_fahrenheit(i[1])
                     message = "DANGER: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit).  Critical temperature reached!  Investigate immediately!"
                     send_message_to_user(message)
@@ -515,6 +547,12 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
                 std_dev = statistics.stdev(device_temperatures[label])
                 logging.debug("Standard deviation of temperature of sensor " + label + ": " + str(std_dev))
                 if std_dev > float(std_devs):
+                    # If time_between_alerts is zero, alerting has been
+                    # disabled so just move on.
+                    if time_between_alerts == 0:
+                        logging.debug("System temperature alerting disabled.")
+                        continue
+
                     fahrenheit = centigrade_to_fahrenheit(i[1])
                     message = message + "WARNING: The temperature of sensor " + label + " has spiked to " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit)!  Investigate immediately!"
             # Bottom of cycle through sensors on this device.
@@ -523,6 +561,10 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
     # If a message has been sent in the recent past, check to see if it's been
     # longer than the last time a message was sent.  If so, reset the counter.
     if message:
+        # If time_between_alerts is zero, alerting has been disabled so bounce.
+        if time_between_alerts == 0:
+            logging.debug("System temperature alerting disabled.")
+            return 0
         if temperature_counter >= time_between_alerts:
             send_message_to_user(message)
             logging.debug("Resetting time between alerts counter to 0.")

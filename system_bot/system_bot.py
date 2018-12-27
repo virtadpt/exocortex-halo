@@ -113,8 +113,9 @@ request = None
 # Command from the message queue.
 command = ""
 
-# Multiple of polling_time that must pass between sending alerts.
-time_between_alerts = 0
+# Multiple of polling_time that must pass between sending alerts.  Defaults to
+# 3600 seconds (one hour).
+time_between_alerts = 3600
 
 # Counters used to keep the bot from sending alerts too often.
 sysload_counter = 0
@@ -209,6 +210,10 @@ argparser.add_argument("--loglevel", action="store",
 # Time (in seconds) between polling the message queues.
 argparser.add_argument("--polling", action="store", help="Default: 60 seconds")
 
+# Time (in seconds) in between sending warnings to the user.
+argparser.add_argument("--time-between-alerts", action="store",
+    help="Time in seconds in between sending warnings to the user.  This is to prevent getting flooded with alerts when a big job runs.")
+
 # Parse the command line arguments.
 args = argparser.parse_args()
 if args.config:
@@ -245,6 +250,9 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
+# Get the time between alerts (in seconds) from the config file.
+time_between_alerts = config.get("DEFAULT", "time_between_alerts")
+
 # Get the number of standard deviations from the config file.
 standard_deviations = config.get("DEFAULT", "standard_deviations")
 
@@ -271,13 +279,13 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
+# Set the time between system alerts if set on the command line.
+if args.time_between_alerts:
+    time_between_alerts = args.time_between_alerts
+
 # Calculate how often the bot checks the system stats.  This is how often the
 # main loop runs.
 status_polling = int(polling_time) / 4
-
-# Calculate the period of time that should pass in between sending alerts to
-# the user to keep from inundating them.
-time_between_alerts = polling_time * 20000
 
 # See if there's a list of processes to monitor in the configuration file, and
 # if so read it into the list.
@@ -285,10 +293,6 @@ if config.has_section("processes to monitor"):
     for i in config.options("processes to monitor"):
         if "process" in i:
             processes_to_monitor.append(config.get("processes to monitor", i).split(','))
-
-# Test to see if there are temperature sensors that we can poll.  If so, set up
-# queues to hold the stats for the same kind of statistical analysis as we do
-# for the system load.
 
 # In debugging mode, dump the bot'd configuration.
 logger.info("Everything is configured.")
@@ -301,6 +305,10 @@ logger.debug("Number of standard deviations: " + str(standard_deviations))
 logger.debug("Minimum stat queue length: " + str(minimum_length))
 logger.debug("Maximum stat queue length: " + str(maximum_length))
 logger.debug("Value of polling_time (in seconds): " + str(polling_time))
+if time_between_alerts:
+    logger.debug("Value of time_between_alerts (in seconds): " + str(time_between_alerts))
+else:
+    logger.warn("time_between_alerts is set to 0 - system alerting disabled!")
 logger.debug("Value of loop_counter (in seconds): " + str(status_polling))
 logger.debug("URL of web service that returns public IP address: " + ip_addr_web_service)
 if len(processes_to_monitor):

@@ -14,6 +14,11 @@ loglevel = info
 # How often to poll the message queue for orders.  Defaults to 60 seconds.
 # polling_time = 60
 
+# How often to send warning messages to the user, in seconds.  Nobody likes to
+# be flooded with alerts when, say, the daily system backup runs, so this is
+# tweakable.  Set to 0 to disable.
+time_between_alerts = 3600
+
 # Number of standard deviations to consider hazardous to the system.  Note that
 # This does not need to be a big number.  If you want to change this value,
 # please read up on how standard deviations work first.
