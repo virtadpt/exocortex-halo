@@ -277,7 +277,7 @@ status_polling = int(polling_time) / 4
 
 # Calculate the period of time that should pass in between sending alerts to
 # the user to keep from inundating them.
-time_between_alerts = polling_time * 200
+time_between_alerts = polling_time * 20000
 
 # See if there's a list of processes to monitor in the configuration file, and
 # if so read it into the list.
