@@ -19,6 +19,11 @@
 #            system loads can cause high CPU temperatures, which can result in
 #            a constant stream of warnings.  I'll probably have to make this
 #            variable configurable, instead.
+#         - Renamed the call to system_stats.disk_usage() to use
+#           system_stats.get_disk_usage() because it changed in that module.
+#         - Reworked the free memory request to work with the reworked memory
+#            functions in system_stats.py.
+#         - Made check_memory_utilization() configurable.
 # v3.2 - Changed "disk free" to "disk used," so that it's more like the output
 #           of `df`.
 # v3.1 - Added the ability to get the local IP of the host (not the public IP).
@@ -42,6 +47,8 @@
 #   x20) configurable in the config file.
 
 # Load modules.
+from __future__ import division
+
 import argparse
 import ConfigParser
 import json
@@ -116,6 +123,12 @@ command = ""
 # Multiple of polling_time that must pass between sending alerts.  Defaults to
 # 3600 seconds (one hour).
 time_between_alerts = 3600
+
+# Percentage of disk space used to consider critical.  Defaults to 90%.
+disk_usage = 90.0
+
+# Percentage of memory remaining to consider critical.  Defaults to 15%.
+memory_remaining = 15.0
 
 # Counters used to keep the bot from sending alerts too often.
 sysload_counter = 0
@@ -253,6 +266,12 @@ except:
 # Get the time between alerts (in seconds) from the config file.
 time_between_alerts = int(config.get("DEFAULT", "time_between_alerts"))
 
+# Get the percentage of critical disk usage from the config file.
+disk_usage = float(config.get("DEFAULT", "disk_usage"))
+
+# Get the percentage of critical memory remaining from the config file.
+memory_remaining = float(config.get("DEFAULT", "memory_remaining"))
+
 # Get the number of standard deviations from the config file.
 standard_deviations = config.get("DEFAULT", "standard_deviations")
 
@@ -309,6 +328,8 @@ if time_between_alerts == 0:
     logger.info("time_between_alerts is set to 0 - system alerting disabled!")
 else:
     logger.debug("Value of time_between_alerts (in seconds): " + str(time_between_alerts))
+logger.debug("Critical disk space usage: " + str(disk_usage))
+logger.debug("Critical memory remaining: " + str(memory_remaining))
 logger.debug("Value of loop_counter (in seconds): " + str(status_polling))
 logger.debug("URL of web service that returns public IP address: " + ip_addr_web_service)
 if len(processes_to_monitor):
@@ -334,10 +355,10 @@ while True:
         cpu_idle_time_counter, time_between_alerts, status_polling,
         send_message_to_user)
     disk_usage_counter = system_stats.check_disk_usage(disk_usage_counter,
-        time_between_alerts, status_polling, send_message_to_user)
+        time_between_alerts, status_polling, disk_usage, send_message_to_user)
     memory_free_counter = system_stats.check_memory_utilization(
         memory_free_counter, time_between_alerts, status_polling,
-        send_message_to_user)
+        memory_remaining, send_message_to_user)
     temperature_counter = system_stats.check_hardware_temperatures(
         temperature_counter, time_between_alerts, status_polling,
         standard_deviations, minimum_length, maximum_length,
@@ -424,7 +445,7 @@ while True:
 
             # Disk usage.
             if command == "disk":
-                info = system_stats.disk_usage()
+                info = system_stats.get_disk_usage()
                 message = "System disk space usage:\n"
                 for key in info.keys():
                     message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "% in use.\n"
@@ -433,6 +454,9 @@ while True:
             # Memory utilization.
             if command == "memory":
                 info = system_stats.memory_utilization()
+                info_total = info.total
+                info = (info.free + info.buffers + info.cached) / info_total
+                info = round(info * 100.0, 2)
                 message = str(info) + "% of the system memory is free."
                 send_message_to_user(message)
 

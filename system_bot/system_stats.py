@@ -12,15 +12,18 @@
 
 # v3.3 - Added a Centigrade-to-Fahrenheit utility function.
 #         - Added a function that periodically checks the current temperature
-#            of every sensor on the system and sends an alert to the user if
-#            the temperature reaches what the driver considers a dangerous or
-#            critical point.
+#           of every sensor on the system and sends an alert to the user if
+#           the temperature reaches what the driver considers a dangerous or
+#           critical point.
+#         - Renamed disk_usage() to get_disk_usage() because it conflicted
+#           with a variable name elsewhere.
+#         - Made check_memory_utilization() configurable.
 # v3.2 - Changed "disk free" to "disk used," so it's more like the output of.
 #           `df`.
 # v3.1 - Added function to get the local IP address of the host.
 # v3.0 - Added real statistics support.
 # v2.2 - Added function to get public IP address of host.
-#      - Added function that gets network traffic stats.
+#         - Added function that gets network traffic stats.
 # v2.1 - Added system uptime.
 # v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.
@@ -29,6 +32,8 @@
 # - Optimize the temperature monitoring loop for the general case.
 
 # Load modules.
+from __future__ import division
+
 import logging
 import math
 import os
@@ -187,9 +192,9 @@ def check_cpu_idle_time(cpu_idle_time_counter, time_between_alerts,
         cpu_idle_time_counter = cpu_idle_time_counter + status_polling
     return cpu_idle_time_counter
 
-# disk_usage(): Takes no arguments.  Returns a hash table containing the disk
-#   device name as the key and percentage used as the value.
-def disk_usage():
+# get_disk_usage(): Takes no arguments.  Returns a hash table containing the
+#   disk device name as the key and percentage used as the value.
+def get_disk_usage():
     disk_used = {}
     disk_partitions = None
     disk_device = None
@@ -210,17 +215,18 @@ def disk_usage():
 # check_disk_usage(): Pull the amount of used storage for each disk device on
 #   the system and send the bot's owner an alert if one of the disks gets too
 #   full.  Takes as arguments the values of disk_usage_counter,
-#   time_between_alerts, status polling, and the name of a function to send
-#   messages with.  Returns an updated value for disk_usage_counter.
+#   time_between_alerts, status polling, the value of disk_usage, and the name
+#   of a function to send messages with.  Returns an updated value for
+#   disk_usage_counter.
 def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
-    send_message_to_user):
+    disk_usage, send_message_to_user):
     message = ""
-    disk_space_free = disk_usage()
+    disk_space_free = get_disk_usage()
 
     # Check the amount of space free on each disk device.  For each disk that's
     # running low on space construct a line of the message.
     for disk in disk_space_free.keys():
-        if disk_space_free[disk] > 80.0:
+        if disk_space_free[disk] > disk_usage:
             message = message + "WARNING: Disk device " + disk + " has " + str(100.0 - disk_space_free[disk]) + "% of its capacity left.\n"
 
     # If a message has been constructed, check how much time has passed since
@@ -240,25 +246,31 @@ def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
         disk_usage_counter = disk_usage_counter + status_polling
     return disk_usage_counter
 
-# memory_utilization(): Function that returns the amount of memory free as a
-#   floating point value (a percentage).  Takes no arguments.
+# memory_utilization(): Function that returns a snapshot of memory
+#    utilization.  Takes no arguments.
 def memory_utilization():
-    return psutil.virtual_memory().percent
+    return psutil.virtual_memory()
 
 # check_memory_utilization(): Function that checks how much memory is free on
 #   the system and alerts the bot's owner if it's below a certain amount.
-#   Takes four arguments, the current values of memory_free_counter and
-#   time_between_alerts, the value of status_polling, and the name of a
-#   function to send messages with.  Returns an updated value for
-#   memory_free_counter.
+#   Takes five arguments, the current values of memory_free_counter and
+#   time_between_alerts, the value of status_polling, the value of
+#   memory_remaining, and the name of a function to send messages with.
+#   Returns an updated value for memory_free_counter.
 def check_memory_utilization(memory_free_counter, time_between_alerts,
-        status_polling, send_message_to_user):
+        status_polling, memory_remaining, send_message_to_user):
     message = ""
-    memory_free = memory_utilization()
+    memory_stats = memory_utilization()
+    calculated_free_memory = memory_stats.free + memory_stats.buffers + memory_stats.cached
+    logging.debug("Calculated free memory: %s" % convert_bytes(calculated_free_memory))
 
     # Check the amount of memory free.  If it's below a critical threshold
-    # construct a message for the bot's owner.
-    if memory_free <= 20.0:
+    # construct a message for the bot's owner.  It's formatted this way for
+    # clarity later.  Rounded off to two decimal places.
+    calculated_free_memory = (calculated_free_memory / memory_stats.total)
+    calculated_free_memory = round(calculated_free_memory * 100.0, 2)
+    logging.debug("Percentage of free memory: %s" % str(calculated_free_memory))
+    if calculated_free_memory <= memory_remaining:
         message = "WARNING: The amount of free memory has reached the critical point of " + str(memory_free) + "% free.  You'll want to see to this before the OOM killer starts reaping processes."
 
     # If a message has been constructed, check how much time has passed since
