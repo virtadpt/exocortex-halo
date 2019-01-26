@@ -1,0 +1,13 @@
+[Unit]
+Description=Exocortex system monitoring bot
+After=xmpp_bridge.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/system_bot/
+ExecStart=%h/exocortex-halo/system_bot/run.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+
