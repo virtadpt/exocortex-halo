@@ -1,0 +1,12 @@
+[Unit]
+Description=Exocortex Kodi bot with conversational interface
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/kodi_bot/
+ExecStart=%h/exocortex-halo/kodi_bot/run.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+
