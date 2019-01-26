@@ -1,0 +1,12 @@
+[Unit]
+Description=Exocortex XMPP bridge
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/exocortex_xmpp_bridge/
+ExecStart=%h/exocortex-halo/exocortex_xmpp_bridge/run.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+

@@ -530,9 +530,18 @@ while True:
         # warn the user.
         if parsed_command["confidence"] <= minimum_confidence:
             logging.debug("Sending warning about insufficient confidence.")
-
             reply = "I think you should know that I'm not entirely confident I know what you mean.  I'm only about %d percent sure of my interpretation.  Were you asking about %s?" % (parsed_command["confidence"], parsed_command["match"])
             send_message_to_user(reply)
+
+        # If the user is replying to the bot (they've been asked about
+        # something specific), parse the reply and do something with it.
+        if media_to_play:
+            
+
+
+            media_to_play = None
+            time.sleep(float(polling_time))
+            continue
 
         # If the user is requesting help, get and return that help text to the
         # user.
@@ -568,23 +577,34 @@ while True:
             send_message_to_user(reply)
 
             # Extract just the search term.
-            search_term = extract_search_term(user_command, parsed_command["corpus"])
+            search_term = extract_search_term(user_command,
+                parsed_command["corpus"])
 
             # Run the search.
-            search_result = kodi_library.search_media_library_albums(search_term, media_library["albums"], match_confidence)
+            search_result = kodi_library.search_media_library_albums(search_term,
+                media_library["albums"], match_confidence)
 
-            # Set the media type for later.
-            search_result["type"] = "albums"
+            # Convert the array into a hash incorporating an array.
+            search_result_tmp = {}
+            search_result_tmp["type"] = "albums"
+            search_result_tmp["search_results"] = search_result
+            i = 1
+            for j in search_result_tmp["search_results"]:
+                j["entry"] = i
+                i = i + 1
+            search_result = search_result_tmp
+            logging.debug("Value of search_result: %s" % str(search_result))
 
             # Figure out how confident we are in the search result's accuracy.
-            if not search_result["confidence"]:
-                reply = "I didn't find any matches."
-            elif search_result["confidence"] == 100:
-                reply = "I found it!  %s is in your media library." % search_result["label"]
-            elif search_result["confidence"] >= minimum_confidence:
-                reply = "I think I found what you're looking for in your library: %s" % search_result["label"]
-            else:
-                reply = "I'm not too sure about it, but I may have found something vaguely matching %s is in your media library." % search_result["label"]
+            for album in search_result["search_results"]:
+                if not album["confidence"]:
+                    reply = "I didn't find any matches."
+                elif album["confidence"] == 100:
+                    reply = "I found it!  %s is in your media library.  Would you like me to play it?" % album["label"]
+                elif album["confidence"] >= minimum_confidence:
+                    reply = "I think I found what you're looking for in your library: %s\nShall I play it?" % album["label"]
+                else:
+                    reply = "I'm not too sure about it, but I may have found something vaguely matching %s is in your media library.  I can play it if you like." % album["label"]
 
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.
@@ -607,18 +627,27 @@ while True:
             search_result = kodi_library.search_media_library_artists(search_term,
                 media_library["artists"], match_confidence)
 
-            # Set the media type for later.
-            search_result["type"] = "artists"
+            # Convert the array into a hash incorporating an array.
+            search_result_tmp = {}
+            search_result_tmp["type"] = "artists"
+            search_result_tmp["search_results"] = search_result
+            i = 1
+            for j in search_result_tmp["search_results"]:
+                j["entry"] = i
+                i = i + 1
+            search_result = search_result_tmp
+            logging.debug("Value of search_result: %s" % str(search_result))
 
             # Figure out how confident we are in the search result's accuracy.
-            if not search_result["confidence"]:
-                reply = "I didn't find any matches."
-            elif search_result["confidence"] == 100:
-                reply = "I found it!  You have stuff by %s in your media library." % search_result["artist"]
-            elif search_result["confidence"] >= minimum_confidence:
-                reply = "I think I found who you're looking for: %s" % search_result["artist"]
-            else:
-                reply = "I'm not too sure, but I may have found someone vaguely matching %s in your media library." % search_result["artist"]
+            for artist in search_result["search_results"]:
+                if not artist["confidence"]:
+                    reply = "I didn't find any matches."
+                elif artist["confidence"] == 100:
+                    reply = "I found it!  You have stuff by %s in your media library.  Would you like me to play it?" % artist["artist"]
+                elif artist["confidence"] >= minimum_confidence:
+                    reply = "I think I found who you're looking for: %s\nShall I play it?" % artist["artist"]
+                else:
+                    reply = "I'm not too sure, but I may have found someone vaguely matching %s in your media library.  Would you like me to play it?" % artist["artist"]
 
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.
@@ -641,13 +670,24 @@ while True:
             search_result = kodi_library.search_media_library_genres(search_term,
                 media_library["audio_genres"], match_confidence)
 
+            # Convert the array into a hash incorporating an array.
+            search_result_tmp = {}
+            search_result_tmp["type"] = "genres"
+            search_result_tmp["search_results"] = search_result
+            i = 1
+            for j in search_result_tmp["search_results"]:
+                j["entry"] = i
+                i = i + 1
+            search_result = search_result_tmp
+            logging.debug("Value of search_result: %s" % str(search_result))
+
             # Build a reply to the user.
-            if not len(search_result):
+            if not len(search_result["search_results"]):
                 reply = "It doesn't look like I found any matching genres in your media library.  You either don't have any, or your media's genre tags aren't amenable to searching and matching."
-            if len(search_result) == 1:
+            if len(search_result["search_results"]) == 1:
                 reply = "I found only one hit for that genre."
-            if len(search_result) > 1:
-                reply = "I found %d possible matching genres in your library.  I'm fairly sure that they're all minor variants of each other so I'm going to consider all of them valid." % len(search_result)
+            if len(search_result["search_results"]) > 1:
+                reply = "I found %d possible matching genres in your library.  I'm fairly sure that they're all minor variants of each other so I'm going to consider all of them valid." % len(search_result["search_results"])
 
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.
@@ -688,13 +728,27 @@ while True:
                     tmplist.append(i)
             search_result = tmplist
 
+            # Convert the array into a hash incorporating an array.
+            search_result_tmp = {}
+            search_result_tmp["type"] = "songs"
+            search_result_tmp["search_results"] = search_result
+            i = 1
+            for j in search_result_tmp["search_results"]:
+                j["entry"] = i
+                i = i + 1
+            search_result = search_result_tmp
+            logging.debug("Value of search_result: %s" % str(search_result))
+
             # Build a reply to the user.
-            if not len(search_result):
+            if not len(search_result["search_results"]):
                 reply = "It doesn't look like I found any matching tracks in your media library.  You might not have it, it may not have that title, or you mis-remembered the title somehow.  Or maybe your music metadata needs to be curated."
-            if len(search_result) == 1:
-                reply = "I found the song for you."
-            if len(search_result) > 1:
-                reply = "I found %d possible matching tracks." % len(search_result)
+            if len(search_result["search_results"]) == 1:
+                reply = "I found the song for you.  Do you want me to play it?"
+            if len(search_result["search_results"]) > 1:
+                reply = "I found %d possible matching tracks:\n\n" % len(search_result["search_results"])
+                for i in search_result["search_results"]:
+                    reply = reply + str(i["entry"]) + " - " + str(i["label"]) + "\n"
+                reply = reply + "\nWhich one would you like me to play?"
 
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.
@@ -717,19 +771,34 @@ while True:
             search_result = kodi_library.search_media_library_video(search_term,
                 media_library["video"], match_confidence)
 
+            # Convert the array into a hash incorporating an array.
+            search_result_tmp = {}
+            search_result_tmp["type"] = "videos"
+            search_result_tmp["search_results"] = search_result
+            i = 1
+            for j in search_result_tmp["search_results"]:
+                j["entry"] = i
+                i = i + 1
+            search_result = search_result_tmp
+            logging.debug("Value of search_result: %s" % str(search_result))
+
             # Build a reply to the user.
-            if not len(search_result):
+            if not len(search_result["search_results"]):
                 reply = "It doesn't look like I found any matching filenames in your media library.  You either don't have it, or your filenames need cleaning up."
-            if len(search_result) == 1:
+            if len(search_result["search_results"]) == 1:
                 reply = "I found only one matching filename."
                 media_to_play = search_result
-            if len(search_result) > 1:
-                reply = "I found %d possible matching filenames in your video library." % len(search_result)
+            if len(search_result["search_results"]) > 1:
+                reply = "I found %d possible matching filenames in your video library.\n\n" % len(search_result["search_results"])
                 media_to_play = search_result
+                for i in search_result["search_results"]:
+                    reply = reply + str(i["entry"]) + " - " + str(i["label"]) + "\n"
+                reply = reply + "\nWhich one would you like me to play?"
 
             # Store a reference to the media to play because later I want the
             # bot to be able to play what it found.
             send_message_to_user(reply)
+            media_to_play = search_result
             continue
 
         # The user wants to pause what's currently playing.
@@ -748,7 +817,7 @@ while True:
             if kodi_library.unpause_media(kodi_url, kodi_auth, headers):
                 reply = "Media unpaused."
             else:
-                reply = "Nothing is playing right now."
+                reply = "Nothing is playing or paused right now."
             send_message_to_user(reply)
             continue
 

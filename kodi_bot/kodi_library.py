@@ -441,6 +441,9 @@ def search_media_library_albums(search_term, media_library, confidence):
         # Short-circuit the search if we find a perfect match.
         if result["confidence"] == 100:
             logging.debug("Hot dog - perfect match!")
+            tmp = []
+            tmp.append(result)
+            result = tmp
             break
 
     logging.debug("Value of result: %s" % str(result))
@@ -473,6 +476,9 @@ def search_media_library_artists(search_term, media_library, confidence):
             logging.debug("Hot dog - perfect match!")
             break
 
+    tmp = []
+    tmp.append(result)
+    result = tmp
     logging.debug("Value of result: %s" % str(result))
     return result
 
@@ -525,6 +531,7 @@ def search_media_library_songs(search_term, media_library, confidence):
             logging.debug("Hot dog - perfect match!")
 
     logging.debug("It looks like I got %d possible matches for the song %s." % (len(result), search_term))
+    logging.debug("Search results: %s" % str(result))
     return sorted(result)
 
 # search_media_library_music(): Takes a search term, a reference into a
@@ -663,7 +670,7 @@ def whats_playing(kodi_url, kodi_auth, headers):
     is_playing = _is_currently_playing(kodi_url, kodi_auth, headers)
     if not is_playing:
         logging.debug("Nothing is playing at this time.")
-        return False
+        return "Nothing is playing at this time."
     is_playing = is_playing[0]
     logging.debug("Value of is_playing: %s" % str(is_playing))
 
@@ -691,6 +698,7 @@ def whats_playing(kodi_url, kodi_auth, headers):
         media_information = media_information + "The song " + result["label"] + " by "
         song_information = _get_song_title(kodi_url, kodi_auth, headers,
             result["id"])
+    #if result["type"] == "video":
     return media_information
 
 # pause_media: If something is playing, pause it.  Takes three arguments, the
@@ -925,18 +933,47 @@ def _clear_current_playlist(kodi_url, kodi_auth, headers):
     else:
         return False
 
-def play_by_filename():
+# play_playlist: Function that tells Kodi to run whatever playlist (with a
+#   complete path) it's given.  Takes four arguments, the Kodi JSON RPC URL, an
+#   HTTP Basic Auth object, a hash of headers, and a filename to start playing.
+#   Returns True if playback started, False if not.
+def play_playlist(kodi_url, kodi_auth, headers, playlist):
+    logging.debug("Entered kodi_library.play_playlist().")
+
+    result = None
+    payload = {}
+    request = None
+
+    # Wipe out the current playlist.
+    result = _clear_current_playlist(kodi_url, kodi_auth, headers)
+    if result:
+        logging.debug("Cleared the scratch playlist.")
+    else:
+        logging.debug("Unable to clear the current scratch playlist.")
 
     # Set up the payload.
-    payload = {}
     payload["jsonrpc"] = "2.0"
     payload["id"] = 1
     payload["method"] = "Player.Open"
     payload["params"] = {}
     payload["params"]["item"] = {}
-    payload["params"]["item"]["file"] = "/full/path/to/file.ext"
+    payload["params"]["item"]["file"] = playlist
 
-    return
+    try:
+        request = requests.post(kodi_url, auth=kodi_auth, headers=headers,
+            data=json.dumps(payload))
+        result = json.loads(request.text)
+        result = result["result"]
+        logging.debug("Response from Kodi: %s" % str(result))
+    except:
+        logging.warn("Failed to get response from Kodi!")
+        result = None
+
+    # Parse what comes back from Kodi.
+    if result == "OK":
+        return True
+    else:
+        return False
 
 def play_by_songid():
 

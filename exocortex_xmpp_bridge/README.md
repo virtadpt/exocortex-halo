@@ -50,3 +50,26 @@ process_name=XMPPbridge
 Then tell supervisord to look for new configuration directives and automatically start anything it finds: **sudo supervisorctl update**
 
 supervisord will read the new config file and start the XMPP bridge for you.
+
+I've also included a .service file (`xmpp_bridge.service`) in case you want to use [systemd](https://www.freedesktop.org/wiki/Software/systemd/) to manage your bots.  Unlike supervisord, systemd can actually manage dependencies of system services, and as much as I find the service irritating it does a fairly decent job of this.  I've written the .service file specifically such that it can be run in [user mode](https://wiki.archlinux.org/index.php/Systemd/User) and will not require elevated permissions of any kind.  Here is the process for setting it up and using it:
+
+* `mkdir -p ~/.config/systemd/user/`
+* `cp ~/exocortex-halo/exocortex_xmpp_bridge/xmpp_bridge.service ~/.config/systemd/user/`
+* You configure the XMPP bridge by making a copy of `exocortex_xmpp_bridge.conf.example` to `exocortex_xmpp_bridge.conf` and editing it.
+* Starting the XMPP bridge: `systemctl start --user xmpp_bridge.service`
+  * You should see something like this if it worked:
+```
+[drwho@windbringer exocortex_xmpp_bridge]$ ps aux | grep [e]xocortex
+drwho     6039  0.1  0.1 459332 24572 ?        Ssl  14:15   0:06 python2 /home/drwho/exocortex-halo/exocortex_xmpp_bridge/exocortex_xmpp_bridge.py
+```
+* Setting the XMPP bridge to start automatically on system boot: `systemctl enable --user xmpp_bridge.service`
+  * You should see something like this if it worked:
+
+```
+[drwho@windbringer exocortex_xmpp_bridge]$ ls -alF ~/.config/systemd/user/default.target.wants/
+total 8
+drwxr-xr-x 2 drwho drwho 4096 Jan 26 14:16 ./
+drwxr-xr-x 3 drwho drwho 4096 Jan 26 14:15 ../
+lrwxrwxrwx 1 drwho drwho   52 Jan 26 14:16 xmpp_bridge.service -> /home/drwho/.config/systemd/user/xmpp_bridge.service
+```
+
