@@ -30,3 +30,26 @@ startretries=0
 Then tell supervisord to look for new configuration directives and automatically start anything it finds: **sudo supervisorctl update**
 
 supervisord will read the new config file and start Systembot for you.
+
+I've also included a .service file (`copy_bot.service`) in case you want to use [systemd](https://www.freedesktop.org/wiki/Software/systemd/) to manage your bots.  Unlike supervisord, systemd can actually manage dependencies of system services, and as much as I find the service irritating it does a fairly decent job of this.  I've written the .service file specifically such that it can be run in [user mode](https://wiki.archlinux.org/index.php/Systemd/User) and will not require elevated permissions of any kind.  Here is the process for setting it up and using it:
+
+* `mkdir -p ~/.config/systemd/user/`
+* `cp ~/exocortex-halo/copy_bot/copy_bot.service ~/.config/systemd/user/`
+* You configure Copy Bot by making a copy of `copy_bot.conf.example` to `copy_bot.conf` and editing it.
+* Starting the XMPP bridge: `systemctl start --user copy_bot.service`
+  * You should see something like this if it worked:
+```
+[drwho@windbringer copy_bot]$ ps aux | grep [c]opy
+drwho    11947  0.1  0.1  88980 21456 ?        Ss   15:32   0:00 python2 /home/drwho/exocortex-halo/copy_bot/copy_bot.py
+```
+* Setting Copy Bot to start automatically on system boot: `systemctl enable --user copy_bot.service`
+  * You should see something like this if it worked:
+
+```
+[drwho@windbringer copy_bot]$ ls -alF ~/.config/systemd/user/default.target.wants/
+total 8
+drwxr-xr-x 2 drwho drwho 4096 Jan 26 14:16 ./
+drwxr-xr-x 3 drwho drwho 4096 Jan 26 14:15 ../
+lrwxrwxrwx 1 drwho drwho   52 Jan 26 14:16 copy_bot.service -> /home/drwho/.config/systemd/user/copy_bot.service
+```
+
