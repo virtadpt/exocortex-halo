@@ -25,3 +25,26 @@ startretries=0
 Then tell supervisord to look for new configuration directives and automatically start anything it finds: **sudo supervisorctl update**
 
 supervisord will read the new config file and start Web Search Bot for you.
+
+I've also included a .service file (`web_search_bot.service`) in case you want to use [systemd](https://www.freedesktop.org/wiki/Software/systemd/) to manage your bots.  Unlike supervisord, systemd can actually manage dependencies of system services, and as much as I find the service irritating it does a fairly decent job of this.  I've written the .service file specifically such that it can be run in [user mode](https://wiki.archlinux.org/index.php/Systemd/User) and will not require elevated permissions of any kind.  Here is the process for setting it up and using it:
+
+* `mkdir -p ~/.config/systemd/user/`
+* `cp ~/exocortex-halo/web_search_bot/web_search_bot.service ~/.config/systemd/user/`
+* You configure the XMPP bridge by making a copy of `web_search_bot.conf.example` to `web_search_bot.conf` and editing it.
+* Starting the XMPP bridge: `systemctl start --user web_search_bot.service`
+  * You should see something like this if it worked:
+```
+[drwho@windbringer web_search_bot]$ ps aux | grep [w]eb_search
+drwho     6039  0.1  0.1 459332 24572 ?        Ssl  14:15   0:06 python2 /home/drwho/exocortex-halo/web_search_bot/web_search_bot.py
+```
+* Setting the web search bot to start automatically on system boot: `systemctl enable --user web_search_bot.service`
+  * You should see something like this if it worked:
+
+```
+[drwho@windbringer web_search_bot]$ ls -alF ~/.config/systemd/user/default.target.wants/
+total 8
+drwxr-xr-x 2 drwho drwho 4096 Jan 26 14:16 ./
+drwxr-xr-x 3 drwho drwho 4096 Jan 26 14:15 ../
+lrwxrwxrwx 1 drwho drwho   52 Jan 26 14:16 web_search_bot.service -> /home/drwho/.config/systemd/user/web_search_bot.service
+```
+
