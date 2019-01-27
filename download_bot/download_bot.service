@@ -1,0 +1,13 @@
+[Unit]
+Description=Exocortex file downloading bot
+Wants=xmpp_bridge.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/download_bot/
+ExecStart=%h/exocortex-halo/download_bot/run.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+
