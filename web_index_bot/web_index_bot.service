@@ -1,0 +1,13 @@
+[Unit]
+Description=Exocortex web index bot
+Wants=xmpp_bridge.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/web_index_bot/
+ExecStart=%h/exocortex-halo/web_index_bot/run.sh
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+

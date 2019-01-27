@@ -1,6 +1,6 @@
 [Unit]
-Description=Exocortex web search bot bot
-After=xmpp_bridge.service
+Description=Exocortex web search bot
+Wants=xmpp_bridge.service
 
 [Service]
 Type=simple
