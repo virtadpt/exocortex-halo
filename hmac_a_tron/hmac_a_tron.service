@@ -5,7 +5,7 @@ Description=HMAC/JWT generator microservice
 Type=simple
 WorkingDirectory=%h/exocortex-halo/hmac_a_tron/
 ExecStart=%h/exocortex-halo/hmac_a_tron/hmac_a_tron.py
-Restart=on-failure
+Restart=always
 
 [Install]
 WantedBy=default.target

@@ -6,7 +6,7 @@ Wants=xmpp_bridge.service
 Type=simple
 WorkingDirectory=%h/exocortex-halo/exocortex_sip_client/
 ExecStart=%h/exocortex-halo/exocortex_sip_client/exocortex_web_to_speech.py
-Restart=on-failure
+Restart=always
 
 [Install]
 WantedBy=default.target

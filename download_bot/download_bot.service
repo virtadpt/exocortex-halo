@@ -6,7 +6,7 @@ Wants=xmpp_bridge.service
 Type=simple
 WorkingDirectory=%h/exocortex-halo/download_bot/
 ExecStart=%h/exocortex-halo/download_bot/run.sh
-Restart=on-failure
+Restart=always
 
 [Install]
 WantedBy=default.target

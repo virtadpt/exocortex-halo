@@ -5,7 +5,7 @@ Description=Exocortex XMPP bridge
 Type=simple
 WorkingDirectory=%h/exocortex-halo/exocortex_xmpp_bridge/
 ExecStart=%h/exocortex-halo/exocortex_xmpp_bridge/run.sh
-Restart=on-failure
+Restart=always
 
 [Install]
 WantedBy=default.target
