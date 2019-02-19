@@ -13,7 +13,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - 
+# -
 
 # Load modules.
 import jwt
@@ -66,8 +66,13 @@ def search(search_term, url, secret, searchtype):
     parameters[searchtype] = search_term
 
     # Send the search request to Shaarli.
-    request = requests.get(url + "/api/v1/links", params=parameters,
-        headers=http_headers)
-    results = request.json()
-
+    try:
+        request = requests.get(url + "/api/v1/links", params=parameters,
+            headers=http_headers)
+        results = request.json()
+    except:
+        logging.error("I wasn't able to contact the Shaarli instance.")
     return results
+
+if "__name__" == "__main__":
+    pass

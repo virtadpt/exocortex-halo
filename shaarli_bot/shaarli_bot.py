@@ -126,8 +126,11 @@ def send_message_to_user(message):
 
     # Send an HTTP request to the XMPP bridge containing the message for the
     # user.
-    request = requests.put(server + "replies", headers=headers,
-        data=json.dumps(reply))
+    try:
+        request = requests.put(server + "replies", headers=headers,
+            data=json.dumps(reply))
+    except:
+        logging.error("I wasn't able to contact the XMPP bridge.  Something went wrong.")
     return
 
 # Core code...
@@ -136,8 +139,7 @@ def send_message_to_user(message):
 argparser = argparse.ArgumentParser(description="A bot that polls a message queue for search requests to an instance of Shaarli.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument("--config", action="store",
-    default="./shaarli_bot.conf")
+argparser.add_argument("--config", action="store", default="./shaarli_bot.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
 argparser.add_argument("--loglevel", action="store",
@@ -254,7 +256,7 @@ while True:
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + """I am a bot which interfaces with a Shaarli instance to run searches and send back results.  To run a search, send me a message that looks something like this:\n\n"""
             reply = reply + bot_name + ", [search for] foo bar baz...\n\n"
-            reply = reply + bot_name + ", [search tags, search tags for [tag]\n"
+            reply = reply + bot_name + ", [search tags, search tags for] [tag]\n"
             send_message_to_user(reply)
             continue
 
@@ -272,7 +274,12 @@ while True:
             if not len(search_results):
                 reply = "I don't seem to have gotten any hits on that search."
             else:
-                reply = "I seem to have gotten " + str(len(search_results)) + " hits on that search.\n\n"
+                reply = "I seem to have gotten "
+                if len(search_results) == 1:
+                    reply = reply + "one hit"
+                if len(search_results) > 1:
+                    reply = reply + str(len(search_results)) + " hits"
+                reply = reply + " on that search.\n\n"
                 for i in search_results:
                     if i["title"]:
                         reply = reply + i["title"] + "\n"
@@ -295,7 +302,12 @@ while True:
             if not len(search_results):
                 reply = "I don't seem to have found anything that has those tags."
             else:
-                reply = "I seem to have found " + str(len(search_results)) + " entries that have those tags.\n\n"
+                reply = "I seem to have found "
+                if len(search_results) == 1:
+                    reply = reply + "one entry"
+                if len(search_results) > 1:
+                    reply = reply + str(len(search_results)) + " entries"
+                reply = reply + " with that combination of tags.\n\n"
                 for i in search_results:
                     if i["title"]:
                         reply = reply + i["title"] + "\n"

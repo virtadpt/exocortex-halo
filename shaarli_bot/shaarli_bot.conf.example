@@ -7,7 +7,8 @@ queue = http://localhost:8003/
 # Name I should answer to.
 bot_name = Waldo
 
-# Set the default loglevel of the bot.
+# Set the default log level of the bot.
+# Valid log levels: critical, error, warning, info, debug, notset.
 loglevel = info
 
 # How often to poll the message queue for orders.  Defaults to 30 seconds.
