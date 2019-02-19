@@ -13,10 +13,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - I think I can refactor the search functions so that there's only one, and
-#   the type-of-search argument is passed as a parameter.  This'll do for a
-#   start, though.
-# -
+# - 
 
 # Load modules.
 import jwt
@@ -44,12 +41,12 @@ payload["iat"] = 0
 jwt_token = ""
 
 # Functions
-# search_text(): Function that runs a full-text search on the Shaarli instance
-#   (but not the tags!).  Takes as its arguments a string to search for, a
-#   URL to a Shaarli instance, and a Shaarli API secret.  Returns the JSON
-#   from Shaarli.
-def search_text(search_term, url, secret):
-    logging.debug("Entered search.search_text().")
+# search_(): Function that runs a search on the Shaarli instance.  Takes as
+#   its arguments a string to search for, a URL to a Shaarli instance, a
+#   Shaarli API secret, and the search type for the API.  Returns the
+#   JSON from Shaarli.
+def search(search_term, url, secret, searchtype):
+    logging.debug("Entered search.search().")
 
     request = None
     parameters = {}
@@ -66,36 +63,7 @@ def search_text(search_term, url, secret):
     http_headers["Authorization"] = "Bearer " + jwt_token
 
     # Build request parameters.
-    parameters["searchterm"] = search_term
-
-    # Send the search request to Shaarli.
-    request = requests.get(url + "/api/v1/links", params=parameters,
-        headers=http_headers)
-    results = request.json()
-
-# search_tags(): Function that runs a tag-based search on the Shaarli
-#   instance.  Takes as its arguments a string to search for, a URL to a
-#   Shaarli instance, and a Shaarli API secret.  Returns the JSON
-#   from Shaarli.
-def search_tags(search_term, url, secret):
-    logging.debug("Entered search.search_tags().")
-
-    request = None
-    parameters = {}
-    results = []
-
-    # Build the JWT payload.  The IAT time must be in UTC!
-    payload["iat"] = int(time.mktime(time.localtime()))
-    logging.debug("Value of payload: " + str(payload))
-
-    # Build a JWT token.
-    jwt_token = jwt.encode(payload, secret, algorithm="HS512",
-        headers=jwt_headers)
-    logging.debug("Value of jwt_token: " + jwt_token)
-    http_headers["Authorization"] = "Bearer " + jwt_token
-
-    # Build request parameters.
-    parameters["searchtags"] = search_term
+    parameters[searchtype] = search_term
 
     # Send the search request to Shaarli.
     request = requests.get(url + "/api/v1/links", params=parameters,

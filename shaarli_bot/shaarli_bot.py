@@ -253,8 +253,8 @@ while True:
         if parsed_command == "help":
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
             reply = reply + """I am a bot which interfaces with a Shaarli instance to run searches and send back results.  To run a search, send me a message that looks something like this:\n\n"""
-            reply = reply + bot_name + ", [search for, search] foo bar baz...\n\n"
-            reply = reply + bot_name + ", [search tags, search tags for [tag]\n\n"
+            reply = reply + bot_name + ", [search for] foo bar baz...\n\n"
+            reply = reply + bot_name + ", [search tags, search tags for [tag]\n"
             send_message_to_user(reply)
             continue
 
@@ -267,8 +267,8 @@ while True:
         if parsed_command["type"] == "search text":
             reply = "Searching titles and text for the string ''" + str(parsed_command["search term"]) + "''"
             send_message_to_user(reply)
-            search_results = search.search_text(parsed_command["search term"],
-                shaarli_url, api_secret)
+            search_results = search.search(parsed_command["search term"],
+                shaarli_url, api_secret, "searchterm")
             if not len(search_results):
                 reply = "I don't seem to have gotten any hits on that search."
             else:
@@ -281,7 +281,8 @@ while True:
                     if i["description"]:
                         reply = reply + i["description"] + "\n"
                     if i["tags"]:
-                        reply = reply + "Tags: " + ", ".join(i["tags"]) + "\n\n"
+                        reply = reply + "Tags: " + ", ".join(i["tags"]) + "\n"
+                    reply = reply + "\n"
             send_message_to_user(reply)
             continue
 
@@ -289,8 +290,8 @@ while True:
         if parsed_command["type"] == "search tags":
             reply = "Searching for the tags ''" + str(parsed_command["search term"]) + "''"
             send_message_to_user(reply)
-            search_results = search.search_tags(parsed_command["search term"],
-                shaarli_url, api_secret)
+            search_results = search.search(parsed_command["search term"],
+                shaarli_url, api_secret, "searchtags")
             if not len(search_results):
                 reply = "I don't seem to have found anything that has those tags."
             else:
@@ -303,7 +304,8 @@ while True:
                     if i["description"]:
                         reply = reply + i["description"] + "\n"
                     if i["tags"]:
-                        reply = reply + "Tags: " + ", ".join(i["tags"]) + "\n\n"
+                        reply = reply + "Tags: " + ", ".join(i["tags"]) + "\n"
+                    reply = reply + "\n"
             send_message_to_user(reply)
             continue
 
