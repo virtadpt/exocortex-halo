@@ -1,0 +1,12 @@
+[Unit]
+Description=Exocortex Shaarli interface bot
+Wants=xmpp_bridge.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/shaarli_bot/
+ExecStart=%h/exocortex-halo/shaarli_bot/run.sh
+Restart=always
+
+[Install]
+WantedBy=default.target

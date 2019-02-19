@@ -1,0 +1,3 @@
+PyJWT
+pyparsing
+requests
