@@ -258,6 +258,11 @@ while True:
             send_message_to_user(reply)
             continue
 
+        if parsed_command == "unknown":
+            reply = "I didn't understand that command.  Please try again."
+            send_message_to_user(reply)
+            continue
+
         # Use case: Search for a string in the title or the body of an entry.
         if parsed_command["type"] == "search text":
             reply = "Searching titles and text for the string ''" + str(parsed_command["search term"]) + "''"
@@ -301,17 +306,6 @@ while True:
                         reply = reply + "Tags: " + ", ".join(i["tags"]) + "\n\n"
             send_message_to_user(reply)
             continue
-
-        # If something went wrong...
-        if not parsed_command:
-            logger.warn("Something went wrong with...")
-            reply = "Something went wrong with..."
-            send_message_to_user(reply)
-            continue
-
-        # Reply that it was successful.
-        reply = "Tell the user that it was successful."
-        send_message_to_user(reply)
 
     # Message queue not found.
     if request.status_code == 404:
