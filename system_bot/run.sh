@@ -5,6 +5,6 @@ export PATH=$VIRTUAL_ENV/bin:$PATH
 export PS1="(virtualenv) $PS1"
 unset PYTHON_HOME
 
-exec "./system_bot.py"
+eval exec "./system_bot.py"
 
 exit 0

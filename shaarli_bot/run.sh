@@ -5,6 +5,6 @@ export PATH=$VIRTUAL_ENV/bin:$PATH
 export PS1="(virtualenv) $PS1"
 unset PYTHON_HOME
 
-exec "./shaarli_bot.py"
+eval exec "./shaarli_bot.py"
 
 exit 0

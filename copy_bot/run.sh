@@ -5,6 +5,6 @@ export PATH=$VIRTUAL_ENV/bin:$PATH
 export PS1="(virtualenv) $PS1"
 unset PYTHON_HOME
 
-exec "./copy_bot.py"
+eval exec "./copy_bot.py"
 
 exit 0
