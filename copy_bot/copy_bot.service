@@ -1,5 +1,6 @@
 [Unit]
 Description=Exocortex file copy bot
+After=xmpp_bridge.service
 Wants=xmpp_bridge.service
 
 [Service]

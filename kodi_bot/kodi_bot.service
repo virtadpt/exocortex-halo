@@ -1,5 +1,6 @@
 [Unit]
 Description=Exocortex Kodi bot with conversational interface
+After=xmpp_bridge.service
 Wants=xmpp_bridge.service
 
 [Service]
