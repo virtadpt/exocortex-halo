@@ -22,6 +22,7 @@
 
 # License: GPLv3
 
+# v1.1 - Added the URL of the configured Shaarli instance to the help text.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -253,10 +254,11 @@ while True:
         # If the user is requesting help, assemble a response and send it back
         # to the server's message queue.
         if parsed_command == "help":
-            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
+            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
+            reply = reply + "I am interfaced with the following Shaarli instance: " + shaarli_url + "\n\n"
             reply = reply + """I am a bot which interfaces with a Shaarli instance to run searches and send back results.  To run a search, send me a message that looks something like this:\n\n"""
             reply = reply + bot_name + ", [search for] foo bar baz...\n\n"
-            reply = reply + bot_name + ", [search tags, search tags for] [tag]\n"
+            reply = reply + bot_name + ", [search tags, search tags for] [tag]\n\n"
             send_message_to_user(reply)
             continue
 
