@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -8,6 +8,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v5.0 - Reworking for Python 3.
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
 # v3.0 - Rewriting to use SleekXMPP, because I'm tired of XMPPpy's lack of
 #        documentation.  The code is much more sleek, if nothing else.
@@ -62,8 +63,8 @@
 
 # License: GPLv3
 
-from BaseHTTPServer import HTTPServer
-from BaseHTTPServer import BaseHTTPRequestHandler
+from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler
 
 import json
 import logging
@@ -83,15 +84,19 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Process HTTP/1.1 GET requests.
     def do_GET(self):
+        # This is a handle for serialized JSON before it's converted into bytes.
+        message = None
+
         # If someone requests /, return the current internal configuration of
         # this bot in an attempt to be helpful.
         if self.path == '/':
             logging.debug("User requested /.  Returning list of configured agents.")
             self.send_response(200)
             self.send_header("Content-type:", "application/json")
-            self.wfile.write('\n')
-            json.dump({ "active agents": message_queue.message_queue.keys() },
-                self.wfile)
+            self.wfile.write(b'\n')
+            message = json.dumps({ "active agents":
+                message_queue.message_queue.keys() }).encode()
+            json.dump(message, self.wfile)
             return
 
         # Figure out if the base API rail contacted is one of the agents
@@ -101,8 +106,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logging.debug("Message queue for agent " + agent + " not found.")
             self.send_response(404)
             self.send_header("Content-type:", "application/json")
-            self.wfile.write('\n')
-            json.dump({agent: "not found"}, self.wfile)
+            self.wfile.write(b'\n')
+            message = json.dumps({agent: "not found"}).encode()
+            self.wfile.write(message)
             return
 
         # If the message queue is empty, return an error JSON document.
@@ -110,8 +116,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logging.debug("Message queue for agent " + agent + " is empty.")
             self.send_response(200)
             self.send_header("Content-Type:", "application/json")
-            self.wfile.write('\n')
-            json.dump({"command": "no commands"}, self.wfile)
+            self.wfile.write(b'\n')
+            message = json.dumps({"command": "no commands"}).encode()
+            self.wfile.write(message)
             return
 
         # Extract the earliest command from the agent's message queue.
@@ -124,8 +131,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             + ": " + command)
         self.send_response(200)
         self.send_header("Content-Type:", "application/json")
-        self.wfile.write('\n')
-        json.dump({"command": command}, self.wfile)
+        self.wfile.write(b'\n')
+        message = json.dumps({"command": command}).encode()
+        self.wfile.write(message)
         return
 
     # Replies from a construct will look like this:
@@ -137,6 +145,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Process HTTP/1.1 PUT requests.
     def do_PUT(self):
+        # This is a handle for serialized JSON before it's converted into bytes.
+        message = None
+
         content = ""
         content_length = 0
         response = {}
@@ -150,8 +161,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logging.debug("Something tried to PUT to API rail /" + agent + ".  Better make sure it's not a bug.")
             self.send_response(404)
             self.send_header("Content-Type:", "application/json")
-            self.wfile.write('\n')
-            json.dump({agent: "not found"}, self.wfile)
+            self.wfile.write(b'\n')
+            message = json.dumps({agent: "not found"}).encode()
+            self.wfile.write(message)
             return
 
         logging.info("A construct has contacted the /replies API rail.")
@@ -209,7 +221,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         try:
             content_length = int(self.headers['Content-Length'])
             content = self.rfile.read(content_length)
-            logging.debug("Content sent by client: " + content)
+            logging.debug("Content sent by client: " + content.decode("ascii"))
         except:
             logging.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
             self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
@@ -264,6 +276,5 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             return True
 
 if "__name__" == "__main__":
-    print "No self tests yet."
+    print("No self tests yet.")
     sys.exit(0)
-

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -8,6 +8,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v5.0 - Reworking for Python 3.
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
 # v3.0 - Rewriting to use SleekXMPP, because I'm tired of XMPPpy's lack of
 #        documentation.  The code is much more sleek, if nothing else.
@@ -45,7 +46,7 @@
 # v1.0 - Initial release.
 
 # TODO:
-# - 
+# -
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -60,6 +61,5 @@ message_queue = {}
 message_queue['replies'] = []
 
 if "__name__" == "__main__":
-    print "No self tests yet."
+    print("No self tests yet.")
     sys.exit(0)
-

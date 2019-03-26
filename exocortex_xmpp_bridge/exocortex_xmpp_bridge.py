@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -15,6 +15,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v5.0 - Reworking for Python 3.
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
 #      - Made the interface and port the REST API listens on configurable.
 #        Defaults to the old localhost:8003.
@@ -75,14 +76,11 @@
 
 # License: GPLv3
 
-from BaseHTTPServer import HTTPServer
-from BaseHTTPServer import BaseHTTPRequestHandler
-from sleekxmpp import ClientXMPP
-from sleekxmpp.exceptions import IqError, IqTimeout
-from sleekxmpp.xmlstream import scheduler
+from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler
 
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -154,7 +152,7 @@ if args.config:
     config_file = args.config
 
 # Read the configuration file.  Then load it into a config file parser object.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file " +
         config_file + ".")

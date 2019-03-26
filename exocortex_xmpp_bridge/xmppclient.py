@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -8,6 +8,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v5.0 - Reworking for Python 3.
 # v4.1 - Explicitly setting the stanza type to "chat" makes the bridge work
 #        reliably with more XMPP clients (such as converse.js).
 #      - Also fixed typos in some comments.  Oops.
@@ -297,6 +298,5 @@ Individual constructs may have their own online help, so try sending the command
         return
 
 if "__name__" == "__main__":
-    print "No self tests yet."
+    print("No self tests yet.")
     sys.exit(0)
-
