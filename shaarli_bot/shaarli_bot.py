@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -22,6 +22,7 @@
 
 # License: GPLv3
 
+# v2.0 - Ported to Python 3.
 # v1.1 - Added the URL of the configured Shaarli instance to the help text.
 # v1.0 - Initial release.
 
@@ -30,7 +31,7 @@
 
 # Load modules.
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -129,7 +130,7 @@ def send_message_to_user(message):
     # user.
     try:
         request = requests.put(server + "replies", headers=headers,
-            data=json.dumps(reply))
+            data=json.dumps(reply).encode())
     except:
         logging.error("I wasn't able to contact the XMPP bridge.  Something went wrong.")
     return
@@ -156,7 +157,7 @@ if args.config:
 
 # Read the options in the configuration file before processing overrides on the
 # command line.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file " +
         config_file + ".")
@@ -227,7 +228,7 @@ while True:
         logger.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)
     except:
-        logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        logger.warning("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
         time.sleep(float(polling_time))
         continue
 

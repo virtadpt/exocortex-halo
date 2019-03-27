@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v2.0 - Ported to Python 3.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -59,8 +60,8 @@ def search(search_term, url, secret, searchtype):
     # Build a JWT token.
     jwt_token = jwt.encode(payload, secret, algorithm="HS512",
         headers=jwt_headers)
-    logging.debug("Value of jwt_token: " + jwt_token)
-    http_headers["Authorization"] = "Bearer " + jwt_token
+    logging.debug("Value of jwt_token: " + jwt_token.decode())
+    http_headers["Authorization"] = "Bearer " + jwt_token.decode()
 
     # Build request parameters.
     parameters[searchtype] = search_term

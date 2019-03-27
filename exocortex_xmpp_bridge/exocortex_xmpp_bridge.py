@@ -203,7 +203,7 @@ else:
 
 # Allocate and start the Simple HTTP Server instance.
 api_server = HTTPServer((listenon_host, listenon_port), rest.RESTRequestHandler)
-logger.debug("REST API server now listening on " + str(listenon_host) + ", port " + str(listenon_port) + "/tcp.")
+logger.info("REST API server now listening on " + str(listenon_host) + ", port " + str(listenon_port) + "/tcp.")
 while True:
     api_server.serve_forever()
 

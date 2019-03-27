@@ -93,10 +93,10 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logging.debug("User requested /.  Returning list of configured agents.")
             self.send_response(200)
             self.send_header("Content-type:", "application/json")
-            self.wfile.write(b'\n')
+            self.end_headers()
             message = json.dumps({ "active agents":
                 message_queue.message_queue.keys() }).encode()
-            json.dump(message, self.wfile)
+            self.wfile.write(message)
             return
 
         # Figure out if the base API rail contacted is one of the agents
@@ -106,7 +106,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logging.debug("Message queue for agent " + agent + " not found.")
             self.send_response(404)
             self.send_header("Content-type:", "application/json")
-            self.wfile.write(b'\n')
+            self.end_headers()
             message = json.dumps({agent: "not found"}).encode()
             self.wfile.write(message)
             return
@@ -116,7 +116,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logging.debug("Message queue for agent " + agent + " is empty.")
             self.send_response(200)
             self.send_header("Content-Type:", "application/json")
-            self.wfile.write(b'\n')
+            self.end_headers()
             message = json.dumps({"command": "no commands"}).encode()
             self.wfile.write(message)
             return
@@ -131,7 +131,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             + ": " + command)
         self.send_response(200)
         self.send_header("Content-Type:", "application/json")
-        self.wfile.write(b'\n')
+        self.end_headers()
         message = json.dumps({"command": command}).encode()
         self.wfile.write(message)
         return
@@ -161,7 +161,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             logging.debug("Something tried to PUT to API rail /" + agent + ".  Better make sure it's not a bug.")
             self.send_response(404)
             self.send_header("Content-Type:", "application/json")
-            self.wfile.write(b'\n')
+            self.end_headers()
             message = json.dumps({agent: "not found"}).encode()
             self.wfile.write(message)
             return
@@ -200,6 +200,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         reply = reply + response['reply']
         message_queue.message_queue['replies'].append(reply)
         self.send_response(200)
+        self.end_headers()
         return
 
     # Send an HTTP response, consisting of the status code, headers and
@@ -209,7 +210,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps(response))
+        self.wfile.write(json.dumps(response).encode())
         return
 
     # Read content from the client connection and return it as a string.

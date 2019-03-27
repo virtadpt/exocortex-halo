@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -17,13 +17,13 @@
 
 # License: GPLv3
 
+# v2.0 - Ported to Python 3.
 # v1.0 - Initial release.
 
 # TO-DO:
 
 # Load modules.
 import argparse
-import HTMLParser
 import json
 import jwt
 import logging
@@ -31,6 +31,8 @@ import os.path
 import requests
 import sys
 import time
+
+from html.parser import HTMLParser
 
 # Constants.
 # Build the JWT headers.
@@ -226,7 +228,7 @@ for book in lt_books:
         logger.debug(json.dumps(response.json()))
     else:
         logger.info("Not sending book because this is a dry run.")
-        print json.dumps(new_book)
+        print(json.dumps(new_book))
 
     # Sleep or a couple of seconds so we don't overwhelm the server.
     if not args.dryrun:
