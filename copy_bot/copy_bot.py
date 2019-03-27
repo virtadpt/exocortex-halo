@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -14,6 +14,7 @@
 
 # License: GPLv3
 
+# v2.0 - Ported to Python 3.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -23,7 +24,7 @@
 
 # Load modules.
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -208,13 +209,13 @@ def copy_files(filespecs):
 #   it worked.
 def send_message_to_user(message):
     # Headers the XMPP bridge looks for for the message to be valid.
-    headers = {'Content-type': 'application/json'}
+    headers = {"Content-type": "application/json"}
 
     # Set up a hash table of stuff that is used to build the HTTP request to
     # the XMPP bridge.
     reply = {}
-    reply['name'] = bot_name
-    reply['reply'] = message
+    reply["name"] = bot_name
+    reply["reply"] = message
 
     # Send an HTTP request to the XMPP bridge containing the message for the
     # user.
@@ -256,15 +257,15 @@ I am designed to remotely copy one or more files from one location on the hot I 
 argparser = argparse.ArgumentParser(description="A toolbot that accepts two filespecs from the user, one for one or more files to copy from, the other a filename or destination directory to copy into.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument('--config', action='store', 
-    default='./copy_bot.conf')
+argparser.add_argument("--config", action="store",
+    default="./copy_bot.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
-argparser.add_argument('--loglevel', action='store',
-    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.')
+argparser.add_argument("--loglevel", action="store",
+    help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument('--polling', action='store', help='Default: 30 seconds')
+argparser.add_argument("--polling", action="store", help="Default: 30 seconds")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -273,7 +274,7 @@ if args.config:
 
 # Read the options in the configuration file before processing overrides on the
 # command line.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file " +
         config_file + ".")
@@ -347,7 +348,7 @@ while True:
 
         # Extract the command.
         command = json.loads(request.text)
-        command = command['command']
+        command = command["command"]
 
         # Parse the command.
         command = parser.parse_command(command)
@@ -384,4 +385,3 @@ while True:
 
 # Fin.
 sys.exit(0)
-
