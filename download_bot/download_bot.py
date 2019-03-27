@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -14,6 +14,7 @@
 
 # License: GPLv3
 
+# v2.0 - Ported to Python 3.
 # v1.2 - Added "download this as an MP3" support.
 # v1.1 - Added youtube-dl support.
 # v1.0 - Initial release.
@@ -27,7 +28,7 @@
 from __future__ import unicode_literals
 
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -277,13 +278,13 @@ def download_media(download_directory, url):
 #   it worked.
 def send_message_to_user(message):
     # Headers the XMPP bridge looks for for the message to be valid.
-    headers = {'Content-type': 'application/json'}
+    headers = {"Content-type": "application/json"}
 
     # Set up a hash table of stuff that is used to build the HTTP request to
     # the XMPP bridge.
     reply = {}
-    reply['name'] = bot_name
-    reply['reply'] = message
+    reply["name"] = bot_name
+    reply["reply"] = message
 
     # Send an HTTP request to the XMPP bridge containing the message for the
     # user.
@@ -293,18 +294,18 @@ def send_message_to_user(message):
 # Core code...
 
 # Set up the command line argument parser.
-argparser = argparse.ArgumentParser(description='A bot that polls a message queue for URLs to files to download and downloads them into a local directory.')
+argparser = argparse.ArgumentParser(description="A bot that polls a message queue for URLs to files to download and downloads them into a local directory.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument('--config', action='store',
-    default='./download_bot.conf')
+argparser.add_argument("--config", action="store",
+    default="./download_bot.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
-argparser.add_argument('--loglevel', action='store',
-    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.')
+argparser.add_argument("--loglevel", action="store",
+    help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument('--polling', action='store', help='Default: 30 seconds')
+argparser.add_argument("--polling", action="store", help="Default: 30 seconds")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -313,7 +314,7 @@ if args.config:
 
 # Read the options in the configuration file before processing overrides on the
 # command line.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file " +
         config_file + ".")
@@ -355,15 +356,15 @@ download_directory = os.path.abspath(os.path.expanduser(download_directory))
 
 # Ensure the download directory exists.
 if not os.path.exists(download_directory):
-    print "ERROR: Download directory " + download_directory + " does not exist."
+    print("ERROR: Download directory " + download_directory + " does not exist.")
     sys.exit(1)
 
 # Ensure that the bot can write to the download directory.
 if not os.access(download_directory, os.R_OK):
-    print "ERROR: Unable to read contents of directory " + download_directory
+    print("ERROR: Unable to read contents of directory " + download_directory)
     sys.exit(1)
 if not os.access(download_directory, os.W_OK):
-    print "ERROR: Unable to write to directory " + download_directory
+    print("ERROR: Unable to write to directory " + download_directory)
     sys.exit(1)
 
 # Set the loglevel from the override on the command line.
