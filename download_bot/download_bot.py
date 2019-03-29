@@ -23,10 +23,6 @@
 # - Write a better command parser, because this is getting bad.
 
 # Load modules.
-# Needed for youtube-dl support, if it exists.  I'd like to make it conditional
-# but Python2 doesn't let you do it that way.
-from __future__ import unicode_literals
-
 import argparse
 import configparser
 import json
