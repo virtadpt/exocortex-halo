@@ -40,8 +40,8 @@
 # - Add other options than base64 for output encoding.
 
 # Load modules.
-from BaseHTTPServer import HTTPServer
-from BaseHTTPServer import BaseHTTPRequestHandler
+from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler
 
 import argparse
 import base64
@@ -354,7 +354,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
     def _ensure_all_hmac_keys(self, arguments):
         all_keys_found = True
         for key in self.required_hmac_keys:
-            if key not in arguments.keys():
+            if key not in list(arguments.keys()):
                 all_keys_found = False
         if not all_keys_found:
             return False
@@ -367,7 +367,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         logger.debug("Entered method RESTRequestHandler._ensure_all_jwt_keys().")
         all_keys_found = True
         for key in self.required_jwt_keys:
-            if key not in arguments.keys():
+            if key not in list(arguments.keys()):
                 all_keys_found = False
                 logger.debug("Did not find find required key ''" + str(key) + "''.")
         if not all_keys_found:
