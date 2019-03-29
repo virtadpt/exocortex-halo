@@ -15,7 +15,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
-# v5.0 - Reworking for Python 3.
+# v5.0 - Ported to Python 3.
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
 #      - Made the interface and port the REST API listens on configurable.
 #        Defaults to the old localhost:8003.
@@ -129,12 +129,6 @@ def process_loglevel(loglevel):
         return 0
 
 # Core code...
-# If we're running in a Python environment earlier than v3.0, set the
-# default text encoding to UTF-8 because XMPP requires it.
-if sys.version_info < (3, 0):
-    reload(sys)
-    sys.setdefaultencoding('utf-8')
-
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description="A construct that logs into an XMPP server with credentials from a configuration file, builds message queues for the other constructs listed in the config file, and listens for messages sent from the construct's designated owner.")
 

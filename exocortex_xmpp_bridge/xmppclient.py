@@ -154,18 +154,18 @@ class XMPPClient(ClientXMPP):
         # Construct a message for the bot's owner that consists of the list of
         # bots that access the message bridge, along with appropriate
         # plurality of nouns.
-        if len(message_queue.message_queue.keys()) == 2:
+        if len(list(message_queue.message_queue.keys())) == 2:
             now_online_message = "The bot "
         else:
             now_online_message = "The bots "
 
-        for key in message_queue.message_queue.keys():
+        for key in list(message_queue.message_queue.keys()):
             if key == "replies":
                 continue
             now_online_message = now_online_message + key + ", "
         now_online_message = now_online_message.strip(", ")
 
-        if len(message_queue.message_queue.keys()) == 2:
+        if len(list(message_queue.message_queue.keys())) == 2:
             now_online_message = now_online_message + " is now online."
         else:
             now_online_message = now_online_message + " are now online."
@@ -221,7 +221,7 @@ class XMPPClient(ClientXMPP):
             agent_name = message_body.split(" ")[0]
         logging.debug("Agent name: " + agent_name)
 
-        if agent_name not in message_queue.message_queue.keys():
+        if agent_name not in list(message_queue.message_queue.keys()):
             logging.debug("Command sent to agent " + agent_name + ", which doesn't exist on this bot.")
             response = "Request sent to agent " + agent_name + ", which doesn't exist on this bot.  Please check your spelling."
             self.send_message(mto=self.owner, mbody=response,
@@ -271,7 +271,7 @@ Individual constructs may have their own online help, so try sending the command
     def _status_report(self):
         logging.debug("Entering XMPPClient._status_report().")
         response = "Contents of message queues are as follows:\n\n"
-        for key in message_queue.message_queue.keys():
+        for key in list(message_queue.message_queue.keys()):
             if key == "replies":
                 continue
             response = response + "Agent " + key + ": "

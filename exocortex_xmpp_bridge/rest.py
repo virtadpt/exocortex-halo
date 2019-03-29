@@ -95,14 +95,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             self.send_header("Content-type:", "application/json")
             self.end_headers()
             message = json.dumps({ "active agents":
-                message_queue.message_queue.keys() }).encode()
+                list(message_queue.message_queue.keys()) }).encode()
             self.wfile.write(message)
             return
 
         # Figure out if the base API rail contacted is one of the agents
         # pulling requests from this bot.  If not, return a 404.
         agent = self.path.strip('/')
-        if agent not in message_queue.message_queue.keys():
+        if agent not in list(message_queue.message_queue.keys()):
             logging.debug("Message queue for agent " + agent + " not found.")
             self.send_response(404)
             self.send_header("Content-type:", "application/json")
@@ -255,7 +255,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Normalize the keys in the hash table to all lowercase.
     def _normalize_keys(self, arguments):
-        for key in arguments.keys():
+        for key in list(arguments.keys()):
             arguments[key.lower()] = arguments[key]
             logging.debug("Normalizing key " + key + " to " + key.lower() + ".")
         return arguments
@@ -266,7 +266,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         all_keys_found = True
 
         for key in self.required_keys:
-            if key not in arguments.keys():
+            if key not in list(arguments.keys()):
                 all_keys_found = False
 
         if not all_keys_found:
