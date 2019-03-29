@@ -104,8 +104,8 @@ logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 if not args.message and not args.infile:
-    print "ERROR: You need to specify either a message on the command line or a - to refer"
-    print "to the utility's stdin."
+    print("ERROR: You need to specify either a message on the command line or a - to refer")
+    print("to the utility's stdin.")
     sys.exit(1)
 
 logger.debug("Command line arguments presented to the script:")
