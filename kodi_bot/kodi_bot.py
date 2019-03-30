@@ -42,7 +42,7 @@
 
 # Load modules.
 import argparse
-import ConfigParser
+import configparser
 import humanfriendly
 import json
 import logging
@@ -347,7 +347,7 @@ if args.config:
 
 # Read the options in the configuration file before processing overrides on the
 # command line.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file %s." % config_file)
     sys.exit(1)
@@ -455,7 +455,7 @@ except:
 for i in commands_tmp:
     commands[i] = []
 commands = parser.load_corpora(corpora_dir, commands)
-logger.debug("Command classes supported by the parser: %s" % str(commands.keys()))
+logger.debug("Command classes supported by the parser: %s" % str(list(commands.keys())))
 
 # If the user asks that no media library be generated, skip this part.  It's
 # nice, but it also gets in the way of debugging because it can take so long.

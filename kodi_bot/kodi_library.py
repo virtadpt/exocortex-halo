@@ -133,7 +133,7 @@ def build_media_library(kodi_url, kodi_auth, headers, sources, exclude_dirs):
     command["params"]["directory"] = ""
 
     # For every media source...
-    for source in sources.keys():
+    for source in list(sources.keys()):
         # For every directory in every media source...
         for directory in sources[source]:
             logging.debug("Now scanning media directory %s..." % directory)
@@ -163,7 +163,7 @@ def build_media_library(kodi_url, kodi_auth, headers, sources, exclude_dirs):
             tmp = request.json()
 
             # Catch file system errors, like file permissions.
-            if "error" in tmp.keys():
+            if "error" in list(tmp.keys()):
                 logging.warn("Got one of Kodi's 'Invalid params' error messages when accessing %s.  Might be bad permissions.  Skipping." % directory)
                 continue
 

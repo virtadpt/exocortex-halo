@@ -123,7 +123,7 @@ def load_corpora(corpora_dir, command_types):
             logging.warn("Unable to open filename %s.  Skipping command class." % os.path.join(corpora_dir, filename))
             command_types.pop(command_type)
 
-    logging.debug("Recognized command types: %s" % str(command_types.keys()))
+    logging.debug("Recognized command types: %s" % str(list(command_types.keys())))
     return command_types
 
 # parse(): Function that parses commands from the message bus.  Takes MOOF args,
@@ -148,7 +148,7 @@ def parse(command, possible_commands):
         return None
 
     # Walk through the command corpora and see which one most closely matches.
-    for command_type in possible_commands.keys():
+    for command_type in list(possible_commands.keys()):
         logging.debug("Now matching against command class %s." % command_type)
 
         for i in possible_commands[command_type]:
