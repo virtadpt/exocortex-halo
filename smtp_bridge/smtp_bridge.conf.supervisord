@@ -1,8 +1,0 @@
-[program:SMTPbridge]
-command=/home/username/exocortex-halo/smtp_bridge/run.sh
-directory=/home/username/exocortex-halo/smtp_bridge
-user=root
-redirect_stderr=true
-process_name=SMTPbridge
-startretries=0
-priority = 255
