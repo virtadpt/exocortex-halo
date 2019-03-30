@@ -136,12 +136,12 @@ for book in lt_books:
     new_book["title"] = new_book["title"].strip().title()
 
     # Authors of the book.
-    if "authors" in old_book.keys():
+    if "authors" in list(old_book.keys()):
         # Case: authors is a populated list.
         if len(old_book["authors"]):
             new_book["description"] = new_book["description"] + "Author: " + parser.unescape(old_book["authors"][0]["fl"]) + "\n"
     # Case: primaryauthor exists in the JSON dump.
-    elif "primaryauthor" in old_book.keys():
+    elif "primaryauthor" in list(old_book.keys()):
         tmp = old_book["primaryauthor"]
         tmp = tmp.split(",")
         tmp = tmp.reverse()
@@ -154,54 +154,54 @@ for book in lt_books:
         new_book["description"] = new_book["description"] + "Author: unknown\n"
 
     # Tags
-    if "tags" in old_book.keys():
+    if "tags" in list(old_book.keys()):
         for i in old_book["tags"]:
             new_book["tags"].append(i.replace(" ", "_"))
 
     # ISBN
-    if "isbn" in old_book.keys():
+    if "isbn" in list(old_book.keys()):
         if old_book["isbn"]["2"] is not None:
             new_book["description"] = new_book["description"] + "ISBN: " + old_book["isbn"]["2"] + "\n"
         elif old_book["isbn"]["0"] is not None:
             new_book["description"] = new_book["description"] + "ISBN: " + old_book["isbn"]["0"] + "\n"
-    elif "originalisbn" in old_book.keys():
+    elif "originalisbn" in list(old_book.keys()):
         new_book["description"] = new_book["description"] + "ISBN: " + old_book["originalisbn"] + "\n"
     else:
         new_book["description"] = new_book["description"] + "ISBN: unknown\n"
 
     # Publication data
-    if "publication" in old_book.keys():
+    if "publication" in list(old_book.keys()):
         new_book["description"] = new_book["description"] + "Publication: " + parser.unescape(old_book["publication"]) + "\n"
     else:
         new_book["description"] = new_book["description"] + "Publication: unknown\n"
 
     # Year of publication
-    if "date" in old_book.keys():
+    if "date" in list(old_book.keys()):
         new_book["description"] = new_book["description"] + "Year: " + old_book["date"] + "\n"
     else:
         new_book["description"] = new_book["description"] + "Year: unknown\n"
 
     # Dewey decimal code
-    if "ddc" in old_book.keys():
+    if "ddc" in list(old_book.keys()):
         new_book["description"] = new_book["description"] + "Dewey Decimal Code: " + old_book["ddc"]["code"][0] + "\n"
     else:
         new_book["description"] = new_book["description"] + "Dewey Decimal Code: unknown\n"
 
     # Library of Congress code
-    if "lcc" in old_book.keys():
+    if "lcc" in list(old_book.keys()):
         if old_book["lcc"]:
             new_book["description"] = new_book["description"] + "Library of Congress: " + old_book["lcc"]["code"] + "\n"
     else:
         new_book["description"] = new_book["description"] + "Library of Congress: unknown\n"
 
     # Number of copies owned
-    if "copies" in old_book.keys():
+    if "copies" in list(old_book.keys()):
         new_book["description"] = new_book["description"] + "Number of copies owned: " + old_book["copies"] + "\n"
     else:
         new_book["description"] = new_book["description"] + "Number of copies owned: 1\n"
 
     # Number of pages
-    if "pages" in old_book.keys():
+    if "pages" in list(old_book.keys()):
         new_book["description"] = new_book["description"] + "Pages: " + old_book["pages"] + "\n"
     else:
         new_book["description"] = new_book["description"] + "Pages: unknown\n"
@@ -217,8 +217,6 @@ for book in lt_books:
 
     # Set the authorization header.
     headers["Authorization"] = "Bearer " + jwt_token
-
-    # build a new book entry here.
 
     # Send the new book to Shaarli if this isn't a dry run.
     if not args.dryrun:
