@@ -32,7 +32,7 @@
 # - Optimize the temperature monitoring loop for the general case.
 
 # Load modules.
-from __future__ import division
+
 
 import logging
 import math
@@ -207,7 +207,7 @@ def get_disk_usage():
         disk_used[i.mountpoint] = ""
 
     # Calculate the maximum and free bytes of each disk device.
-    for i in disk_used.keys():
+    for i in list(disk_used.keys()):
         disk_used[i] = psutil.disk_usage(i).percent
 
     return disk_used
@@ -225,7 +225,7 @@ def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
 
     # Check the amount of space free on each disk device.  For each disk that's
     # running low on space construct a line of the message.
-    for disk in disk_space_free.keys():
+    for disk in list(disk_space_free.keys()):
         if disk_space_free[disk] > disk_usage:
             message = message + "WARNING: Disk device " + disk + " has " + str(100.0 - disk_space_free[disk]) + "% of its capacity left.\n"
 
@@ -349,7 +349,7 @@ def local_ip_address():
         return None
 
     # Search the hash for the primary NIC.
-    for nic in nics.keys():
+    for nic in list(nics.keys()):
         # Make sure we filter out VPN interfaces.
         if "tun" in nic:
             continue
@@ -405,12 +405,12 @@ def network_traffic():
     del nics["lo"]
 
     # Prime the network stats hash table with the remaining network interfaces.
-    for i in nics.keys():
+    for i in list(nics.keys()):
         stats[i] = {}
 
     # For each network interface on the system, convert bytes_sent and
     # bytes_recv into human-readable strings.
-    for i in nics.keys():
+    for i in list(nics.keys()):
         stats[i]["sent"] = convert_bytes(nics[i].bytes_sent)
         stats[i]["received"] = convert_bytes(nics[i].bytes_recv)
         logging.debug("Traffic volume to date for " + i + ": " + str(stats[i]))
@@ -464,7 +464,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
 
     # If we've made it this far, we're probably running on real hardware with
     # at least one hardware sensor.
-    for temp_sensor in temperatures.keys():
+    for temp_sensor in list(temperatures.keys()):
         label = temp_sensor
 
         # Temperature readings take the form of lists of tuples, where the
@@ -525,7 +525,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
 
                 # If a list of device temperatures for this device doesn't
                 # exist, add it to the hash.
-                if label not in device_temperatures.keys():
+                if label not in list(device_temperatures.keys()):
                     logging.debug("Creating temperature history for device " + label + ".")
                     device_temperatures[label] = []
 

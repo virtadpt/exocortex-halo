@@ -85,13 +85,13 @@ def restart_crashed_processes(processes, retries=5):
     return crashed_processes
 
 if "__name__" == "__main__":
-    print "List of system processes:"
-    print get_process_list()
+    print("List of system processes:")
+    print(get_process_list())
 
-    print "Processes that should always be running:"
-    print check_process_list(["jfsCommit", "jfsSync"])
+    print("Processes that should always be running:")
+    print(check_process_list(["jfsCommit", "jfsSync"]))
 
-    print "Processes that should never be running:"
-    print check_process_list(["nomatch", "this should never match"])
+    print("Processes that should never be running:")
+    print(check_process_list(["nomatch", "this should never match"]))
     sys.exit(0)
 

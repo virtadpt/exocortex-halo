@@ -47,10 +47,10 @@
 #   x20) configurable in the config file.
 
 # Load modules.
-from __future__ import division
+
 
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -234,7 +234,7 @@ if args.config:
 
 # Read the options in the configuration file before processing overrides on the
 # command line.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file " +
         config_file + ".")
@@ -335,7 +335,7 @@ logger.debug("URL of web service that returns public IP address: " + ip_addr_web
 if len(processes_to_monitor):
     logger.debug("There are " + str(len(processes_to_monitor)) + " processes to watch over on the system.")
     for i in processes_to_monitor:
-        print "    " + i[0]
+        print("    " + i[0])
 
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
@@ -447,7 +447,7 @@ while True:
             if command == "disk":
                 info = system_stats.get_disk_usage()
                 message = "System disk space usage:\n"
-                for key in info.keys():
+                for key in list(info.keys()):
                     message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "% in use.\n"
                 send_message_to_user(message)
 
@@ -485,7 +485,7 @@ while True:
                 if not info:
                     message = "I was unable to get network traffic statistics."
                 else:
-                    for i in info.keys():
+                    for i in list(info.keys()):
                         message = message + "Network interface " + i + ":\n"
                         message = message + info[i]["sent"] + " sent.\n"
                         message = message + info[i]["received"] + " received.\n"
@@ -499,7 +499,7 @@ while True:
                 if not info:
                     message = "This system does not appear to have functioning temperature sensors.  This is common on virtual machines."
                 else:
-                    for sensor in info.keys():
+                    for sensor in list(info.keys()):
                         label = sensor
                         for device in info[sensor]:
                             # If the sensor has its own name, use that instead.
