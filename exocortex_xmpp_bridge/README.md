@@ -2,7 +2,7 @@ Please note: I've ported this code to [Python 3](https://pythonclock.org) becaus
 
 exocortex_xmpp_bridge.py is a bot that does two things: It logs into an XMPP server using a dedicated account, and it presents message queues accessible via REST API rails that other bots can push and pull events through.
 
-It requires the following Python modules providing XMPP protocol support which, if you they aren't available in your distro's default package repo (they are in Ubuntu v14.04 Server LTS) you'll have to install on your own.  The modules are:
+This bot requires the following Python modules providing XMPP protocol support which, if you they aren't available in your distro's default package repo (they are in Ubuntu v14.04 Server LTS) you'll have to install on your own.  The modules are:
 
 * [sleekxmpp](https://github.com/fritzy/SleekXMPP)
 * [dnspython](http://www.dnspython.org/)
