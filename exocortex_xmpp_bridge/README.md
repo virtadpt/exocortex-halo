@@ -45,7 +45,7 @@ I've included a .service file (`xmpp_bridge.service`) in case you want to use [s
   * You should see something like this if it worked:
 ```
 [drwho@windbringer exocortex_xmpp_bridge]$ ps aux | grep [e]xocortex
-drwho     6039  0.1  0.1 459332 24572 ?        Ssl  14:15   0:06 python2 /home/drwho/exocortex-halo/exocortex_xmpp_bridge/exocortex_xmpp_bridge.py
+drwho     6039  0.1  0.1 459332 24572 ?        Ssl  14:15   0:06 python /home/drwho/exocortex-halo/exocortex_xmpp_bridge/exocortex_xmpp_bridge.py
 ```
 * Set the XMPP bridge to start automatically on boot: `systemctl enable --user xmpp_bridge.service`
   * You should see something like this if it worked:

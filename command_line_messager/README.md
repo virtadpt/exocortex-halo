@@ -39,5 +39,5 @@ optional arguments:
 
 If you want to redirect stdout or stderr from something else so this utility
 can transmit it, make the last argument a - (per UNIX convention) to catch
-them, like this: `echo foo | send_message.py -`
+them, like this: echo foo | send_message.py -
 ```
