@@ -28,12 +28,12 @@
 
 # License: GPLv3
 
-from BaseHTTPServer import HTTPServer
-from BaseHTTPServer import BaseHTTPRequestHandler
+from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler
 from cobe.brain import Brain
 
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -338,7 +338,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Ensure that the management API key was sent in an HTTP header.
             # If it wasn't, abort.
-            if "x-api-key" not in self.headers.keys():
+            if "x-api-key" not in list(self.headers.keys()):
                 logger.info("User tried to /register a bot but didn't include the management API key.")
                 self._send_http_response(401, '{"result": null, "error": "Management API key not included.", "id": 401}')
                 return
@@ -360,9 +360,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # There are additional JSON keys that have to be present for this
             # API rail.  This can probably be split out into a separate helper
             # method later.
-            if "respond" not in arguments.keys():
+            if "respond" not in list(arguments.keys()):
                 all_keys_found = False
-            if "learn" not in arguments.keys():
+            if "learn" not in list(arguments.keys()):
                 all_keys_found = False
             if not all_keys_found:
                 logger.debug('{"result": null, "error": "All required keys were not found in the JSON document.  Look at the online help.", "id": 400}')
@@ -428,7 +428,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
             # Ensure that the management API key was sent in an HTTP header.
             # If it wasn't, abort.
-            if "x-api-key" not in self.headers.keys():
+            if "x-api-key" not in list(self.headers.keys()):
                 logger.info("User tried to /deregister a bot but didn't include the management API key.")
                 self._send_http_response(401, '{"result": null, "error": "No management API key.", "id": 401}')
                 return
@@ -525,7 +525,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Normalize the keys in the hash table to all lowercase.
     def _normalize_keys(self, arguments):
-        for key in arguments.keys():
+        for key in list(arguments.keys()):
             arguments[key.lower()] = arguments[key]
             logger.debug("Normalizing key " + key + " to " + key.lower() + ".")
         return arguments
@@ -536,7 +536,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         all_keys_found = True
 
         for key in self.required_keys:
-            if key not in arguments.keys():
+            if key not in list(arguments.keys()):
                 all_keys_found = False
 
         if not all_keys_found:
@@ -649,7 +649,7 @@ if args.config:
     config_file = args.config
 
 # Read the configuration file.  Then load it into a config file parser object.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file " +
         config_file + ".")

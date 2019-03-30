@@ -47,12 +47,12 @@
 
 # Load modules.
 # Needed because we're doing floating point division in a few places.
-from __future__ import division
+
 from irc.dict import IRCDict
 from wordfilter import Wordfilter
 
 import argparse
-import ConfigParser
+import configparser
 import irc.bot
 import irc.strings
 import json
@@ -799,7 +799,7 @@ argparser.add_argument('--respond', action='store_true', default=True,
 args = argparser.parse_args()
 
 # If a configuration file is specified on the command line, load and parse it.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if args.config:
     config_file = args.config
     config.read(config_file)
@@ -819,7 +819,7 @@ if os.path.exists(config_file):
     api_key = config.get("DEFAULT", "api_key")
     respond = config.get("DEFAULT", "respond")
 else:
-    print "Unable to open configuration file " + config_file + "."
+    print("Unable to open configuration file " + config_file + ".")
 
 # Figure out how to configure the logger.  Start by reading from the config
 # file, then try the argument vector.
@@ -868,11 +868,11 @@ if args.password:
 # If the bot doesn't have an authentication password set, don't let the bot
 # start up because somebody will eventually take it over and that'll be bad.
 if not password:
-    print """
+    print("""
 You don't have a password set on the bot.  This means that anybody cold take
 it over and do things with it.  That's no good.  Set a password in the config
 file or on the command line and try again.
-"""
+""")
     sys.exit(1)
 
 # Flip the bit on the respond/don't respond flag.
