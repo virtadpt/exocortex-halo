@@ -25,7 +25,7 @@
 # Load modules.
 import argparse
 import asyncore
-import ConfigParser
+import configparser
 import grp
 import json
 import logging
@@ -148,7 +148,7 @@ def drop_privileges(username, group):
             logger.debug("Trying to drop group privileges...")
             os.setgid(effective_gid)
             logger.debug("Success!")
-        except OSError, e:
+        except OSError as e:
             logger.error("Unable to drop group privileges! %s" % e)
             return False
 
@@ -157,7 +157,7 @@ def drop_privileges(username, group):
             logger.debug("Trying to drop user privileges...")
             os.setuid(effective_uid)
             logger.debug("Success!")
-        except OSError, e:
+        except OSError as e:
             logger.error("Unable to drop user privileges! %s" % e)
             return False
 
@@ -179,7 +179,7 @@ argparser.add_argument("--loglevel", action="store",
 args = argparser.parse_args()
 
 # Read and parse the configuration file.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(args.config):
     logging.error("Unable to find or open configuration file " +
         args.config + ".")
@@ -214,13 +214,13 @@ logger.debug("Group to drop privileges to: " + str(group))
 # Stand up an SMTP server.
 smtpd = smtp_bridge((smtphost, int(smtpport)), None)
 if not drop_privileges(username, group):
-    print "ERROR: Unable to drop elevated privileges.  This isn't good!"
+    print("ERROR: Unable to drop elevated privileges.  This isn't good!")
     sys.exit(1)
 try:
     logger.info("Starting SMTP server daemon.")
     asyncore.loop()
 except KeyboardInterrupt:
-    print "Got a keyboard interrupt.  Terminating"
+    print("Got a keyboard interrupt.  Terminating")
 
 # Fin.
 sys.exit(0)
