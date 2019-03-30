@@ -9,7 +9,7 @@ It requires the following Python modules providing XMPP protocol support which, 
 * [pyasn1](https://github.com/etingof/pyasn1)
 * pyasn1_modules
 
-If they're not I highly recommend installing them into a (venv)[https://docs.python.org/3/tutorial/venv.html] to keep from splattering them all over your file system.  Here's one way to do it (and, in fact, is the recommended and supported method):
+If they're not I highly recommend installing them into a [venv](https://docs.python.org/3/tutorial/venv.html) to keep from splattering them all over your file system.  Here's one way to do it (and, in fact, is the recommended and supported method):
 
 * `cd exocortex_halo/exocortex_xmpp_bridge`
 * `python3 -m venv env`
@@ -18,13 +18,13 @@ If they're not I highly recommend installing them into a (venv)[https://docs.pyt
 
 You'll have to run `source env/bin/activate` every time you want to start up the XMPP bridge bot.  I've included a shell script called `run.sh` which does this automatically for you.
 
-There is no defined format for commands sent to the message queues of this bot.  As long as they are well-formed (JSON)[https://json.org] documents and the message queues exist (i.e., are configured in exocortex_xmpp_bridge.conf) anything that knows where to look can hit each endpoint as many times as it likes, and it'll get back one (1) JSON document per hit; it's on its own to properly parse and utilize that JSON document.  If the message queue is empty it'll get back a document that looks like this, so write your code to handle this case:
+There is no defined format for commands sent to the message queues of this bot.  As long as they are well-formed [JSON](https://json.org) documents and the message queues exist (i.e., are configured in exocortex_xmpp_bridge.conf) anything that knows where to look can hit each endpoint as many times as it likes, and it'll get back one (1) JSON document per hit; it's on its own to properly parse and utilize that JSON document.  If the message queue is empty it'll get back a document that looks like this, so write your code to handle this case:
 
 ```
 {"command": "no commands"}
 ```
 
-The XMPP bridge will always have a rail called */replies* which anything (from a bot to an evocation of (cURL)[https://curl.haxx.se]) on the sever can send arbitrary messages to.  This text will be relayed to the bot's owner as usual.  You can also use this to get as creative as you want.
+The XMPP bridge will always have a rail called */replies* which anything (from a bot to an evocation of [cURL](https://curl.haxx.se)) on the sever can send arbitrary messages to.  This text will be relayed to the bot's owner as usual.  You can also use this to get as creative as you want.
 
 If a message queue/API rail doesn't exist, you'll get a JSON document like this:
 
