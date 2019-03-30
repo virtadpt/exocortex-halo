@@ -56,3 +56,4 @@ drwxr-xr-x 2 drwho drwho 4096 Jan 26 14:16 ./
 drwxr-xr-x 3 drwho drwho 4096 Jan 26 14:15 ../
 lrwxrwxrwx 1 drwho drwho   52 Jan 26 14:16 xmpp_bridge.service -> /home/drwho/.config/systemd/user/xmpp_bridge.service
 ```
+* Ensure that systemd in --user mode will start on boot and run even when you're not logged in: `loginctl enable-linger <your username here>`

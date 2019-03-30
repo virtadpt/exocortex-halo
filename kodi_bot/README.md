@@ -1,6 +1,6 @@
 Please note: I've ported this code to [Python 3](https://pythonclock.org) because Python v2.x will not be maintained past 1 January 2020.ev.  Everything henceforce will be written with that assumption.
 
-This bot requires the following Python modules providing XMPP protocol support which, if you they aren't available in your distro's default package repo (they are in Ubuntu v14.04 Server LTS) you'll have to install on your own.  The modules are:
+This bot requires the following Python modules which, if you they aren't available in your distro's default package repo (they are in Ubuntu v14.04 Server LTS) you'll have to install on your own.  The modules are:
 
 * [fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy)
 * [humanfriendly](https://github.com/xolox/python-humanfriendly)
@@ -17,7 +17,7 @@ If they're not I highly recommend installing them into a [venv](https://docs.pyt
 Included is a `run.sh` shell script which automates starting up `kodi_bot.py`.
 
 #The Command Parser
-The command parser for this bot is very different from the other ones I've written.  It uses a parser that employs [NLP](https://en.wikipedia.org/wiki/Natural_language_processing) techniques as well as [fuzzy matching](https://en.wikipedia.org/wiki/Fuzzy_matching_(computer-assisted_translation)) using a module called [Fuzzywuzzy](https://github.com/seatgeek/fuzzywuzzy).  This means that the command parser needs to be front-loaded with sample text to train it.  I've included a directory of [sample corpora](https://en.wikipedia.org/wiki/Text_corpus) in the subdirectory *corpora/*.  Each file contains text which corresponds to a particular kind of question or command you can send the bot, such as "Do I have Johnny Mnemonic in my video library?" or "Play everything in my library by Information Society."
+The command parser for this bot is very different from the other ones I've written.  It uses a parser that employs [NLP](https://en.wikipedia.org/wiki/Natural_language_processing) techniques as well as [fuzzy matching](https://en.wikipedia.org/wiki/Fuzzy_matching_(computer-assisted_translation)).  This means that the command parser needs to be front-loaded with sample text to train it.  I've included a directory of [sample corpora](https://en.wikipedia.org/wiki/Text_corpus) in the subdirectory *corpora/*.  Each file contains text which corresponds to a particular kind of question or command you can send the bot, such as "Do I have Johnny Mnemonic in my video library?" or "Play everything in my library by Information Society."
 
 The name of each file corresponds to the type of interaction to parse: A search or a command.  For example, *corpora/search_requests_genres.txt* is used to teach the parser how to recognize when the user is asking the bot to search the genres (media metadata, like ID3 tags).  You can and should update these files with text that is more reflective of how you personally would ask questions and give commands to Kodi as if you were speaking to a person.  All of these files must be present, but if a function is not used on your install (say, music playback on a set-top box) it should be of length 0.  I also plan on adding a list of disabled command classes in the configuration file eventually, once I get the "actually do what the user wants" parts working.
 
@@ -78,3 +78,4 @@ drwxr-xr-x 2 drwho drwho 4096 Jan 26 14:16 ./
 drwxr-xr-x 3 drwho drwho 4096 Jan 26 14:15 ../
 lrwxrwxrwx 1 drwho drwho   52 Jan 26 14:16 kodi_bot.service -> /home/drwho/.config/systemd/user/kodi_bot.service
 ```
+* Ensure that systemd in --user mode will start on boot and run even when you're not logged in: `loginctl enable-linger <your username here>`
