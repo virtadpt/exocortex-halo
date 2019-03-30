@@ -28,7 +28,7 @@
 
 # Load modules.
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -36,7 +36,7 @@ import re
 import requests
 import sys
 import time
-import urllib
+import urllib.request, urllib.parse, urllib.error
 
 # Constants.
 
@@ -176,7 +176,7 @@ def submit_for_indexing(index_term):
         # If the urlencode flag is set, it means that the archive requires the
         # URLs sent to it to be URL encoded.
         if urlencode == "yes":
-            url = url + urllib.quote_plus(index_term)
+            url = url + urllib.parse.quote_plus(index_term)
             logger.debug("URL encoding requested: " + str(index_term))
         else:
             url = url + index_term
@@ -246,7 +246,7 @@ if args.config:
 
 # Read the options in the configuration file before processing overrides on the
 # command line.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file " +
         config_file + ".")
