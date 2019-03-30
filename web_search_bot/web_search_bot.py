@@ -15,6 +15,8 @@
 
 # License: GPLv3
 
+# v5.0 - Ported to Python 3.
+#      - Deleted the regex matcher because it's not used.
 # v4.0 - Added the ability to tell the bot to run a search on a particular
 #        search engine that Searx has enabled.
 #      - Added a function that pulls a list of search engines the configured
@@ -67,7 +69,6 @@ import json
 import logging
 import os
 import pyparsing as pp
-import re
 import requests
 import smtplib
 import sys
@@ -91,10 +92,6 @@ numbers = { "one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
 custom_headers = {'Content-Type': 'application/json'}
-
-# The precompiled regular expression for detecting e-mail addresses.
-email_regex = "[^@]+@[^@]+\.[^@]+"
-email_matcher = re.compile(email_regex)
 
 # Global variables.
 # Base URL to a Searx instance.
