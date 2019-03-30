@@ -1,21 +1,24 @@
-Systembot is a bot which implements system monitoring of whatever machine it's running on.  It's still in its early stages (it shows, it's taken this long to write a README).
+Please note: I've ported this code to [Python 3](https://pythonclock.org) because Python v2.x will not be maintained past 1 January 2020.ev.  Everything henceforce will be written with that assumption.
 
-To install it you'll need to have the following Python modules available, either installed to the underlying system with native packages or installed into a virtualenv:
+Systembot is a bot which implements system monitoring of whatever machine it's running on.
+
+To install it you'll need to have the following Python modules available, either installed to the underlying system with native packages or installed into a [venv](https://docs.python.org/3/tutorial/venv.html):
 
 * [psutil](https://github.com/giampaolo/psutil)
 * [pyParsing](http://pyparsing.wikispaces.com/)
 * [requests](http://docs.python-requests.org/en/master/)
 * [statistics](https://github.com/digitalemagine/py-statistics)
 
-To set up a virtualenv:
+To set up a venv:
 
-* virtualenv env
+* `cd exocortex_halo/system_bot`
+* `python3 -m venv env`
 * source env/bin/activate
 * pip install -r requirements.txt
 
-I've included a `run.sh` script which will source the virtualenv and run system_bot.py for you.
+I've included a `run.sh` script which will source the venv and run system_bot.py for you.
 
-Right now, these are the system stats Systembot keeps tabs on, and how to access them:
+These are the system attributes Systembot monitors, and how to query them:
 
 * Get the bot's online help.
   * <bot's name>, help
@@ -30,16 +33,16 @@ Right now, these are the system stats Systembot keeps tabs on, and how to access
 * Number of CPUs on the system:
   * <bot's name>, cpus.
   * <bot's name>, CPUs.
-* Amount of used disk space per device:
+* Amount of disk space free per device:
   * <bot's name>, disk.
   * <bot's name>, disk usage.
   * <bot's name>, storage.
-* Amount of free system memory:
+* Amount of system memory free:
   * <bot's name>, memory.
   * <bot's name>, free memory.
   * <bot's name>, RAM.
   * <bot's name>, free ram.
-* Current system uptime:
+* System uptime:
   * <bot's name>, uptime.
 * Current public routable IP address:
   * <bot's name>, IP address.
@@ -68,42 +71,32 @@ Right now, these are the system stats Systembot keeps tabs on, and how to access
 
 All of these commands (save the bot's name) are case insensitive.
 
-Systembot automatically tracks the current system load, CPU idle time (per core), amount of free disk space remaining, and remaining unused RAM.  If any of these scores hit 20% left or less, an alert will automatically be sent to the bot's owner.  I have to be honest, this functionality isn't very good yet, it's unreliable and really needs a proper implementation but I haven't had time to come up with something that doesn't suck.  It's on my to-do list.
+Danger levels of system attributes are defined in the `system_bot.conf` file, and default to the following percentages of maximum:
 
-Systembot also automatically tracks temperatures reported by the hardware, if sensors are available.  If the sensors are configured to have a notion of high or critical temperatures, a notification will be automatically sent to the user.  If the sensors do not, Systembot will automatically analyze device temperature trends and send an alert if something changes more than the number of [standard deviations](https://www.mathsisfun.com/data/standard-deviation.html) specified in the configuration file (default: 2 sigma).  If Systembot is running on a virtual machine (which typically don't expose hardware sensors) or the bot isn't able to access those device nodes for some reason, it will silently skip them.
+* Disk usage: 90%
+* Memory free: 15%
+* Number of [standard deviations](https://www.mathsisfun.com/data/standard-deviation.html) of change between samples: 2 sigma
+* Minimum lengths of sample [FIFO queues](https://en.wikipedia.org/wiki/FIFO_(computing_and_electronics)): 2
+* Maximum lengths of sample [FIFO queues](https://en.wikipedia.org/wiki/FIFO_(computing_and_electronics)): 100
+
+Systembot also automatically tracks temperatures reported by the hardware, if sensors are available.  If the sensors have an idea of high or critical temperatures (some do, some don't, this is a feature of the mainboard), a notification will be automatically sent to the user.  If the sensors do not, Systembot will automatically analyze device temperature trends and send an alert if something changes more than the number of standard deviations in the configuration file (default: 2 sigma).  If Systembot is running on a virtual machine (which typically don't expose hardware sensors) or the bot isn't able to access those device nodes for some reason, it will silently skip them.
 
 This bot is also capable of optionally monitoring certain processes running on the system, specified in the configuration file.  If one or more of the processes is not found in the server's process table, it'll execute a command to restart it.  For example:
 
-process1 = test_bot.py --loglevel,python2 /home/drwho/exocortex-halo/test_bot/test_bot.py --loglevel debug
+process1 = test_bot.py --loglevel,python /home/drwho/exocortex-halo/test_bot/test_bot.py --loglevel debug
 
-This breaks down to "If the command `test_bot.py --loglevel` is not found in the process table, then run the command `python2 /home/drwho/exocortex-halo/test_bot/test_bot.py --loglevel debug`."  The command can be anything, not just a process restart.  Look at the sample configuration file for more details.
+This breaks down to "If the command `test_bot.py --loglevel` is not found in the process table, then run the command `python /home/drwho/exocortex-halo/test_bot/test_bot.py --loglevel debug`."  The command can be anything, not just a process restart.  Look at the sample configuration file for more details.
 
-Included with the bot is a sample [supervisord](http://supervisord.org/) configuration file which will automatically start and manage the bot for you if you happen to be using it on your system.  It's much easier to wrangle than a huge .screenrc file, initscripts, or systemd service files.  If you want to use this file, install supervisord on the system, ideally from the default package repository (it's usually called **supervisor**).  Enable and start the supervisord service per your distribution's instructions.  Copy the **system_bot.conf.supervisord** file as **system_bot.conf** into your system's supervisord supplementary configuration file directory; on Raspbian this is */etc/supervisor/conf.d*.  Edit the file so that paths in the *command* and *directory* directives reflect where you checked out the source code.  Also set the *user* directive to the username that'll be running this bot (probably yourself).  For example, the */etc/supervisor/conf.d/systembot.conf* file on my test machine looks like this:
-
-```[program:systembot]
-command=/home/username/exocortex-halo/system_bot/run.sh
-directory=/home/username/exocortex-halo/system_bot
-startsecs=30
-user=username
-redirect_stderr=true
-process_name=systembot
-startretries=0
-```
-
-Then tell supervisord to look for new configuration directives and automatically start anything it finds: **sudo supervisorctl update**
-
-supervisord will read the new config file and start Systembot for you.
-
-I've also included a .service file (`system_bot.service`) in case you want to use [systemd](https://www.freedesktop.org/wiki/Software/systemd/) to manage your bots.  Unlike supervisord, systemd can actually manage dependencies of system services, and as much as I find the service irritating it does a fairly decent job of this.  I've written the .service file specifically such that it can be run in [user mode](https://wiki.archlinux.org/index.php/Systemd/User) and will not require elevated permissions of any kind.  Here is the process for setting it up and using it:
+Included is a .service file (`system_bot.service`) in case you want to use [systemd](https://www.freedesktop.org/wiki/Software/systemd/) to manage your bots.  I've written the .service file specifically such that it can be run in [user mode](https://wiki.archlinux.org/index.php/Systemd/User) and will not require elevated permissions of any kind.  Here is the process for setting it up and using it:
 
 * `mkdir -p ~/.config/systemd/user/`
 * `cp ~/exocortex-halo/system_bot/system_bot.service ~/.config/systemd/user/`
-* You configure the XMPP bridge by making a copy of `system_bot.conf.example` to `system_bot.conf` and editing it.
+* Configure Systembot by making a copy of `system_bot.conf.example` to `system_bot.conf` and editing it.
 * Starting Systembot: `systemctl start --user system_bot.service`
   * You should see something like this if it worked:
 ```
 [drwho@windbringer system_bot]$ ps aux | grep [s]ystem
-drwho     6039  0.1  0.1 459332 24572 ?        Ssl  14:15   0:06 python2 /home/drwho/exocortex-halo/system_bot/system_bot.py
+drwho     6039  0.1  0.1 459332 24572 ?        Ssl  14:15   0:06 python /home/drwho/exocortex-halo/system_bot/system_bot.py
 ```
 * Setting Systembot to start automatically on system boot: `systemctl enable --user system_bot.service`
   * You should see something like this if it worked:
@@ -115,4 +108,4 @@ drwxr-xr-x 2 drwho drwho 4096 Jan 26 14:16 ./
 drwxr-xr-x 3 drwho drwho 4096 Jan 26 14:15 ../
 lrwxrwxrwx 1 drwho drwho   52 Jan 26 14:16 system_bot.service -> /home/drwho/.config/systemd/user/system_bot.service
 ```
-
+* Ensure that systemd in --user mode will start on boot and run even when you're not logged in: `loginctl enable-linger <your username here>`
