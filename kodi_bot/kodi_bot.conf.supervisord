@@ -1,8 +1,0 @@
-[program:kodibot]
-command=/home/username/exocortex-halo/kodi_bot/run.sh
-directory=/home/username/exocortex-halo/kodi_bot
-user=username
-redirect_stderr=true
-process_name=kodibot
-startretries=0
-priority = 255
