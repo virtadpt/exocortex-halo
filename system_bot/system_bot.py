@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -11,21 +11,22 @@
 
 # License: GPLv3
 
+# v4.0 - Ported to Python 3.
 # v3.3 - Added a periodic check for all of the temperature sensors the psutil
-#           module knows about.
-#         - Added a command to query the current system temperature.
-#         - Fixed a bug that prevented alerts from being sent.
-#         - Tweaking the value of time_between_alerts because deliberate high
-#            system loads can cause high CPU temperatures, which can result in
-#            a constant stream of warnings.  I'll probably have to make this
-#            variable configurable, instead.
-#         - Renamed the call to system_stats.disk_usage() to use
-#           system_stats.get_disk_usage() because it changed in that module.
-#         - Reworked the free memory request to work with the reworked memory
-#            functions in system_stats.py.
-#         - Made check_memory_utilization() configurable.
+#        module knows about.
+#      - Added a command to query the current system temperature.
+#      - Fixed a bug that prevented alerts from being sent.
+#      - Tweaking the value of time_between_alerts because deliberate high
+#        system loads can cause high CPU temperatures, which can result in
+#        a constant stream of warnings.  I'll probably have to make this
+#        variable configurable, instead.
+#      - Renamed the call to system_stats.disk_usage() to use
+#        system_stats.get_disk_usage() because it changed in that module.
+#      - Reworked the free memory request to work with the reworked memory
+#        functions in system_stats.py.
+#      - Made check_memory_utilization() configurable.
 # v3.2 - Changed "disk free" to "disk used," so that it's more like the output
-#           of `df`.
+#        of `df`.
 # v3.1 - Added the ability to get the local IP of the host (not the public IP).
 # v3.0 - Added real statistics support.  Parameterized stuff to eliminate some
 #        magick numbers.
@@ -47,8 +48,6 @@
 #   x20) configurable in the config file.
 
 # Load modules.
-
-
 import argparse
 import configparser
 import json

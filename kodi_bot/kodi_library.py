@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -11,13 +11,14 @@
 
 # License: GPLv3
 
+# v3.0 - Ported to Python 3.
 # v2.1 - Added functions to pause, unpause, and stop whatever's playing.
-#         - Added ability to ping the Kodi JSON RPC server.
-#         - Renamed is_currently_playing() to _is_currently_playing() so that
-#            it looks like what it's supposed to be, i.e., a helper function.
-#         - Added helper function _clear_current_playlist() to clear the
-#           default playlist of entries.  This is something Kodi forces you to
-#           do when you change what you want to play.
+#      - Added ability to ping the Kodi JSON RPC server.
+#      - Renamed is_currently_playing() to _is_currently_playing() so that
+#        it looks like what it's supposed to be, i.e., a helper function.
+#      - Added helper function _clear_current_playlist() to clear the
+#        default playlist of entries.  This is something Kodi forces you to
+#        do when you change what you want to play.
 # v2.0 - Removed kodipydent, replaced with raw HTTP requests using Requests.
 # v1.0 - Initial release.
 

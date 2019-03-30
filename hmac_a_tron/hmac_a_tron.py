@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -26,6 +26,7 @@
 
 # License: GPLv3
 
+# v3.0 - Ported to Python 3.
 # v2.0 - Added Javascript Web Token support (if pyjwt is installed).  This was
 #        a fair amount of work, so it makes sense to bump the version number.
 #      - Refactored code to break the heavy lifting out into separate helper

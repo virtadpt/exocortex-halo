@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -11,9 +11,10 @@
 
 # License: GPLv3
 
+# v2.0 - Ported to Python 3.
 # v1.1 - Adding and revising help text to make things easier.
-#         - Got rid of the logging module because this module just returns
-#           help text.
+#      - Got rid of the logging module because this module just returns help
+#        text.
 # v1.0 - Initial release.
 
 # TO-DO:

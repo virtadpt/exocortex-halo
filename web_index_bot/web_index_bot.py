@@ -14,6 +14,7 @@
 
 # License: GPLv3
 
+# v2.0 - Ported to Python 3.
 # v1.2 - Made the overly chatty status reports contingent upon the bot running
 #        in loglevel.DEBUG.
 #      - Added the ability to URL encode URLs to index or archive because some

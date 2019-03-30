@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -10,20 +10,21 @@
 
 # License: GPLv3
 
+# v4.0 - Ported to Python 3.
 # v3.3 - Added a Centigrade-to-Fahrenheit utility function.
-#         - Added a function that periodically checks the current temperature
-#           of every sensor on the system and sends an alert to the user if
-#           the temperature reaches what the driver considers a dangerous or
-#           critical point.
-#         - Renamed disk_usage() to get_disk_usage() because it conflicted
-#           with a variable name elsewhere.
-#         - Made check_memory_utilization() configurable.
+#      - Added a function that periodically checks the current temperature
+#        of every sensor on the system and sends an alert to the user if
+#        the temperature reaches what the driver considers a dangerous or
+#        critical point.
+#      - Renamed disk_usage() to get_disk_usage() because it conflicted
+#        with a variable name elsewhere.
+#      - Made check_memory_utilization() configurable.
 # v3.2 - Changed "disk free" to "disk used," so it's more like the output of.
-#           `df`.
+#        `df`.
 # v3.1 - Added function to get the local IP address of the host.
 # v3.0 - Added real statistics support.
 # v2.2 - Added function to get public IP address of host.
-#         - Added function that gets network traffic stats.
+#      - Added function that gets network traffic stats.
 # v2.1 - Added system uptime.
 # v2.0 - Refactoring code to split it out into separate modules.
 # v1.0 - Initial release.

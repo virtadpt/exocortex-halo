@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -10,10 +10,11 @@
 
 # License: GPLv3
 
+# v3.0 - Ported to Python 3.
 # v2.4 - Added a set of commands to query the current system temperature.
 # v2.3 - Added function to request local IP address of host.
-#         - Split off IP command from public address so it can be applied to
-#           the local IP address command.
+#      - Split off IP command from public address so it can be applied to the
+#        local IP address command.
 # v2.2 - Added function to get public IP address of host.
 #      - Added function that gets network traffic stats.
 # v2.1 - Added system uptime.
