@@ -62,7 +62,7 @@ from email.header import Header
 from email.mime.text import MIMEText
 
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -207,7 +207,7 @@ def word_and_number(value):
     # If the number of search results is a word ("twenty"), look it up in
     # the global hash table numbers{} and use the corresponding numerical
     # value as the number of search results to pick up.
-    if value in numbers.keys():
+    if value in list(numbers.keys()):
         return numbers[value]
     else:
         # Set a default number of search terms.
@@ -288,7 +288,7 @@ def parse_and_email_results(request):
 
         # Figure out which e-mail address to use - the default or the supplied
         # one.  On error, use the default address.
-        if "dest" in parsed_command.keys():
+        if "dest" in list(parsed_command.keys()):
             destination_address = parsed_command["dest"]
         else:
             destination_address = default_email
@@ -501,7 +501,7 @@ if args.config:
 
 # Read the options in the configuration file before processing overrides on the
 # command line.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(config_file):
     logging.error("Unable to find or open configuration file " +
         config_file + ".")
