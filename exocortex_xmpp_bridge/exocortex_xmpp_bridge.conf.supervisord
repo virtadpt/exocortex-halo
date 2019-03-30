@@ -1,7 +1,0 @@
-[program:XMPPbridge]
-command=/home/username/exocortex-halo/exocortex_xmpp_bridge/run.sh
-directory=/home/username/exocortex-halo/exocortex_xmpp_bridge
-user=username
-redirect_stderr=true
-process_name=XMPPbridge
-priority = 1
