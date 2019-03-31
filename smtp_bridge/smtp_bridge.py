@@ -62,37 +62,38 @@ smtpd = None
 
 # Classes.
 class smtp_bridge(SMTPServer):
-    headers = {'Content-type': 'application/json'}
+    headers = {"Content-type": "application/json"}
 
     # process_message(): Method that does the work of processing SMTP messages
-    #   from the server.  It's overridden to take apart the message and
-    #   send it to an XMPP bridge server.
-    def process_message(self, peer, mailfrom, rcpttos, data):
+    #   from the server.  It's overridden to take apart the message and send
+    #   it to an XMPP bridge server.  Returns None, per the source code for
+    #   smtpd.py (https://github.com/python/cpython/blob/3.7/Lib/smtpd.py)
+    def process_message(self, peer, mailfrom, rcpttos, data, **kwargs):
         logger.debug("Entered smtp_bridge.process_message().")
         logger.debug("Value of peer: " + str(peer))
-        logger.debug("Value of mailfrom: " + str(mailfrom))
+        logger.debug("Value of mailfrom: " + mailfrom)
         logger.debug("Value of rcpttos: " + str(rcpttos))
         logger.debug("Value of data: " + str(data))
 
-        # Hash table that forms the message to send.
+        # Build the message to send.
         message = {}
+        message["name"] = str(queue.split("/")[-1])
+        message["reply"] = str(data.strip())
 
         # Handle to a Request object.
         request = None
-
-        # Build the message to send.
-        message["name"] = queue.split("/")[-1]
-        message["reply"] = data.strip()
 
         # Attempt to send the message to the XMPP bridge.
         try:
             logger.debug("Sending message to queue: " + queue)
             request = requests.put(queue, headers=self.headers,
                 data=json.dumps(message))
-            logger.debug("Response from server: " + request.text)
+            request.raise_for_status()
         except:
-            logger.warn("Connection attempt to message queue " + queue + " failed.")
-        return
+            logger.debug("Got HTTP status code " + str(request.status_code) + ".")
+            logger.warning("Connection attempt to message queue " + queue + " failed.")
+            logger.debug(str(request))
+        return None
 
 # Functions.
 # Figure out what to set the logging level to.  There isn't a straightforward
@@ -213,7 +214,9 @@ logger.debug("Username to drop privileges to: " + str(username))
 logger.debug("Group to drop privileges to: " + str(group))
 
 # Stand up an SMTP server.
-smtpd = smtp_bridge((smtphost, int(smtpport)), None)
+# localaddr, upstreamaddr, (data_size_limit), (map), (enable_SMTPUTF8=False),
+#   (decode_data=False)
+smtpd = smtp_bridge((smtphost, int(smtpport)), (), enable_SMTPUTF8=True)
 if not drop_privileges(username, group):
     print("ERROR: Unable to drop elevated privileges.  This isn't good!")
     sys.exit(1)
