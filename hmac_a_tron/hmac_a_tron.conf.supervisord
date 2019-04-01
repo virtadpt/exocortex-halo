@@ -1,8 +1,0 @@
-[program:hmac_a_tron]
-command = /home/username/exocortex-halo/hmac_a_tron/hmac_a_tron.py
-process_name = hmac_a_tron
-directory = /home/username/exocortex-halo/hmac_a_tron
-autostart = true
-startsecs = 30
-user = username
-redirect_stderr = true
