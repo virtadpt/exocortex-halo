@@ -33,15 +33,12 @@
 # - Optimize the temperature monitoring loop for the general case.
 
 # Load modules.
-
-
 import logging
 import math
 import os
 import psutil
 import requests
 import statistics
-import statvfs
 import sys
 
 from datetime import timedelta
@@ -210,7 +207,6 @@ def get_disk_usage():
     # Calculate the maximum and free bytes of each disk device.
     for i in list(disk_used.keys()):
         disk_used[i] = psutil.disk_usage(i).percent
-
     return disk_used
 
 # check_disk_usage(): Pull the amount of used storage for each disk device on
@@ -304,7 +300,6 @@ def uptime():
     except:
         return None
     uptime_string = str(timedelta(seconds = uptime_seconds))
-
     return uptime_string
 
 # current_ip_address(): Function that returns the current non-RFC 1989 IP

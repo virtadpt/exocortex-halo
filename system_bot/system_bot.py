@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
 # system_bot.py - Bot that periodically polls the state of the system it's
@@ -54,7 +54,6 @@ import json
 import logging
 import os
 import psutil
-import pyparsing as pp
 import requests
 import sys
 import time
@@ -169,7 +168,7 @@ def set_loglevel(loglevel):
 def send_message_to_user(message):
 
     # Headers the XMPP bridge looks for for the message to be valid.
-    headers = {'Content-type': 'application/json'}
+    headers = {"Content-type": "application/json"}
 
     # Set up a hash table of stuff that is used to build the HTTP request to
     # the XMPP bridge.

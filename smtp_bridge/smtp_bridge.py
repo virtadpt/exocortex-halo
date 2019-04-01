@@ -78,7 +78,7 @@ class smtp_bridge(SMTPServer):
         # Build the message to send.
         message = {}
         message["name"] = str(queue.split("/")[-1])
-        message["reply"] = str(data.strip())
+        message["reply"] = data.strip().decode()
 
         # Handle to a Request object.
         request = None
