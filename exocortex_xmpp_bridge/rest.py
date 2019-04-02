@@ -245,7 +245,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         arguments = {}
 
         try:
-            arguments = json.loads(content)
+            arguments = json.loads(content.decode())
         except:
             logging.debug('400, {"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
             self._send_http_response(400, '{"result": null, "error": "You need to send valid JSON.  That was not valid.", "id": 400}')
