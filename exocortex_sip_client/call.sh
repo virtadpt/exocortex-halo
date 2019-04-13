@@ -5,14 +5,7 @@
 #    set up the virtualenv the way you're supposed to and didn't tinker with
 #    the sandbox too much.  If you did, you're on your own.
 
-# by: The Doctor [412/724/301/703/415][ZS] <drwho at virtadpt dot net>
-
-# Variables
-# Full path to where exocortex_sip_client.py is installed.
-SIP_CLIENT_DIR="/path/to/exocortex_sip_client/installation/dir"
-
-# Core code.
-cd $SIP_CLIENT_DIR
+# by: The Doctor [412/724/301/703/415/510] <drwho at virtadpt dot net>
 
 # Bring in the virtualenv.  Imagine whatever sci-fi sound effects you wish
 # as this happens.
@@ -30,4 +23,3 @@ shift
 exit 0
 
 # End of core code.
-

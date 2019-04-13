@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v3.0 - Ported to Python 3.
 # v2.0 - I've reworked so much stuff, this is effectively a new version.
 # v1.2 - Updated to take into account the latest version of pjsip (v2.7.2).
 #      - Reworked the code a little, in part to refamiliarize myself with it
@@ -52,15 +53,15 @@
 #   and the system load of the underlying VPS you might be running this on
 #   changes.  And that's just spitballing reasons.  So, make the delay long and
 #   let the other end hang up on their own.
-
 # v1.0
 # - Initial release.
 
 # TO-DO:
+# - Figure out how to place calls to SIP addresses as well as phone numbers.
 
 # Load modules.
 import argparse
-import ConfigParser
+import configparser
 import contextlib
 import logging
 import os
@@ -69,8 +70,6 @@ import sys
 import threading
 import time
 import wave
-
-# Constants.
 
 # Global variables.
 # Handles for the CLI argument parser handler.
@@ -140,23 +139,23 @@ class MyAccountCallback(pjsua.AccountCallback):
 
             # Detect redirection responses.
             if self.account.info().reg_status >= 300 and self.account.info().reg_status < 400:
-                print "ERROR: Server sent a redirection response: ",
-                print self.account.info().reg_reason
+                print("ERROR: Server sent a redirection response: ", end=' ')
+                print(self.account.info().reg_reason)
 
             # Detect client failures, i.e., problems or mistakes on our end.
             if self.account.info().reg_status >= 400 and self.account.info().reg_status < 500:
-                print "ERROR: Client registration error: ",
-                print self.account.info().reg_reason
+                print("ERROR: Client registration error: ", end=' ')
+                print(self.account.info().reg_reason)
 
             # Detect server failures, i.e., problems not on our end.
             if self.account.info().reg_status >= 500 and self.account.info().reg_status < 600:
-                print "ERROR: Server communication or registration error: ",
-                print self.account.info().reg_reason
+                print("ERROR: Server communication or registration error: ", end=' ')
+                print(self.account.info().reg_reason)
 
             # Detect all other kinds of failures.
             if self.account.info().reg_status >= 600:
-                print "ERROR: Holy shit, what did you do?!?! "
-                print self.account.info().reg_reason
+                print("ERROR: Holy shit, what did you do?!?! ")
+                print(self.account.info().reg_reason)
 
 # MyCallCallback(): Callback class that receives and handles SIP call events.
 class MyCallCallback(pjsua.CallCallback):
@@ -174,14 +173,14 @@ class MyCallCallback(pjsua.CallCallback):
         global current_call
 
         # Display status update.
-        print "Call with", self.call.info().remote_uri,
-        print "is", self.call.info().state_text,
-        print "last status code ==", self.call.info().last_code,
+        print("Call with", self.call.info().remote_uri, end=' ')
+        print("is", self.call.info().state_text, end=' ')
+        print("last status code ==", self.call.info().last_code, end=' ')
 
         # Detect disconnection events for SIP calls.
         if self.call.info().state == pjsua.CallState.DISCONNECTED:
             current_call = None
-            print "SIP call has been disconnected."
+            print("SIP call has been disconnected.")
 
     # Method that implements state changes in the media processor.
     def on_media_state(self):
@@ -197,9 +196,9 @@ class MyCallCallback(pjsua.CallCallback):
             # Connect the media player to the call and vice versa.
             pjsua.Lib.instance().conf_connect(wav_player_slot, call_slot)
             pjsua.Lib.instance().conf_connect(call_slot, wav_player_slot)
-            print "Media processor is now active."
+            print("Media processor is now active.")
         else:
-            print "Media processor is now inactive."
+            print("Media processor is now inactive.")
 
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -237,27 +236,27 @@ argparser.add_argument('--loglevel', action='store',
 # Parse the command line args, if any.
 args = argparser.parse_args()
 if args.production:
-    print "Production mode enabled.  No sound hardware enabled."
+    print("Production mode enabled.  No sound hardware enabled.")
 
 # If no number to call was given, ABEND because we can't place a call.
 if not args.phone_number:
-    print "No phone number given - can't call anyone!"
+    print("No phone number given - can't call anyone!")
     sys.exit(1)
 
 # Ensure that there is a media file of some kind to play into the call.
 if not args.message:
-    print "ERROR: You must specify a path to a .wav file to play into your call."
+    print("ERROR: You must specify a path to a .wav file to play into your call.")
     sys.exit(1)
 else:
     # Make sure the file exists.  ABEND if not.
     if not os.path.exists(args.message):
-        print "ERROR: That file doesn't exist.  Did you get the path right?"
+        print("ERROR: That file doesn't exist.  Did you get the path right?")
         sys.exit(1)
 
 # If a configuration file has been specified on the command line, parse it.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(args.config):
-    print "Unable to find or open configuration file " + args.config + "."
+    print("Unable to find or open configuration file " + args.config + ".")
     sys.exit(1)
 config.read(args.config)
 
@@ -336,7 +335,7 @@ try:
     logger.info("Placing call to " + call_destination + "...")
     try:
         account.make_call(call_destination, cb=MyCallCallback())
-    except pjsua.Error, call_error:
+    except pjsua.Error as call_error:
         logger.error("ERROR: Unable to place call: " + str(call_error))
 
     # Calculate the duration of the .wav file to play into the call.
@@ -353,7 +352,7 @@ try:
     logger.debug("Waiting for audio message to finish playing...")
     time.sleep(wav_duration)
 
-except pjsua.Error, err:
+except pjsua.Error as err:
     logger.error("ERROR: Unable to initalize PJSUA interface: " + str(err))
 
 # Tear down the library interface objects.

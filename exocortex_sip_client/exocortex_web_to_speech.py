@@ -25,10 +25,8 @@
 # License: GPLv3
 
 # v2.0 - I've changed so much stuff, this may as well be a new rev.
-
 # v1.1.1 - Added an optional delay between receiving a message to process and
 #   placing a call.  Updated online documentation to reflect this.
-
 # v1.1 - Change default listen-on IP to 127.0.0.1.
 # - Make web.py accept a port number as a command line argument and listen on
 #   that instead of 8080/tcp.  Just in case, to prevent conflict with other
