@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
@@ -24,6 +24,7 @@
 
 # License: GPLv3
 
+# v3.0 - Ported to Python 3.
 # v2.0 - I've changed so much stuff, this may as well be a new rev.
 # v1.1.1 - Added an optional delay between receiving a message to process and
 #   placing a call.  Updated online documentation to reflect this.
@@ -53,11 +54,11 @@
 #   need to write a proper command generator, because this is bobbins.
 
 # Load modules.
-from BaseHTTPServer import HTTPServer
-from BaseHTTPServer import BaseHTTPRequestHandler
+from http.server import HTTPServer
+from http.server import BaseHTTPRequestHandler
 
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
@@ -181,7 +182,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         logger.debug("Made it through the gauntlet - all necessary variables are in place.")
 
         # If a delay was specified in the request, use that instead.
-        if "delay" in response.keys():
+        if "delay" in list(response.keys()):
             call_delay = int(response["delay"])
             logger.debug("Got a request to set the call timeout to " + str(response["delay"]) + " seconds.")
 
@@ -279,7 +280,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
     # Normalize the keys in the hash table to all lowercase.
     def _normalize_keys(self, arguments):
-        for key in arguments.keys():
+        for key in list(arguments.keys()):
             arguments[key.lower()] = arguments[key]
             logging.debug("Normalized key " + key + " to " + key.lower() + ".")
         return arguments
@@ -290,7 +291,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         all_keys_found = True
 
         for key in self.required_keys:
-            if key not in arguments.keys():
+            if key not in list(arguments.keys()):
                 all_keys_found = False
 
         if not all_keys_found:
@@ -334,9 +335,9 @@ argparser.add_argument('--loglevel', action='store',
 args = argparser.parse_args()
 
 # If a configuration file has been specified on the command line, parse it.
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 if not os.path.exists(args.config):
-    print "Unable to find or open configuration file " + args.config + "."
+    print("Unable to find or open configuration file " + args.config + ".")
     sys.exit(1)
 config.read(args.config)
 
