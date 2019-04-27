@@ -15,5 +15,5 @@ apikey = foobarbazquux
 tts = /usr/bin/text2wave
 
 # Full path to the SIP client you want to use to place the call.  This defaults
-# to the one I wrote.
-sip_client = /full/path/to/exocortex_sip_client/call.sh
+# to the CWD.
+sip_client = /call.sh

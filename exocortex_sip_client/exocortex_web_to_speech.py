@@ -66,8 +66,6 @@ import subprocess
 import sys
 import tempfile
 
-# Constants.
-
 # Global variables.
 # Handles for the CLI argument parser handler.
 argparser = None
@@ -106,14 +104,25 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         logger.debug("Entered RESTRequestHandler.do_GET().")
 
         html = """
+        <html>
+
+        <!-- CSS from: https://jrl.ninja/etc/1/ -->
+        <style>
+        main {
+            max-width: 38rem;
+            padding: 2rem;
+            margin: auto;
+        }
+        </style>
+
         <head>
         <title>exocortex_web_to_speech.py help documentation</title>
         </head>
 
         <body>
-        <p>This agent was designed to interface with Andrew Cantino's <a href="https://github.com/cantino/huginn/">Huginn</a> by providing a bridge to a speech synthesis utility (like the one in my <a href="https://github.com/virtadpt/exocortex-halo">halo</a>).  By default it listens on <a href="http://localhost:3030/">http://localhost:3030/</a> but you can set it to whatever you want by passing a different port number as a command line agument.  See the output of <b>./exocortex_web_to_speech.py --help</b> for more information.</p>
+        <p>This agent was designed to interface with Andrew Cantino's <a href="https://github.com/huginn/huginn/">Huginn</a> by providing a bridge to a speech synthesis utility (like the one in my <a href="https://github.com/virtadpt/exocortex-halo">halo</a>).  By default it listens on <a href="http://localhost:3030/">http://localhost:3030/</a> but you can set it to whatever you want by passing a different port number as a command line agument.  See the output of <b>./exocortex_web_to_speech.py --help</b> for more information.</p>
 
-        <p>The HTTP interface is designed to work with Huginn's PostAgent.  You'll find a sample one in the code repository.</p>
+        <p>The HTTP interface is designed to work with Huginn's PostAgent.  You'll find a <a href="https://github.com/virtadpt/exocortex-halo/blob/master/exocortex_sip_client/huginn_test_agent.json">sample agent</a> in the code repository.</p>
 
         <p>To interact with this agent you need to place a <b>POST</b> request to the server and pass in a JSON document that has three strings: The message, an API key, and the phone number to dial (no spaces).  The value of the Content-Type HTTP header has to be "application/json".  It might look something like this:</p>
 
@@ -125,22 +134,28 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
           "delay": 120
         }
         </pre>
-
         <p>(Note: The phone number 206-456-0649 belongs to <a href="http://thetestcall.blogspot.com/">The Test Call</a>, a free and legal public service which implements some features useful for testing and debugging VoIP software.  I started using them when I got tired of rickrolling myself.  If you find their service useful, I highly recommend sending them some money!)</p>
 
         <p>The number "delay" is just that - a delay (in seconds) between this server receiving the call request and the request actually going out.  This is to work around VoIP providers that are kind of twitchy about placing multiple calls in a relatively short period of time, stacking up several outbound calls, and generally giving yourself some breathing room when debugging.  This defaults to 120 seconds.</p>
 
         <p>Huginn's PostAgent will do all of this for you so all you have to do is configure it, start it and let it run.  What you do with this agent after that is your business.</p>
 
-        <p>If you want to experiment with it or debug any changes made, use <a href="http://curl.haxx.se/">curl</a>.  Here's one way to go about it: <b>curl -X POST -H "Content-Type: application/json" -d '{ "message":"This is where my message goes", "api key":"AllYourBaseAreBelongToUs", "number":"2064560649" }' http://localhost:3030/</b></p>
-        </body>
+        <p>If you want to experiment with it or debug any changes made, use <a href="http://curl.haxx.se/">curl</a>.  Here's one way to go about it:</p>
 
+        <code>curl -X POST -H "Content-Type: application/json"
+            -d '{ "message":"This is where my message goes",
+            "api key":"AllYourBaseAreBelongToUs",
+            "number":"2064560649" }' http://localhost:3030/
+        </code>
+        </body>
+        </html>
         """
 
         logging.debug("User requested /.  Returning online documentation.")
         self.send_response(200)
-        self.wfile.write('\n')
-        self.wfile.write(html)
+        self.send_header("Content-type:", "text/html")
+        self.end_headers()
+        self.wfile.write(html.encode())
         return
 
     # Handle POST requests.
@@ -198,7 +213,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         message = response["message"]
 
         # Write the text into the tempfile.
-        temp_text_file.write(message)
+        temp_text_file.write(message.encode())
         temp_text_file.close()
         logger.debug("Wrote message to tempfile.")
 
@@ -217,10 +232,13 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         call_command = call_command + ' --phone-number ' + phone_number
         call_command = call_command + ' --message ' + temp_text_filename
         call_command = call_command + '.wav'
+        logger.debug("Call command: " + call_command)
+        logger.info("Placing call now...")
         subprocess.call(call_command, shell=True)
 
         # Clean up after ourselves.  Specifically cast to str() because Unicode
         # is always messin' with my Zen thing.
+        logger.debug("Cleaning up temporary file " + temp_text_filename + "[.wav]...")
         os.unlink(str(temp_text_filename))
         os.unlink(str(temp_text_filename + '.wav'))
 
@@ -235,9 +253,9 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         content_length = 0
 
         try:
-            content_length = int(self.headers['Content-Length'])
+            content_length = int(self.headers["Content-Length"])
             content = self.rfile.read(content_length)
-            logging.debug("Content sent by client: " + content)
+            logging.debug("Content sent by client: " + content.decode())
         except:
             logging.debug("Client sent zero-lenth content.  Returning error 500")
             self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
@@ -252,12 +270,12 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header("Content-Type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps(response))
+        self.wfile.write(json.dumps(response).encode())
         return
 
     # Ensure that the content from the client is JSON.
     def _ensure_json(self):
-        if "application/json" not in self.headers['Content-Type']:
+        if "application/json" not in self.headers["Content-Type"]:
             logging.debug("Client did not send a JSON document.  Or at least the value of the Content-Type header wasn't application/json.")
             self._send_http_response(400, '{"result": null, "error": "You need to send JSON.", "id": 400}')
             return False
@@ -392,7 +410,7 @@ if not os.path.exists(sip_client):
 
 # Stand up the web application server.
 app = HTTPServer((str(ip), int(port)), RESTRequestHandler)
-logger.debug("Web to speech API server now listening on " + str(ip) + ", port " + str(port) + "/tcp.")
+logger.info("Web to speech API server now listening on " + str(ip) + ", port " + str(port) + "/tcp.")
 while True:
     app.serve_forever()
 

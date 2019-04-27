@@ -1,3 +1,5 @@
+NOTE: As of 27 April 2019, this project is officially deprecated.  To be frank, I'm really tired of fighting with the less-than-useful (and deprecated) Python interface for pjsip.  To say that it's cantankerous is an understatement.  All things being equal, it was significantly easier to figure out how to use Twilio's API for what I was trying to do and get on with my life.  I hope that in the future this documentation and source code helps someone solve a tricky problem similar to the ones I was solving.
+
 How to install PJSIP (http://www.pjsip.org/) into a virtualenv on a fairly recent Ubuntu Linux (virtual) machine:
 
 * `sudo apt-get install python3-dev swig`
@@ -21,9 +23,9 @@ How to install PJSIP (http://www.pjsip.org/) into a virtualenv on a fairly recen
 * Testing the Python 3 module you just installed:
   * `python3`
   * `import pjsua`
-  * If it works, it should work.
+  * If it works, the module is installed and imports properly, and should work.
 
-https://www.spinics.net/lists/pjsip/msg20666.html
+Note: https://www.spinics.net/lists/pjsip/msg20666.html
 
 To use the SIP client you will have to activate the venv (source env/bin/activate).  This is done automatically by the shell script `call.sh`, and in fact is called by `exocortex_web_to_speech.py`.
 

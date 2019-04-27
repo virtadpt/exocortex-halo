@@ -12,6 +12,10 @@
 # License: GPLv3
 
 # v3.0 - Ported to Python 3.
+#         - Reworked status and debugging output while I debugged the bot.
+#           Reworked some comments, too, while I re-familiarized myself with
+#           the bot's code.
+#         - Made the playback delay settable on the command line.
 # v2.0 - I've reworked so much stuff, this is effectively a new version.
 # v1.2 - Updated to take into account the latest version of pjsip (v2.7.2).
 #      - Reworked the code a little, in part to refamiliarize myself with it
@@ -53,8 +57,7 @@
 #   and the system load of the underlying VPS you might be running this on
 #   changes.  And that's just spitballing reasons.  So, make the delay long and
 #   let the other end hang up on their own.
-# v1.0
-# - Initial release.
+# v1.0 - Initial release.
 
 # TO-DO:
 # - Figure out how to place calls to SIP addresses as well as phone numbers.
@@ -112,7 +115,6 @@ wav_duration = 0.0
 #   handles status events, mostly.  Necessary for anything involving SIP
 #   account objects.
 class MyAccountCallback(pjsua.AccountCallback):
-
     # Because this is a threaded class, we need to allocate at least one
     # semaphore to take care of it.
     semaphore = None
@@ -123,11 +125,13 @@ class MyAccountCallback(pjsua.AccountCallback):
     def __init__(self, account):
         pjsua.AccountCallback.__init__(self, account)
 
-    # Kicks the method/thread off by either grabbing or waiting to grab the
-    # PJSUA library's thread semaphore.
+    # Kicks the thread off by either grabbing or waiting to grab the PJSUA
+    # library's thread semaphore.
     def wait(self):
+        logger.debug("Trying to grab MyAccountCallback.semaphor...")
         self.semaphore = threading.Semaphore(0)
         self.semaphore.acquire()
+        logger.debug("...got it.")
 
     # Method that reacts to changes in the state of SIP registration.
     def on_reg_state(self):
@@ -139,23 +143,19 @@ class MyAccountCallback(pjsua.AccountCallback):
 
             # Detect redirection responses.
             if self.account.info().reg_status >= 300 and self.account.info().reg_status < 400:
-                print("ERROR: Server sent a redirection response: ", end=' ')
-                print(self.account.info().reg_reason)
+                logger.error("Server sent a redirection response: " + str(self.account.info().reg_reason))
 
             # Detect client failures, i.e., problems or mistakes on our end.
             if self.account.info().reg_status >= 400 and self.account.info().reg_status < 500:
-                print("ERROR: Client registration error: ", end=' ')
-                print(self.account.info().reg_reason)
+                logger.error("Client registration error: " + str(self.account.info().reg_reason))
 
             # Detect server failures, i.e., problems not on our end.
             if self.account.info().reg_status >= 500 and self.account.info().reg_status < 600:
-                print("ERROR: Server communication or registration error: ", end=' ')
-                print(self.account.info().reg_reason)
+                logger.error("Server communication or registration error: " + str(self.account.info().reg_reason))
 
             # Detect all other kinds of failures.
             if self.account.info().reg_status >= 600:
-                print("ERROR: Holy shit, what did you do?!?! ")
-                print(self.account.info().reg_reason)
+                logger.fatal("Holy shit, what did you do?!?! " + str(self.account.info().reg_reason))
 
 # MyCallCallback(): Callback class that receives and handles SIP call events.
 class MyCallCallback(pjsua.CallCallback):
@@ -168,24 +168,22 @@ class MyCallCallback(pjsua.CallCallback):
 
     # Method that handles call state changes.
     def on_state(self):
-
         # Reference current_call in the global context.
         global current_call
 
         # Display status update.
-        print("Call with", self.call.info().remote_uri, end=' ')
-        print("is", self.call.info().state_text, end=' ')
-        print("last status code ==", self.call.info().last_code, end=' ')
+        logger.info("Call with" + str(self.call.info().remote_uri))
+        logger.info("is" + str(self.call.info().state_text))
+        logger.info("last status code ==" + str(self.call.info().last_code))
 
         # Detect disconnection events for SIP calls.
         if self.call.info().state == pjsua.CallState.DISCONNECTED:
             current_call = None
-            print("SIP call has been disconnected.")
+            logger.info("SIP call has been disconnected.")
 
     # Method that implements state changes in the media processor.
     def on_media_state(self):
         if self.call.info().media_state == pjsua.MediaState.ACTIVE:
-
             # Capture the call_slot for the currently active call.
             call_slot = self.call.info().conf_slot
 
@@ -196,9 +194,9 @@ class MyCallCallback(pjsua.CallCallback):
             # Connect the media player to the call and vice versa.
             pjsua.Lib.instance().conf_connect(wav_player_slot, call_slot)
             pjsua.Lib.instance().conf_connect(call_slot, wav_player_slot)
-            print("Media processor is now active.")
+            logger.info("Media processor is now active.")
         else:
-            print("Media processor is now inactive.")
+            logger.info("Media processor is now inactive.")
 
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -232,6 +230,8 @@ argparser.add_argument("--config", action="store",
     help="Full path to a configuration file.")
 argparser.add_argument('--loglevel', action='store',
     help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to INFO.')
+argparser.add_argument("--delay", action="store",
+    help="Delay in seconds between initiating a SIP call and starting to play the audio file.  Defaults to five (5) seconds.  I strongly suggest figuring out a value that works reliably for you and setting it in the config file.")
 
 # Parse the command line args, if any.
 args = argparser.parse_args()
@@ -250,7 +250,7 @@ if not args.message:
 else:
     # Make sure the file exists.  ABEND if not.
     if not os.path.exists(args.message):
-        print("ERROR: That file doesn't exist.  Did you get the path right?")
+        print("ERROR: The .wav file with the message doesn't exist.  Did you get the path right?")
         sys.exit(1)
 
 # If a configuration file has been specified on the command line, parse it.
@@ -272,6 +272,10 @@ delay = config.get ("DEFAULT", "delay")
 config_log = config.get("DEFAULT", "loglevel").lower()
 if config_log:
     loglevel = set_loglevel(config_log)
+
+# Set the delay on the command line, overriding the config file if it exists.
+if args.delay:
+    delay = int(args.delay)
 
 # Set the loglevel from the override on the command line if it exists.
 if args.loglevel:
@@ -313,8 +317,8 @@ try:
     account = lib.create_account(pjsua.AccountConfig(sip_registrar,
         sip_username, sip_password, args.username))
 
-    # Attach a callback to the account object so we can keep track of its
-    # status.
+    # Attach a callback to the account object so we can keep track of the
+    # call status.
     account_callback = MyAccountCallback(account)
     account.set_callback(account_callback)
 
@@ -349,20 +353,21 @@ try:
         logger.debug("Duration of audio message: " + str(wav_duration) + " seconds")
 
     # Wait for the .wav file to finish.
-    logger.debug("Waiting for audio message to finish playing...")
+    logger.info("Waiting for audio message to finish playing...")
     time.sleep(wav_duration)
 
 except pjsua.Error as err:
     logger.error("ERROR: Unable to initalize PJSUA interface: " + str(err))
 
 # Tear down the library interface objects.
-logger.debug("Deallocating account.")
+logger.debug("Terminating session with SIP registrar.")
 account.delete()
 account = None
 
-logger.debug("Destroying VoIP engine instance.")
+logger.debug("Deallocating internal VoIP engine.")
 lib.destroy()
 lib = None
 
 # Fin.
+logger.info("Done.  Exiting.")
 sys.exit(0)
