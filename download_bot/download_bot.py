@@ -14,6 +14,9 @@
 
 # License: GPLv3
 
+# v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
+#       - Changed the default polling time to 10 seconds, because this bot
+#        won't be run on a Commodore 64...
 # v2.0 - Ported to Python 3.
 # v1.2 - Added "download this as an MP3" support.
 # v1.1 - Added youtube-dl support.
@@ -56,7 +59,7 @@ message_queue = ""
 bot_name = ""
 
 # How often to poll the message queues for orders.
-polling_time = 30
+polling_time = 10
 
 # Directory to download files into.
 download_directory = ""
@@ -76,6 +79,10 @@ download_video = False
 
 # Flag that determines if an audio stream will be downloaded.
 download_audio = False
+
+# Optional user-defined text strings for the online help and user interaction.
+user_text = None
+user_acknowledged = None
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -288,7 +295,6 @@ def send_message_to_user(message):
         data=json.dumps(reply))
 
 # Core code...
-
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that polls a message queue for URLs to files to download and downloads them into a local directory.")
 
@@ -301,7 +307,7 @@ argparser.add_argument("--loglevel", action="store",
     help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument("--polling", action="store", help="Default: 30 seconds")
+argparser.add_argument("--polling", action="store", help="Default: 10 seconds")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -363,6 +369,20 @@ if not os.access(download_directory, os.W_OK):
     print("ERROR: Unable to write to directory " + download_directory)
     sys.exit(1)
 
+# Get user-defined doing-stuff text if defined in the config file.
+try:
+    user_text = config.get("DEFAULT", "user_text")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
+# Get additional user text if defined in the config file.
+try:
+    user_acknowledged = config.get("DEFAULT", "user_acknowledged")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
@@ -396,6 +416,10 @@ if video_enabled:
     logger.debug("This instance of download_bot.py is youtube-dl enabled.")
 if ffmpeg_enabled:
     logger.debug("This instance of download_bot.py can save MP3s.")
+if user_text:
+    logger.debug("User-defined help text: " + user_text)
+if user_acknowledged:
+    logger.debug("User-defined command acknowledgenent text: " + user_acknowledged)
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any download requests waiting for it.
@@ -435,8 +459,10 @@ while True:
         # If the user is requesting help, assemble a response and send it back
         # to the server's message queue.
         if download_request.lower() == "help":
-            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
-            reply = reply + """I am capable of accepting URLs for arbitrary files on the web and downloading them.  To download a file, send me a message that looks something like this:\n\n"""
+            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
+            if user_text:
+                reply = reply + user_text + "\n\n"
+            reply = reply + "I am capable of accepting URLs for arbitrary files on the web and downloading them.  To download a file, send me a message that looks something like this:\n\n"
             reply = reply + bot_name + ", [download,get,pull] https://www.example.com/foo.pdf\n"
             send_message_to_user(reply)
             reply = "I will download files into: " + download_directory + "\n"
@@ -458,8 +484,11 @@ while True:
             download_request = download_media(download_directory,
                 download_request)
         else:
-            reply = "Downloading file now.  Please stand by."
-            send_message_to_user(reply)
+            if user_acknowledged:
+                send_message_to_user(user_acknowledged)
+            else:
+                reply = "Downloading file now.  Please stand by."
+                send_message_to_user(reply)
             download_request = download_file(download_directory,
                 download_request)
 
