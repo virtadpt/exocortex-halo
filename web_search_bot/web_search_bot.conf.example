@@ -27,3 +27,11 @@ loglevel = info
 # optional.
 origin_email_address = the-bots-name
 
+# Optional user-defined text that will be displayed to the user as part of the
+# online help text.  It is recommended that you describe what you use this
+# bot for, particularly if you have multiple instances running simultaneously.
+# user_text = This is some user-specific text.
+
+# Optional user-defined text that will be displayed to the user to acknowledge
+# that commands have been received and are being executed.
+# user_acknowledged = Custom telling you I'm doing something text.

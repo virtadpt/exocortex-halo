@@ -15,6 +15,17 @@
 
 # License: GPLv3
 
+# v5.1 - Made it possible to optionally define additional user text to add to
+#        the bot's online help.  My use case for this is when you run multiple
+#        instances of this bot and you want to keep them all straight by
+#        customizing their personae a bit.
+#       - Made it possible to optionally define the "I'm doing stuff" text the
+#       bot sends when it's executing commands.
+#       - Changed the default polling time to 10 seconds, because this bot
+#        won't be run on a Commodore 64...
+#       - Broke online help out into a separate function.
+#       - Updated the comments for the function declarations to match other
+#         bots in the suite.
 # v5.0 - Ported to Python 3.
 #      - Deleted the regex matcher because it's not used.
 # v4.0 - Added the ability to tell the bot to run a search on a particular
@@ -56,7 +67,6 @@
 #   the effect of "I don't know what you just said."
 # - Break out the "handle HTTP result code" handler into a function.
 # - Break up the main loop into a few functions to make it easier to read.
-# - Move online help into a separate function.
 
 # Load modules.
 from email.message import Message
@@ -91,7 +101,7 @@ numbers = { "one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
 
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
-custom_headers = {'Content-Type': 'application/json'}
+custom_headers = {"Content-Type": "application/json"}
 
 # Global variables.
 # Base URL to a Searx instance.
@@ -115,13 +125,13 @@ message_queue = ""
 # Default e-mail address to send search results to.
 default_email = ""
 
-# The name the search bot will respond to.  The idea is, this bot can be
-# instantiated any number of times with different config files to use
-# different search engines on different networks.
+# The name the search bot will respond to.  The idea is that this bot can be
+# instantiated any number of times with different config files for different
+# purposes.
 bot_name = ""
 
 # How often to poll the message queues for orders.
-polling_time = 60
+polling_time = 10
 
 # List of search engines the configured Searx instance has enabled.
 search_engines = []
@@ -141,6 +151,10 @@ origin_email_address = ""
 
 # E-mail message containing search results.
 message = ""
+
+# Optional user-defined text strings for the online help and user interaction.
+user_text = None
+user_acknowledged = None
 
 # Parser primitives.
 # We define them up here because they'll be re-used over and over.
@@ -184,17 +198,35 @@ def set_loglevel(loglevel):
     if loglevel == "notset":
         return 0
 
-# This function takes a string of the form "foo bar baz" and turns it into a
-# URL encoded string "foo+bar+baz", which is then returned to the calling
-# method.
+# online_help(): Function that sends online help to the user when asked.
+def online_help():
+    reply = ""
+    reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
+    reply = reply + "I am an interface to the Searx meta-search engine with a limited conversational user interface.\n\n"
+    if user_text:
+        reply = reply + user_text + "\n\n"
+    reply = reply + "At this time I can accept search requests and optionally e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n\n"
+    reply = reply + bot_name + ", (send/e-mail/email/mail) (me/<e-mail address>) top <number> hits for <search request...>\n\n"
+    reply = reply + "By default, I will e-mail results to the address " + default_email + ".\n\n"
+    reply = reply + "I can return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
+    reply = reply + bot_name + ", (get) top <number> hits for <search request...>\n\n"
+    reply = reply + "I can list the search engines I'm configured to contact:\n\n"
+    reply = reply + bot_name + ", (list (search)) engines\n\n"
+    reply = reply + "I can run searches using specific search engines I'm configured for:\n\n"
+    reply = reply + bot_name + ", search <search engine shortcode> for <search request...>\n\n"
+    send_message_to_user(reply)
+    return
+
+# make_search_term(): Function that takes a string of the form "foo bar baz"
+#   and turns it into a URL encoded string "foo+bar+baz", which is then
+#   returned to the calling method.
 def make_search_term(search_terms):
     return "+".join(term for term in search_terms)
 
-# This function takes a number represented as a word ("twenty") or a number
-# ("20") and turns it into a number (20) if it's the former.  Returns a number
-# no matter what.
+# word_and_number(): Function that takes a number represented as a word
+#   ("twenty") or a number ("20") and turns it into a number (20) if it's the
+#   former.  Returns an integer.
 def word_and_number(value):
-
     # Numbers as actual digits are stored inside the parser as strings.
     # This fucks with us.  So, detect if they're digits, and if so turn
     # them back into integers.
@@ -210,9 +242,9 @@ def word_and_number(value):
         # Set a default number of search terms.
         return 10
 
-# This function matches whenever it encounters the word "help" all by itself
-# in an input string.  Returns "help" for the number of search terms, None for
-# the search string, and None for the destination e-mail.
+# parse_help(): Function that matches the word "help" all by itself in an
+#   input string.  Returns "help" for the number of search terms, None for the
+#   search string, and None for the destination e-mail.
 def parse_help(request):
     try:
         parsed_command = help_command.parseString(request)
@@ -221,13 +253,12 @@ def parse_help(request):
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
-# This function matches whenever it encounters the phrase "(list) (search)
-# engines" in an input string.  Returns "list" for the number of search terms,
-# None for the search string, and None for the destination e-mail.
+# parse_list(): Function that matches whenever it encounters the phrase
+#   "(list) (search) engines" in an input string.  Returns "list" for the
+#   number of search terms, one for the search string, and None for the
+#   destination e-mail.
 def parse_list(request):
-
-    # Build the parser out of predeclared primitives.  To make this code easier
-    # to maintain in the future I moved the pp.Optional() modifiers down here.
+    # Build the parser out of predeclared primitives.
     command = pp.Optional(list_command) + pp.Optional(search_command)
     command = command + engines_command
 
@@ -238,12 +269,12 @@ def parse_list(request):
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
-# This function matches on commands of the form "get top <foo> hits for <bar>."
-# in an input string.  Returns an integer number of search results (up to 40),
-# a URL encoded search string, and the e-mail address "XMPP", meaning that the
-# results will be sent to the user via the XMPP bridge.
+# parse_get_request(): Function that matches on commands of the form "get top
+#   <foo> hits for <bar>" in an input string.  Returns an integer number of
+#   search results (up to 50), a URL encoded search string, and the e-mail
+#   address "XMPP", meaning that the results will be sent to the user via the
+#   XMPP bridge.
 def parse_get_request(request):
-
     # Build the parser out of predeclared primitives.
     command = get_command + top_command + results_count + hitsfor_command
     command = command + pp.Group(search_terms).setResultsName("searchterms")
@@ -263,11 +294,11 @@ def parse_get_request(request):
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
-# This function matches on commands of the form "send/e-mail/email/mail top
-# <foo> hits for <search terms>".  Returns an integer number of search results
-# (up to 50), a URL encoded search string, and an e-mail address.
+# parse_and_email_results(): Function that matches on commands of the form
+#   "send/e-mail/email/mail top <foo> hits for <search terms>".  Returns an
+#   integer number of search results (up to 50), a URL encoded search string,
+#   and an e-mail address.
 def parse_and_email_results(request):
-
     # Build the parser out of predeclared primitives.
     command = send_command + destination + top_command + results_count
     command = command + hitsfor_command
@@ -289,19 +320,18 @@ def parse_and_email_results(request):
             destination_address = parsed_command["dest"]
         else:
             destination_address = default_email
-
         return (number_of_search_results, search_term, destination_address)
     except pp.ParseException as x:
         logger.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
-# This function matches on commands of the form "search <shortcode> for
-# <search terms>".  Returns a default number of search results (10) until I can
-# make the parser more sophisticated, a URL encoded search string which
-# includes the shortcode for the search engine ("!foo"), and "XMPP", because
-# this is really only useful for mobile requests right now.
+# parse_specific_search(): Function that matches on commands of the form
+#   "search <shortcode> for <search terms>".  Returns a default number of
+#   search results (10) until I can make the parser more sophisticated, a URL
+#   encoded search string which includes the shortcode for the search engine
+#   ("!foo"), and "XMPP", because this is really only useful for mobile
+#   requests.
 def parse_specific_search(request):
-
     # Build the parser out of predeclared primitives.
     command = search_command + shortcut_command + for_command
     command = command + pp.Group(search_terms).setResultsName("searchterms")
@@ -334,10 +364,9 @@ def parse_specific_search(request):
 
     return (number_of_search_results, searchterms, "XMPP")
 
-# This function scans the list of enabled search engines and returns the
-# shortcode for the search engine ("!foo") or None.
+# is_enabled_engine(): Utility function that scans the list of enabled search
+#   engines and returns the shortcode for the search engine ("!foo") or None.
 def is_enabled_engine(engine):
-
     # Test to see if the shortcode given (which could be either the name of the
     # search engine or the actual shortcode) are in the list.  We append a bang
     # (!) to the shortcode so that Searx knows to use it as a specific search.
@@ -462,7 +491,7 @@ def send_message_to_user(message):
     logger.debug("Entered function send_message_to_user().")
 
     # Headers the XMPP bridge looks for for the message to be valid.
-    headers = {'Content-type': 'application/json'}
+    headers = {"Content-type": "application/json"}
 
     # Set up a hash table of stuff that is used to build the HTTP request to
     # the XMPP bridge.
@@ -476,20 +505,19 @@ def send_message_to_user(message):
         data=json.dumps(reply))
 
 # Core code...
-
 # Set up the command line argument parser.
-argparser = argparse.ArgumentParser(description='A bot that polls a message queue for search requests, parses them, runs them as web searches, and e-mails the results to a destination.')
+argparser = argparse.ArgumentParser(description="A bot that polls a message queue for search requests, parses them, runs them as web searches, and e-mails the results to a destination.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument('--config', action='store', 
-    default='./web_search_bot.conf')
+argparser.add_argument("--config", action="store",
+    default="./web_search_bot.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
-argparser.add_argument('--loglevel', action='store',
-    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.')
+argparser.add_argument("--loglevel", action="store",
+    help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument('--polling', action='store', help="Default: 60 seconds")
+argparser.add_argument("--polling", action="store", help="Default: 10 seconds")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -544,6 +572,20 @@ except:
 # Get the e-mail address that search results will be sent from.
 origin_email_address = config.get("DEFAULT", "origin_email_address")
 
+# Get user-defined doing-stuff text if defined in the config file.
+try:
+    user_text = config.get("DEFAULT", "user_text")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
+# Get additional user text if defined in the config file.
+try:
+    user_acknowledged = config.get("DEFAULT", "user_acknowledged")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
@@ -589,6 +631,10 @@ logger.debug("SMTP server to send search results through: " + smtp_server)
 logger.debug("E-mail address that search results are sent from: " +
     origin_email_address)
 logger.debug("Number of search engines enabled: " + str(len(search_engines)))
+if user_text:
+    logger.debug("User-defined help text: " + user_text)
+if user_acknowledged:
+    logger.debug("User-defined command acknowledgenent text: " + user_acknowledged)
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -640,17 +686,7 @@ while True:
         # Test to see if the user requested help.  If so, assemble a response,
         # send it back to the user, and restart the loop.
         if (str(number_of_results).lower() == "help"):
-            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
-            reply = reply + "I am an interface to the Searx meta-search engine with a limited conversational user interface.  At this time I can accept search requests and e-mail the results to a destination address.  To execute a search request, send me a message that looks like this:\n\n"
-            reply = reply + bot_name + ", (send/e-mail/email/mail) (me/<e-mail address>) top <number> hits for <search request...>\n\n"
-            reply = reply + "By default, I will e-mail results to the address " + default_email + ".\n\n"
-            reply = reply + "I can return search results directly to this instant messager session.  Send me a request that looks like this:\n\n"
-            reply = reply + bot_name + ", (get) top <number> hits for <search request...>\n\n"
-            reply = reply + "I can list the search engines I'm configured to contact:\n\n"
-            reply = reply + bot_name + ", (list (search)) engines\n\n"
-            reply = reply + "I can run searches using specific search engines I'm configured for:\n\n"
-            reply = reply + bot_name + ", search <search engine shortcode> for <search request...>\n\n"
-            send_message_to_user(reply)
+            online_help()
             continue
 
         # Test to see if the user requested a list of search engines.  If so,
@@ -665,14 +701,17 @@ while True:
 
         # If the number of search results is zero there was no search
         # request in the message queue, in which case we do nothing and
-        # loop again later.
+        # loop again.
         if (number_of_results == 0) and (len(search) == 0):
             search_request = ""
             time.sleep(float(polling_time))
             continue
 
-        # Run the web searches and get the results.
-        send_message_to_user("Running web search.  Please stand by.")
+        # Run the searches and get the results.
+        if user_acknowledged:
+            send_message_to_user(user_acknowledged)
+        else:
+            send_message_to_user("Running web search.  Please stand by.")
         search_results = get_search_results(search)
 
         # If no search results were returned, put that message into the
@@ -732,4 +771,3 @@ while True:
 
 # Fin.
 sys.exit(0)
-
