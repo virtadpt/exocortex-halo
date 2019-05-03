@@ -18,6 +18,7 @@
 #       - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...
 #       - Broke the online help out into a separate function.
+#       - Got tired of unescaped spaces in filenames, added HTML unescaping.
 # v2.0 - Ported to Python 3.
 # v1.2 - Added "download this as an MP3" support.
 # v1.1 - Added youtube-dl support.
@@ -29,6 +30,7 @@
 # Load modules.
 import argparse
 import configparser
+import html
 import json
 import logging
 import os
@@ -190,8 +192,10 @@ def download_file(download_directory, url):
     # Generic flag that determines whether or not the process worked.
     result = False
 
-    # Local filename to write the file to.
+    # Local filename to write the file to.  Unescaped, because URL encoding
+    # sucks.
     local_filename = url.split('/')[-1]
+    local_filename = html.unescape(local_filename)
 
     # Full path to write the file to.
     full_path = os.path.join(download_directory, local_filename)
