@@ -22,6 +22,9 @@
 
 # License: GPLv3
 
+# v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
+#       - Changed the default polling time to 10 seconds, because this bot
+#        won't be run on a Commodore 64...
 # v2.0 - Ported to Python 3.
 # v1.1 - Added the URL of the configured Shaarli instance to the help text.
 # v1.0 - Initial release.
@@ -64,7 +67,7 @@ message_queue = ""
 bot_name = ""
 
 # How often to poll the message queues for orders.
-polling_time = 30
+polling_time = 10
 
 # URL to a Shaarli instance.
 shaarli_url = ""
@@ -80,6 +83,9 @@ parsed_command = None
 
 # Handle to a search result from Shaarli.
 search_results = None
+
+# Optional user-defined text strings for the online help and user interaction.
+user_text = None
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -136,7 +142,6 @@ def send_message_to_user(message):
     return
 
 # Core code...
-
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that polls a message queue for search requests to an instance of Shaarli.")
 
@@ -148,7 +153,7 @@ argparser.add_argument("--loglevel", action="store",
     help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument("--polling", action="store", help="Default: 30 seconds")
+argparser.add_argument("--polling", action="store", help="Default: 10 seconds")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -186,6 +191,13 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
+# Get user-defined doing-stuff text if defined in the config file.
+try:
+    user_text = config.get("DEFAULT", "user_text")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
@@ -215,6 +227,8 @@ logger.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
 logger.debug("URL of a Shaarli instance: " + shaarli_url)
 logger.debug("Shaarli API secret: " + api_secret)
+if user_text:
+    logger.debug("User-defined help text: " + user_text)
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -256,8 +270,10 @@ while True:
         # to the server's message queue.
         if parsed_command == "help":
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
-            reply = reply + "I am interfaced with the following Shaarli instance: " + shaarli_url + "\n\n"
-            reply = reply + """I am a bot which interfaces with a Shaarli instance to run searches and send back results.  To run a search, send me a message that looks something like this:\n\n"""
+            reply = reply + "I am a bot which interfaces with a Shaarli instance to run searches and send back results.  I am interfaced with the following Shaarli instance: " + shaarli_url + "\n\n"
+            if user_text:
+                reply = reply + user_text + "\n\n"
+            reply = reply + "To run a search, send me a message that looks something like this:\n\n"
             reply = reply + bot_name + ", [search for] foo bar baz...\n\n"
             reply = reply + bot_name + ", [search tags, search tags for] [tag]\n\n"
             send_message_to_user(reply)

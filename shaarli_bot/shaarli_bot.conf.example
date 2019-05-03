@@ -20,3 +20,8 @@ shaarli_url = https://shaarli.example.com/
 # API key for the Shaarli instance (Tools -> Configure your Shaarli ->
 #   API secret)
 api_secret = lovesexsecretgod
+
+# Optional user-defined text that will be displayed to the user as part of the
+# online help text.  It is recommended that you describe what you use this
+# bot for, particularly if you have multiple instances running simultaneously.
+# user_text = This is some user-specific text.
