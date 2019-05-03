@@ -17,6 +17,7 @@
 # v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
 #       - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...
+#       - Broke the online help out into a separate function.
 # v2.0 - Ported to Python 3.
 # v1.2 - Added "download this as an MP3" support.
 # v1.1 - Added youtube-dl support.
@@ -294,6 +295,26 @@ def send_message_to_user(message):
     request = requests.put(server + "replies", headers=headers,
         data=json.dumps(reply))
 
+# online_help(): Utility function that sends online help to the user when
+#   requested.  Takes no args.  Returns nothing.
+def online_help():
+    reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
+    if user_text:
+        reply = reply + user_text + "\n\n"
+    reply = reply + "I am capable of accepting URLs for arbitrary files on the web and downloading them.  To download a file, send me a message that looks something like this:\n\n"
+    reply = reply + bot_name + ", [download,get,pull] https://www.example.com/foo.pdf\n\n"
+    reply = reply + "I will download files into: " + download_directory + "\n"
+    send_message_to_user(reply)
+    if video_enabled:
+        reply = "I am youtube-dl enabled, and so can download any media stream this module is capable of.  To download a supported media, stream, send me a message that looks like this:\n\n"
+        reply = reply + bot_name + ", [download,get] [stream,video] https://youtube.com/foo\n"
+        send_message_to_user(reply)
+    if ffmpeg_enabled:
+        reply = "I am also capable of downloading and saving just the audio portion of video streams and saving them as MP3 files.  To download an MP3 from a stream, send me a message that looks like this:\n"
+        reply = reply + bot_name + ", [download,get] [audio,mp3] https://youtube.com/foo\n"
+        send_message_to_user(reply)
+    return
+
 # Core code...
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that polls a message queue for URLs to files to download and downloads them into a local directory.")
@@ -459,22 +480,7 @@ while True:
         # If the user is requesting help, assemble a response and send it back
         # to the server's message queue.
         if download_request.lower() == "help":
-            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
-            if user_text:
-                reply = reply + user_text + "\n\n"
-            reply = reply + "I am capable of accepting URLs for arbitrary files on the web and downloading them.  To download a file, send me a message that looks something like this:\n\n"
-            reply = reply + bot_name + ", [download,get,pull] https://www.example.com/foo.pdf\n"
-            send_message_to_user(reply)
-            reply = "I will download files into: " + download_directory + "\n"
-            send_message_to_user(reply)
-            if video_enabled:
-                reply = "I am youtube-dl enabled, and so can download any media stream this module is capable of.  To download a supported media, stream, send me a message that looks like this:\n\n"
-                reply = reply + bot_name + ", [download,get] [stream,video] https://youtube.com/foo\n"
-                send_message_to_user(reply)
-            if ffmpeg_enabled:
-                reply = "I am also capable of downloading and saving just the audio portion of video streams and saving them as MP3 files.  To download an MP3 from a stream, send me a message that looks like this:\n"
-                reply = reply + bot_name + ", [download,get] [audio,mp3] https://youtube.com/foo\n"
-                send_message_to_user(reply)
+            online_help()
             continue
 
         # Handle the download request.
