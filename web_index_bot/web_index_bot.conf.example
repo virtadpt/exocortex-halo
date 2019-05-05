@@ -22,3 +22,11 @@ engine3 = no,get,https://web.archive.org/save/
 engine4 = no,get,http://www.webcitation.org/archive?url=
 engine5 = yes,get,https://archive.fo/?run=1&url=
 
+# Optional user-defined text that will be displayed to the user as part of the
+# online help text.  It is recommended that you describe what you use this
+# bot for, particularly if you have multiple instances running simultaneously.
+# user_text = This is some user-specific text.
+
+# Optional user-defined text that will be displayed to the user to acknowledge
+# that commands have been received and are being executed.
+# user_acknowledged = Custom telling you I'm doing something text.

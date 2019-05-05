@@ -3,8 +3,8 @@
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
 # web_index_bot.py - Bot written in Python that, when given a URL via its
-#   message queue, submits it to as many search engines are configured for this
-#   bot.  This bot was imagined with 
+#   message queue, submits it to as many search engines and/or online content
+#   archives that are configured for this bot.
 #
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
@@ -14,6 +14,15 @@
 
 # License: GPLv3
 
+# v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
+#       - Changed the default polling time to 10 seconds, because this bot
+#        won't be run on a Commodore 64...
+#       - Got rid of some redundancy.
+#       - Fixed some comments.
+#       - Cleaned up code formatting and conventions to match later generation
+#         bots.  Also, it's a good excuse for rereading the code with a
+#         critical eye.
+#       - Broke the online help out into a function.
 # v2.0 - Ported to Python 3.
 # v1.2 - Made the overly chatty status reports contingent upon the bot running
 #        in loglevel.DEBUG.
@@ -25,7 +34,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - 
+# -
 
 # Load modules.
 import argparse
@@ -37,16 +46,16 @@ import re
 import requests
 import sys
 import time
-import urllib.request, urllib.parse, urllib.error
+import urllib.error
+import urllib.parse
+import urllib.request
 
 # Constants.
-
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
-custom_headers = {'Content-Type': 'application/json'}
+custom_headers = {"Content-Type": "application/json"}
 
 # Global variables.
-
 # Handle to a logging object.
 logger = ""
 
@@ -68,13 +77,17 @@ message_queue = ""
 bot_name = ""
 
 # How often to poll the message queues for orders.
-polling_time = 60
+polling_time = 10
 
 # Global list of search engines' URLs to submit URLs to.
 search_engines = []
 
 # Handle to an index request from the user.
 index_request = None
+
+# Optional user-defined text strings for the online help and user interaction.
+user_text = None
+user_acknowledged = None
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -121,14 +134,14 @@ def parse_index_request(index_request):
     # making the determination, remove the words we've sussed out to make the
     # rest of the query easier.
 
-    # User asked for help.
+    # User asked for help?
     if not len(words):
         return None
     if words[0].lower() == "help":
         logger.debug("User asked for online help.")
         return words[0]
 
-    # User asked the construct to submit the URL for indexing.
+    # User asked the construct to submit the URL for indexing?
     if (words[0] == "index") or (words[0] == "spider") or \
             (words[0] == "submit" or words[0] == "store" or \
             words[0] == "archive" or words[0] == "get"):
@@ -148,8 +161,6 @@ def parse_index_request(index_request):
 # submit_for_indexing(): Function that takes as its argument a URL to submit
 #   to one or more search engines.  It walks through search_engines[]
 #   (declared in the global context) and submits the URL to each on in turn.
-#   Note that it doesn't have to be a search engine per se, it can just as
-#   easily be an online archive like archive.is.
 def submit_for_indexing(index_term):
     logger.debug("Entered function submit_for_indexing().")
 
@@ -189,12 +200,7 @@ def submit_for_indexing(index_term):
             if method == "post":
                 request = requests.post(url)
             result = True
-
-            # If debugging is turned on, notify the user.
-            # I don't like that this is a magick number but the logger class
-            # only works with numbers, not so much with symbols.
-            if loglevel == 10:
-                send_message_to_user("Successfully submitted link " + url + ".")
+            send_message_to_user("Successfully submitted link " + url + ".")
         except:
             logger.warn("Unable to submit URL: " + str(url))
             send_message_to_user("ERROR: Unable to submit link " + url + ".")
@@ -210,9 +216,6 @@ def submit_for_indexing(index_term):
 #   send to the user.  Returns a True or False which delineates whether or not
 #   it worked.
 def send_message_to_user(message):
-    # Headers the XMPP bridge looks for for the message to be valid.
-    headers = {'Content-type': 'application/json'}
-
     # Set up a hash table of stuff that is used to build the HTTP request to
     # the XMPP bridge.
     reply = {}
@@ -221,24 +224,37 @@ def send_message_to_user(message):
 
     # Send an HTTP request to the XMPP bridge containing the message for the
     # user.
-    request = requests.put(server + "replies", headers=headers,
+    request = requests.put(server + "replies", headers=custom_headers,
         data=json.dumps(reply))
 
-# Core code...
+# online_help(): Utility function that sends online help to the user when
+#   requested.  Takes no args.  Returns nothing.
+def online_help():
+    reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
+    if user_text:
+        reply = reply + user_text + "\n\n"
+    reply = reply + "I am capable of accepting URLs for arbitrary websites and submitting them for indexing by the search engines and online archives specified in my configuration file (some of which you may control, of course).  To index a website, send me a message that looks something like this:\n\n"
+    reply = reply + bot_name + ", [index,spider,submit,store,archive,get] https://www.example.com/foo.html\n\n"
+    reply = reply + "The search engines I am configured for are:\n"
+    for engine in search_engines:
+        reply = reply + "* " + engine.split(',')[2] + "\n"
+    send_message_to_user(reply)
+    return
 
+# Core code...
 # Set up the command line argument parser.
-argparser = argparse.ArgumentParser(description='A bot that polls a message queue for search requests, parses them, and submits them to one or more search engines for indexing.')
+argparser = argparse.ArgumentParser(description="A bot that polls a message queue for search requests, parses them, and submits them to one or more search engines for indexing.")
 
 # Set the default config file and the option to set a new one.
-argparser.add_argument('--config', action='store', 
-    default='./web_index_bot.conf')
+argparser.add_argument("--config", action="store",
+    default="./web_index_bot.conf")
 
 # Loglevels: critical, error, warning, info, debug, notset.
-argparser.add_argument('--loglevel', action='store',
-    help='Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.')
+argparser.add_argument("--loglevel", action="store",
+    help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 
 # Time (in seconds) between polling the message queues.
-argparser.add_argument('--polling', action='store', help='Default: 60 seconds')
+argparser.add_argument("--polling", action="store", help="Default: 10 seconds")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -276,6 +292,20 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
+# Get user-defined doing-stuff text if defined in the config file.
+try:
+    user_text = config.get("DEFAULT", "user_text")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
+# Get additional user text if defined in the config file.
+try:
+    user_acknowledged = config.get("DEFAULT", "user_acknowledged")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
@@ -289,9 +319,9 @@ if args.polling:
     polling_time = args.polling
 
 # Load the list of search engines' URLs to submit other URLs to.
-for i in config.options('search engines'):
-    if 'engine' in i:
-        search_engines.append(config.get('search engines', i))
+for i in config.options("search engines"):
+    if "engine" in i:
+        search_engines.append(config.get("search engines", i))
 
 # Debugging output, if required.
 logger.info("Everything is set up.")
@@ -304,7 +334,11 @@ logger.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
 logger.debug("Search engines available to submit URLs to:")
 for i in search_engines:
-    logger.debug("    "+ i)
+    logger.debug("\t"+ i)
+if user_text:
+    logger.debug("User-defined help text: " + user_text)
+if user_acknowledged:
+    logger.debug("User-defined command acknowledgenent text: " + user_acknowledged)
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -344,18 +378,15 @@ while True:
         # If the user is requesting help, assemble a response and send it back
         # to the server's message queue.
         if index_request.lower() == "help":
-            reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
-            reply = reply + """I am capable of accepting URLs for arbitrary websites and submitting them for indexing by the search engines and online archives specified in my configuration file (some of which you may control, of course).  To index a website, send me a message that looks something like this:\n\n"""
-            reply = reply + bot_name + ", [index,spider,submit,store,archive,get] https://www.example.com/foo.html\n\n"
-            reply = reply + """The search engines I am configured for are:\n"""
-            for engine in search_engines:
-                reply = reply + """* """ + engine.split(',')[2] + "\n"
-            send_message_to_user(reply)
+            online_help()
             continue
 
         # Submit the index request to the configured search engines.
-        reply = "Submitting your index request now.  Please stand by."
-        send_message_to_user(reply)
+        if user_acknowledged:
+            send_message_to_user(user_acknowledged)
+        else:
+            reply = "Submitting your index request now.  Please stand by."
+            send_message_to_user(reply)
         index_request = submit_for_indexing(index_request)
 
         # If something went wrong...
@@ -378,4 +409,3 @@ while True:
 
 # Fin.
 sys.exit(0)
-
