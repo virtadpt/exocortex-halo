@@ -444,7 +444,7 @@ if ffmpeg_enabled:
 if user_text:
     logger.debug("User-defined help text: " + user_text)
 if user_acknowledged:
-    logger.debug("User-defined command acknowledgenent text: " + user_acknowledged)
+    logger.debug("User-defined command acknowledgement text: " + user_acknowledged)
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any download requests waiting for it.
