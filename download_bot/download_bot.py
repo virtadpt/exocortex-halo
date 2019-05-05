@@ -298,6 +298,7 @@ def send_message_to_user(message):
     # user.
     request = requests.put(server + "replies", headers=headers,
         data=json.dumps(reply))
+    return
 
 # online_help(): Utility function that sends online help to the user when
 #   requested.  Takes no args.  Returns nothing.
