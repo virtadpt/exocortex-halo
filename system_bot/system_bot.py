@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
 # system_bot.py - Bot that periodically polls the state of the system it's
@@ -11,6 +11,8 @@
 
 # License: GPLv3
 
+# v4.1 - Added a command to query the busiest processes in the system (in
+#       terms of CPU utilization).
 # v4.0 - Ported to Python 3.
 # v3.3 - Added a periodic check for all of the temperature sensors the psutil
 #        module knows about.
@@ -201,6 +203,7 @@ def online_help():
     IP/local IP/ local addr - Current (internal) IP of this host.
     network traffic/traffic volume/network stats/traffic stats/traffic count - Bytes sent and received per network interface.
     System temperature/system temp/temperature/temp/overheating/core temperature/core temp - Hardware temperature in Centigrade and Fahrenheit, if temperature sensors are enabled.
+    top processes/busy processes/busiest processes - Top 5 busiest processes on the system.
 
     All commands are case-insensitive.
     """
@@ -512,11 +515,29 @@ while True:
                             message = message + "Temperature sensor " + label + ": " + str(device[1]) + " degrees Centigrade (" + str(system_stats.centigrade_to_fahrenheit(device[1])) + " degrees Fahrenheit)\n"
                 send_message_to_user(message)
 
+            # Busiest running processes.
+            if command == "processes":
+                info = processes.get_top_processes()
+
+                # Possible case: The CPU usage snapshot is taken when
+                # everything is asleep, so CPU utilization is 0.0 across the
+                # board, meaning there's an empty list.
+                if not info:
+                    message = "At this nanosecond, every process on the system has a CPU utilization of 0.0.  Everything's looking quiet."
+                else:
+                    message = "The busiest processes on the system are:\n\n"
+                    for i in info:
+                        message = message + str(i["pid"]) + "\t" + i["name"] + "\t" + str(i["cpu_percent"]) + "%\n"
+                send_message_to_user(message)
+
             # Fall-through.
             if command == "unknown":
                 message = "I didn't recognize that command."
                 send_message_to_user(message)
 
+        # NOTE: We don't short-circuit all of the above checks with the
+        # continue statement because we want the loop to fall down here every
+        # time it runs to...
         # Reset loop counter.
         logger.debug("Resetting loop_counter.")
         loop_counter = 0

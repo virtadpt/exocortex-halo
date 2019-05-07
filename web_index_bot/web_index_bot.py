@@ -292,20 +292,6 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
-# Get user-defined doing-stuff text if defined in the config file.
-try:
-    user_text = config.get("DEFAULT", "user_text")
-except:
-    # Nothing to do here, it's an optional configuration setting.
-    pass
-
-# Get additional user text if defined in the config file.
-try:
-    user_acknowledged = config.get("DEFAULT", "user_acknowledged")
-except:
-    # Nothing to do here, it's an optional configuration setting.
-    pass
-
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
@@ -322,6 +308,20 @@ if args.polling:
 for i in config.options("search engines"):
     if "engine" in i:
         search_engines.append(config.get("search engines", i))
+
+# Get user-defined doing-stuff text if defined in the config file.
+try:
+    user_text = config.get("DEFAULT", "user_text")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
+
+# Get additional user text if defined in the config file.
+try:
+    user_acknowledged = config.get("DEFAULT", "user_acknowledged")
+except:
+    # Nothing to do here, it's an optional configuration setting.
+    pass
 
 # Debugging output, if required.
 logger.info("Everything is set up.")

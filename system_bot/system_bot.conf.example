@@ -11,8 +11,8 @@ bot_name = HostnameOfThisBox
 # Set the default loglevel of the bot.
 loglevel = info
 
-# How often to poll the message queue for orders.  Defaults to 60 seconds.
-# polling_time = 60
+# How often to poll the message queue for orders.  Defaults to 10 seconds.
+# polling_time = 10
 
 # How often to send warning messages to the user, in seconds.  Nobody likes to
 # be flooded with alerts when, say, the daily system backup runs, so this is
@@ -34,7 +34,9 @@ standard_deviations = 2
 minimum_length = 2
 maximum_length = 100
 
-# URL to hit for public IP address of this system.
+# URL to hit for public IP address of this system.  Whatever URL you put here
+# must return ONLY a IP address as text - no HTML, JSON, or anything like
+# that.
 ip_addr_site = https://api.ipify.org/
 
 # If you have any processes that you want to monitor the health of, list them

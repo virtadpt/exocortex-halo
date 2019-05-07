@@ -55,7 +55,6 @@ headers = {}
 request = None
 
 # Functions.
-
 # Figure out what to set the logging level to.  There isn't a straightforward
 # way of doing this because Python uses constants that are actually integers
 # under the hood, and I'd really like to be able to do something like
@@ -78,6 +77,7 @@ def process_loglevel(loglevel):
 # Core code...
 # Set up a command line argument parser.
 argparser = argparse.ArgumentParser(description="A command line utility which takes a JSON dump from Librarything and pumps it into a Shaarli instance using the API.")
+
 argparser.add_argument("--loglevel", action="store", default="info",
     help="Valid log levels: critical, error, warning, info, debug, notset.  Defaults to info.")
 

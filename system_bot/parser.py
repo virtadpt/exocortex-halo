@@ -10,6 +10,8 @@
 
 # License: GPLv3
 
+# v3.1 - Added the ability to understand requests for the top processes (in
+#   terms of CPU time at the moment) running on the system.
 # v3.0 - Ported to Python 3.
 # v2.4 - Added a set of commands to query the current system temperature.
 # v2.3 - Added function to request local IP address of host.
@@ -22,7 +24,7 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# -
+# - Uncomment and get working "top n processes" functionality.
 
 # Load modules.
 import logging
@@ -103,6 +105,17 @@ core_temp_command = core_command + temp_command
 system_temperature_commands = pp.Or([system_temperature_command,
     system_temp_command, temperature_command, temp_command,
     overheating_command, core_temperature_command, core_temp_command])
+
+top_command = pp.CaselessLiteral("top")
+busy_command = pp.CaselessLiteral("busy")
+busiest_command = pp.CaselessLiteral("busiest")
+processes_command = pp.CaselessLiteral("processes")
+top_processes_command = top_command + processes_command
+busy_processes_command = busy_command + processes_command
+busiest_processes_command = busiest_command + processes_command
+
+top_processes_commands = pp.Or([top_processes_command, busy_processes_command,
+    busiest_processes_command])
 
 # parse_help(): Function that matches the word "help" all by itself in an input
 #   string.  Returns the string "help" on a match and None if not.
@@ -211,6 +224,16 @@ def parse_system_temperature(command):
     except:
         return None
 
+# def parse_top_processes(): Function that matches the strings "top
+#   processes", "top [n] processes" (where n is a number).  Returns the string
+#   "processes" on a match and None if not.
+def parse_top_processes(command):
+    try:
+        parsed_command = top_processes_commands.parseString(command)
+        return "processes"
+    except:
+        return None
+
 # parse_command(): Function that parses commands from the message bus.
 #   Commands come as strings and are run through PyParsing to figure out what
 #   they are.  A single-word string is returned as a match or None on no match.
@@ -281,6 +304,11 @@ def parse_command(command):
     # System temperature?
     parsed_command = parse_system_temperature(command)
     if parsed_command == "temperature":
+        return parsed_command
+
+    # Busiest processes on the system?
+    parsed_command = parse_top_processes(command)
+    if parsed_command == "processes":
         return parsed_command
 
     # Fall-through: Nothing matched.

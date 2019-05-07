@@ -10,18 +10,20 @@
 
 # License: GPLv3
 
+# v2.1 - Added the ability to find out the top X running processes on the
+#         system.
 # v2.0 - Ported to Python 3.
 # v1.0 - Initial release.
 
 # TO-DO:
+# - Rewrite processes.get_process_list() to use psutil instead.
 
 # Load modules.
 import logging
 import os
+import psutil
 import subprocess
 import sys
-
-# Module-local variables.
 
 # Functions.
 # get_process_list(): Function that pulls a list of processes running on the
@@ -44,7 +46,6 @@ def check_process_list(processes):
     for process in processes:
         if process[0] not in process_list:
             crashed_processes.append(process)
-
     logging.debug("Dead processes : " + str(crashed_processes))
     return crashed_processes
 
@@ -85,6 +86,47 @@ def restart_crashed_processes(processes, retries=5):
     logging.debug("Dead processes : " + str(crashed_processes))
     return crashed_processes
 
+# def get_top_processes(): Function that uses psutil to figure out what the
+#   busiest processes on the system are.  Use case: "What the hell is burning
+#   all the CPU time?"  Takes one optional argument, the number of top-X
+#   processes to find.  Defaults to 5.  Returns a list of lists of the top X
+#   processes, in descending order of CPU percentage taken up.
+# MOOF: I'm leaving the function argument as-is because eventually I'd like
+#   to make this more interactive based upon user input.  But that's going to
+#   require a more solid understanding of the base case.
+def get_top_processes(number_of_processes=5):
+    top_processes = []
+    process = None
+
+    # Built an array of the processes running on the server.
+    for process in psutil.process_iter():
+        process_info = process.as_dict(attrs=["cmdline", "name", "cpu_percent",
+            "pid"])
+
+        # Kernel threads have empty cmdline values.  Skip them.
+        if not process_info["cmdline"]:
+                continue
+
+        # Due to the fact that we want actually awake processes, skip running
+        # processes that have CPU utilization of 0.0.
+        if not process_info["cpu_percent"]:
+                continue
+        top_processes.append(process_info)
+
+    # Catch the case where the process list is empty due to the above CPU
+    # percentage case.
+    if len(top_processes) == 0:
+        return None
+
+    # Sort the array based upon CPU time utilized.
+    top_processes = sorted(top_processes, key=lambda process:
+        process["cpu_percent"], reverse=True)
+
+    # Return the top X processes on the system.
+    top_processes = top_processes[0:number_of_processes+1]
+    logging.debug("Top processes on the system: " + str(top_processes))
+    return(top_processes)
+
 if "__name__" == "__main__":
     print("List of system processes:")
     print(get_process_list())
@@ -95,4 +137,3 @@ if "__name__" == "__main__":
     print("Processes that should never be running:")
     print(check_process_list(["nomatch", "this should never match"]))
     sys.exit(0)
-
