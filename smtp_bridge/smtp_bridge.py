@@ -143,7 +143,6 @@ def drop_privileges(username, group):
         return True
 
     if current_uid == 0:
-
         # Try to change the group ID first, so we'll still have permission to
         # do the root user ID later.
         try:

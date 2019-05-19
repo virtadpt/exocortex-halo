@@ -222,7 +222,7 @@ def load_local_media_library(local_library):
             try:
                 media_library = json.load(media_library_dump)
             except:
-                logger.warn("Unable to reload media library!  Building a new one from scratch!")
+                logger.warning("Unable to reload media library!  Building a new one from scratch!")
         return media_library
     else:
         raise Exception
@@ -400,6 +400,7 @@ try:
 except:
     # This is optional.
     pass
+
 corpora_dir = config.get("DEFAULT", "corpora_dir")
 minimum_confidence = int(config.get("DEFAULT", "minimum_confidence"))
 match_confidence = int(config.get("DEFAULT", "match_confidence"))
@@ -439,15 +440,29 @@ if args.no_media_library:
 if local_library:
     logger.debug("Location of local library dump: %s" % local_library)
 
-# Build an HTTP basic auth object for Kodi.
-kodi_auth = HTTPBasicAuth(kodi_user, kodi_password)
+# Try to contact the XMPP bridge.  Keep trying until you reach it or the
+# system shuts down.
+logger.info("Trying to contact XMPP message bridge...")
+while True:
+    try:
+        send_message_to_user(bot_name + " now online.")
+        break
+    except:
+        logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        time.sleep(float(polling_time))
 
-# Connect to a Kodi instance.
-try:
-    request = requests.get(kodi_url, auth=kodi_auth, headers=headers)
-except:
-    logger.error("Unable to connect to Kodi instance at %s with username %s and password %s.  Please check your configuration file." % (kodi_url, kodi_user, kodi_password))
-    sys.exit(1)
+# Build an HTTP basic auth object for Kodi and try to connect to a Kodi
+# instance.
+kodi_auth = HTTPBasicAuth(kodi_user, kodi_password)
+while True:
+    try:
+        request = requests.get(kodi_url, auth=kodi_auth, headers=headers)
+        send_message_to_user(bot_name + " connected to Kodi instance " + kodi_url + ".")
+        break
+    except:
+        logger.error("Unable to connect to Kodi instance at %s with username %s and password %s.  Please check your configuration file." % (kodi_url, kodi_user, kodi_password))
+        send_message_to_user("Unable to connect to Kodi instance at %s with username %s and password %s.  Please check your configuration file." % (kodi_url, kodi_user, kodi_password))
+        time.sleep(float(polling_time))
 
 # Load the corpora into a hash table where the keys are categories of commands
 # to run and the values are empty lists.
@@ -486,12 +501,12 @@ else:
 enabled_players = get_enabled_players(kodi_url, kodi_auth, headers)
 if not enabled_players:
     logging.fatal("No media players reported by Kodi.  This is weird.")
+    send_message_to_user("No media players reported by Kodi.  This is weird.  Terminating.")
     sys.exit(1)
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
-send_message_to_user(bot_name + " now online.")
 while True:
     user_command = None
     search_term = ""
@@ -502,7 +517,7 @@ while True:
         logger.debug("Contacting message queue: %s" % message_queue)
         request = requests.get(message_queue)
     except:
-        logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        logger.warning("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
         time.sleep(float(polling_time))
         continue
 
