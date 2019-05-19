@@ -22,6 +22,10 @@
 
 # License: GPLv3
 
+# v2.2 - Reworked the startup logic so that being unable to immediately
+#       connect to either the message bus or the intended service is a
+#       terminal state.  Instead, it loops and sleeps until it connects and
+#       alerts the user appropriately.
 # v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
 #       - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...

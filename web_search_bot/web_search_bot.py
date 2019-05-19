@@ -15,6 +15,10 @@
 
 # License: GPLv3
 
+# v5.2 - Reworked the startup logic so that being unable to immediately
+#       connect to either the message bus or the intended service is a
+#       terminal state.  Instead, it loops and sleeps until it connects and
+#       alerts the user appropriately.
 # v5.1 - Made it possible to optionally define additional user text to add to
 #        the bot's online help.  My use case for this is when you run multiple
 #        instances of this bot and you want to keep them all straight by
