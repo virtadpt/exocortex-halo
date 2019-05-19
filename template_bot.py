@@ -12,7 +12,14 @@
 
 # License: GPLv3
 
+# v1.2 - Changed logging.warn() to logging.warning().
+#       - Reworked the startup logic so that being unable to immediately
+#       connect to either the message bus or the intended service is a
+#       terminal state.  Instead, it loops and sleeps until it connects and
+#       alerts the user appropriately.
+#       - Changed logger to logging.
 # v1.1 - Updated template to look more like the code I have in production.
+#       - Added the facility for user-defined output.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -100,12 +107,12 @@ def parse_...(user_command):
 
     # If the user command is empty (i.e., nothing in the queue) return None.
     if "no commands" in user_command:
-        logger.debug("Got an empty index request.")
+        logging.debug("Got an empty index request.")
         return None
 
     # Tokenize the search request.
     words = user_command.split()
-    logger.debug("Tokenized index request: " + str(words))
+    logging.debug("Tokenized index request: " + str(words))
 
     # Start parsing the the index request to see what kind it is.  After
     # making the determination, remove the words we've sussed out to make the
@@ -115,24 +122,24 @@ def parse_...(user_command):
     if not len(words):
         return None
     if words[0].lower() == "help":
-        logger.debug("User asked for online help.")
+        logging.debug("User asked for online help.")
         return words[0]
 
     # User asked the construct to...
     if (words[0] == "foo") or (words[0] == "bar") or \
             (words[0] == "baz"):
-        logger.info("Got a token that suggests that this is...")
+        logging.info("Got a token that suggests that this is...")
     del words[0]
 
     # If the parsed search term is now empty, return an error.
     if not len(words):
-        logger.error("The indexing request appears to be empty.")
+        logging.error("The indexing request appears to be empty.")
         return None
 
     # The above, one or more times...
 
     # Return the final result.
-    logger.debug("Final result: " + something_final_result)
+    logging.debug("Final result: " + something_final_result)
     return something_final_result
 
 # send_message_to_user(): Function that does the work of sending messages back
@@ -245,44 +252,57 @@ if args.polling:
 # Parse the rest of the configuration file...
 
 # Debugging output, if required.
-logger.info("Everything is set up.")
-logger.debug("Values of configuration variables as of right now:")
-logger.debug("Configuration file: " + config_file)
-logger.debug("Server to report to: " + server)
-logger.debug("Message queue to report to: " + message_queue)
-logger.debug("Bot name to respond to search requests with: " + bot_name)
-logger.debug("Time in seconds for polling the message queue: " +
+logging.info("Everything is set up.")
+logging.debug("Values of configuration variables as of right now:")
+logging.debug("Configuration file: " + config_file)
+logging.debug("Server to report to: " + server)
+logging.debug("Message queue to report to: " + message_queue)
+logging.debug("Bot name to respond to search requests with: " + bot_name)
+logging.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
 if user_text:
-    logger.debug("User-defined help text: " + user_text)
+    logging.debug("User-defined help text: " + user_text)
 if user_acknowledged:
-    logger.debug("User-defined command acknowledgement text: " + user_acknowledged)
+    logging.debug("User-defined command acknowledgement text: " + user_acknowledged)
 # Other debugging output...
+
+# Try to contact the XMPP bridge.  Keep trying until you reach it or the
+# system shuts down.
+logging.info("Trying to contact XMPP message bridge...")
+while True:
+    try:
+        send_message_to_user(bot_name + " now online.")
+        break
+    except:
+        logging.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        time.sleep(float(polling_time))
+
+# Trying to contact other resources and sleeping if we can't (like the above)
+# go here...
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
-logger.debug("Entering main loop to handle requests.")
-send_message_to_user(bot_name + " now online.")
+logging.debug("Entering main loop to handle requests.")
 while True:
     user_command = None
 
     # Check the message queue for index requests.
     try:
-        logger.debug("Contacting message queue: " + message_queue)
+        logging.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)
     except:
-        logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        logging.warning("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
         time.sleep(float(polling_time))
         continue
 
     # Test the HTTP response code.
     # Success.
     if request.status_code == 200:
-        logger.debug("Message queue " + bot_name + " found.")
+        logging.debug("Message queue " + bot_name + " found.")
 
         # Extract the user command.
         user_command = json.loads(request.text)
-        logger.debug("Value of user_command: " + str(user_command))
+        logging.debug("Value of user_command: " + str(user_command))
         user_command = user_command["command"]
 
         # Parse the user command.
@@ -310,7 +330,7 @@ while True:
 
         # If something went wrong...
         if not parsed_command:
-            logger.warn("Something went wrong with...")
+            logging.warning("Something went wrong with...")
             reply = "Something went wrong with..."
             send_message_to_user(reply)
             continue
@@ -321,7 +341,7 @@ while True:
 
     # Message queue not found.
     if request.status_code == 404:
-        logger.info("Message queue " + bot_name + " does not exist.")
+        logging.info("Message queue " + bot_name + " does not exist.")
 
     # Sleep for the configured amount of time.
     time.sleep(float(polling_time))
