@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v3.1 - Changed logger.warn() to logger.warning().
 # v3.0 - Ported to Python 3.
 # v2.1 - Added functions to pause, unpause, and stop whatever's playing.
 #      - Added ability to ping the Kodi JSON RPC server.
@@ -81,7 +82,7 @@ def get_media_sources(kodi_url, kodi_auth, headers):
         data=json.dumps(command))
     tmp = request.json()
     if "sources" not in tmp["result"]:
-        logging.warn("'video' is not a registered media source.")
+        logging.warning("'video' is not a registered media source.")
     else:
         for i in tmp["result"]["sources"]:
             sources["video"].append(i["file"])
@@ -92,7 +93,7 @@ def get_media_sources(kodi_url, kodi_auth, headers):
         data=json.dumps(command))
     tmp = request.json()
     if "sources" not in tmp["result"]:
-        logging.warn("'music' is not a registered media source.")
+        logging.warning("'music' is not a registered media source.")
     else:
         for i in tmp["result"]["sources"]:
             sources["music"].append(i["file"])
@@ -165,13 +166,13 @@ def build_media_library(kodi_url, kodi_auth, headers, sources, exclude_dirs):
 
             # Catch file system errors, like file permissions.
             if "error" in list(tmp.keys()):
-                logging.warn("Got one of Kodi's 'Invalid params' error messages when accessing %s.  Might be bad permissions.  Skipping." % directory)
+                logging.warning("Got one of Kodi's 'Invalid params' error messages when accessing %s.  Might be bad permissions.  Skipping." % directory)
                 continue
 
             # Catch the "no files in directory" case.
             if tmp["result"]["limits"]["start"] == 0:
                 if tmp["result"]["limits"]["end"] == 0:
-                    logging.warn("Found empty directory %s, skipping." % directory)
+                    logging.warning("Found empty directory %s, skipping." % directory)
                     continue
             # "Explicit is better than implicit."
 
@@ -215,7 +216,7 @@ def get_artists(kodi_url, kodi_auth, headers):
     artists = request.json()
 
     if "artists" not in artists["result"]:
-        logging.warn("No artists found in library.")
+        logging.warning("No artists found in library.")
         return None
 
     for i in artists["result"]["artists"]:
@@ -246,7 +247,7 @@ def get_albums(kodi_url, kodi_auth, headers):
     albums = request.json()
 
     if "albums" not in albums["result"]:
-        logging.warn("No albums found in library.")
+        logging.warning("No albums found in library.")
         return None
 
     for i in albums["result"]["albums"]:
@@ -276,7 +277,7 @@ def get_songs(kodi_url, kodi_auth, headers):
     songs = request.json()
 
     if "songs" not in songs["result"]:
-        logging.warn("No songs found in library.")
+        logging.warning("No songs found in library.")
         return None
 
     for i in songs["result"]["songs"]:
@@ -307,7 +308,7 @@ def get_movies(kodi_url, kodi_auth, headers):
     movies = request.json()
 
     if "movie" not in movies["result"]:
-        logging.warn("No movies found in library.")
+        logging.warning("No movies found in library.")
         return None
 
     for i in movies["result"]["movies"]:
@@ -338,7 +339,7 @@ def get_tv_shows(kodi_url, kodi_auth, headers):
     tv = request.json()
 
     if "tv" not in tv["result"]:
-        logging.warn("No television shows found in library.")
+        logging.warning("No television shows found in library.")
         return None
 
     for i in tv["result"]["tv"]:
@@ -369,7 +370,7 @@ def get_audio_genres(kodi_url, kodi_auth, headers):
     genres = request.json()
 
     if "genres" not in genres["result"]:
-        logging.warn("No audio genres found in library.")
+        logging.warning("No audio genres found in library.")
         return None
 
     for i in genres["result"]["genres"]:
@@ -409,7 +410,7 @@ def get_video_genres(kodi_url, kodi_auth, headers):
         genres = request.json()
 
         if "genres" not in genres["result"]:
-            logging.warn("Video genre %s not found in library." % type)
+            logging.warning("Video genre %s not found in library." % type)
             continue
 
         for i in genres["result"]["genres"]:
@@ -619,7 +620,7 @@ def _is_currently_playing(kodi_url, kodi_auth, headers):
         result = result["result"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         return None
     return result
 
@@ -649,7 +650,7 @@ def _get_song_title(kodi_url, kodi_auth, headers, songid):
         result = result["result"]["songdetails"]["label"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         return "Unknown"
     return result
 
@@ -690,7 +691,7 @@ def whats_playing(kodi_url, kodi_auth, headers):
         result = result["result"]["item"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         return "Nothing seems to be playing."
 
     # Parse the output from Kodi.
@@ -738,7 +739,7 @@ def pause_media(kodi_url, kodi_auth, headers):
         result = result["result"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         return False
     if result["speed"] == 0:
         logging.debug("Successfully paused Kodi player subsystem %d." % payload["params"]["playerid"])
@@ -783,7 +784,7 @@ def unpause_media(kodi_url, kodi_auth, headers):
         result = result["result"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         return False
     if result["speed"] >= 1:
         logging.debug("Successfully unpaused Kodi player subsystem %d." % payload["params"]["playerid"])
@@ -826,7 +827,7 @@ def stop_media(kodi_url, kodi_auth, headers):
         result = result["result"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         result = None
 
     # Parse what comes back from Kodi.
@@ -858,7 +859,7 @@ def ping_kodi(kodi_url, kodi_auth, headers):
         result = result["result"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         result = None
 
     # Parse the response from the server.
@@ -892,7 +893,7 @@ def get_api_version(kodi_url, kodi_auth, headers):
         result = result["result"]["version"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         result = None
 
     # Generate the response from the server.
@@ -925,7 +926,7 @@ def _clear_current_playlist(kodi_url, kodi_auth, headers):
         result = result["result"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         result = None
 
     # Parse what comes back from Kodi.
@@ -967,7 +968,7 @@ def play_playlist(kodi_url, kodi_auth, headers, playlist):
         result = result["result"]
         logging.debug("Response from Kodi: %s" % str(result))
     except:
-        logging.warn("Failed to get response from Kodi!")
+        logging.warning("Failed to get response from Kodi!")
         result = None
 
     # Parse what comes back from Kodi.

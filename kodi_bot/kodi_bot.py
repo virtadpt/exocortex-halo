@@ -16,6 +16,11 @@
 
 # License: GPLv3
 
+# v3.1 - Reworked the startup logic so that being unable to immediately
+#       connect to either the message bus or the intended service is a
+#       terminal state.  Instead, it loops and sleeps until it connects and
+#       alerts the user appropriately.
+#       - Changed logger.warn() to logger.warning().
 # v3.0 - Ported to Python 3.
 # v2.1 - Added ability to pause, unpause, and stop whatever's playing.  Added
 #   corpora and helper methods to support this.

@@ -9,6 +9,7 @@
 
 # License: GPLv3
 
+# v2.1 - Changed logger.warn() to logger.warning().
 # v2.0 - Ported to Python 3.
 # v1.0 - Initial release.
 
@@ -112,7 +113,7 @@ def load_corpora(corpora_dir, command_types):
         # class.
         filename = os.path.join(corpora_dir, filename)
         if not os.path.getsize(filename):
-            logging.warn("Corpus filename %s has a length of zero bytes.  Skipping this command class." % filename)
+            logging.warning("Corpus filename %s has a length of zero bytes.  Skipping this command class." % filename)
             command_types.pop(command_type)
             continue
 
@@ -121,7 +122,7 @@ def load_corpora(corpora_dir, command_types):
             with open(filename, "r") as file:
                 command_types[command_type] = file.read().splitlines()
         except:
-            logging.warn("Unable to open filename %s.  Skipping command class." % os.path.join(corpora_dir, filename))
+            logging.warning("Unable to open filename %s.  Skipping command class." % os.path.join(corpora_dir, filename))
             command_types.pop(command_type)
 
     logging.debug("Recognized command types: %s" % str(list(command_types.keys())))
