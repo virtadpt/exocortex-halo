@@ -26,6 +26,7 @@
 #       connect to either the message bus or the intended service is a
 #       terminal state.  Instead, it loops and sleeps until it connects and
 #       alerts the user appropriately.
+#       - Moved the user-defined text closer to the top, like the other bots.
 # v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
 #       - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...
@@ -284,9 +285,9 @@ while True:
         # to the server's message queue.
         if parsed_command == "help":
             reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
-            reply = reply + "I am a bot which interfaces with a Shaarli instance to run searches and send back results.  I am interfaced with the following Shaarli instance: " + shaarli_url + "\n\n"
             if user_text:
                 reply = reply + user_text + "\n\n"
+            reply = reply + "I am a bot which interfaces with a Shaarli instance to run searches and send back results.  I am interfaced with the following Shaarli instance: " + shaarli_url + "\n\n"
             reply = reply + "To run a search, send me a message that looks something like this:\n\n"
             reply = reply + bot_name + ", [search for] foo bar baz...\n\n"
             reply = reply + bot_name + ", [search tags, search tags for] [tag]\n\n"

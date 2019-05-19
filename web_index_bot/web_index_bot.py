@@ -14,6 +14,12 @@
 
 # License: GPLv3
 
+# v2.2 - Reworked the startup logic so that being unable to immediately
+#       connect to either the message bus or the intended service is a
+#       terminal state.  Instead, it loops and sleeps until it connects and
+#       alerts the user appropriately.
+#       - Moved the user-definable text upward in the online help, to match
+#       the other bots.
 # v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
 #       - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...
@@ -219,8 +225,8 @@ def send_message_to_user(message):
     # Set up a hash table of stuff that is used to build the HTTP request to
     # the XMPP bridge.
     reply = {}
-    reply['name'] = bot_name
-    reply['reply'] = message
+    reply["name"] = bot_name
+    reply["reply"] = message
 
     # Send an HTTP request to the XMPP bridge containing the message for the
     # user.
@@ -340,10 +346,20 @@ if user_text:
 if user_acknowledged:
     logger.debug("User-defined command acknowledgement text: " + user_acknowledged)
 
+# Try to contact the XMPP bridge.  Keep trying until you reach it or the
+# system shuts down.
+logger.info("Trying to contact XMPP message bridge...")
+while True:
+    try:
+        send_message_to_user(bot_name + " now online.")
+        break
+    except:
+        logger.warn("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        time.sleep(float(polling_time))
+
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
-send_message_to_user(bot_name + " now online.")
 while True:
     index_request = None
 
