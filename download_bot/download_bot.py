@@ -14,6 +14,14 @@
 
 # License: GPLv3
 
+# v2.2 - Reworked the startup logic so that being unable to immediately
+#       connect to either the message bus or the intended service is a
+#       terminal state.  Instead, it loops and sleeps until it connects and
+#       alerts the user appropriately.
+#       - Changed some print()ed output to logging.fatal().
+#       - Changed logger.warn() to logger.warning().
+#       - Changed how errors are reported to the user so they're more
+#         transparent (though still fatal (which may not be optimal)).
 # v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
 #       - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...
@@ -136,9 +144,11 @@ def parse_download_request(download_request):
     # making the determination, remove the words we've sussed out to make the
     # rest of the command easier.
 
-    # User asked for help.
+    # Empty command.
     if not len(words):
         return None
+
+    # User asked for help.
     if words[0].lower() == "help":
         logger.debug("User asked for online help.")
         return words[0]
@@ -212,7 +222,7 @@ def download_file(download_directory, url):
         result = True
         send_message_to_user("Successfully downloaded file: " + str(full_path))
     except:
-        logger.warn("Unable to download from URL " + str(url) + " or write to file " + str(full_path))
+        logging.warning("Unable to download from URL " + str(url) + " or write to file " + str(full_path))
         send_message_to_user("I was unable to download from URL " + str(url) + " or write to file " + str(full_path))
 
     # Return the result.
@@ -382,19 +392,6 @@ download_directory = config.get("DEFAULT", "download_directory")
 # Normalize the download directory.
 download_directory = os.path.abspath(os.path.expanduser(download_directory))
 
-# Ensure the download directory exists.
-if not os.path.exists(download_directory):
-    print("ERROR: Download directory " + download_directory + " does not exist.")
-    sys.exit(1)
-
-# Ensure that the bot can write to the download directory.
-if not os.access(download_directory, os.R_OK):
-    print("ERROR: Unable to read contents of directory " + download_directory)
-    sys.exit(1)
-if not os.access(download_directory, os.W_OK):
-    print("ERROR: Unable to write to directory " + download_directory)
-    sys.exit(1)
-
 # Get user-defined doing-stuff text if defined in the config file.
 try:
     user_text = config.get("DEFAULT", "user_text")
@@ -447,10 +444,37 @@ if user_text:
 if user_acknowledged:
     logger.debug("User-defined command acknowledgement text: " + user_acknowledged)
 
+# Try to contact the XMPP bridge.  Keep trying until you reach it or the
+# system shuts down.
+logger.info("Trying to contact XMPP message bridge...")
+while True:
+    try:
+        send_message_to_user(bot_name + " now online.")
+        break
+    except:
+        logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        time.sleep(float(polling_time))
+
+# Ensure the download directory exists.
+if not os.path.exists(download_directory):
+    send_message_to_user("ERROR: Download directory " + download_directory + " does not exist.")
+    logging.fatal("Download directory " + download_directory + " does not exist.")
+
+# Ensure that the bot can write to the download directory.
+if not os.access(download_directory, os.R_OK):
+    send_message_to_user("ERROR: Unable to read contents of directory " + download_directory)
+    logging.fatal("Unable to read contents of directory " + download_directory)
+if not os.access(download_directory, os.W_OK):
+    send_message_to_user("ERROR: Unable to write to directory " + download_directory)
+    logging.fatal("Unable to write to directory " + download_directory)
+
+# If multimedia-enabled, tell the user.
+if video_enabled:
+    send_message_to_user("I am multimedia enabled.")
+
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any download requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
-send_message_to_user(bot_name + " now online.")
 while True:
     download_request = None
 
@@ -459,7 +483,7 @@ while True:
         logger.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)
     except:
-        logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        logging.warning("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
         time.sleep(float(polling_time))
         continue
 
