@@ -230,10 +230,20 @@ logger.debug("Shaarli API secret: " + api_secret)
 if user_text:
     logger.debug("User-defined help text: " + user_text)
 
+# Try to contact the XMPP bridge.  Keep trying until you reach it or the
+# system shuts down.
+logger.info("Trying to contact XMPP message bridge...")
+while True:
+    try:
+        send_message_to_user(bot_name + " now online.")
+        break
+    except:
+        logger.warn("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        time.sleep(float(polling_time))
+
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
-send_message_to_user(bot_name + " now online.")
 while True:
     user_command = None
 

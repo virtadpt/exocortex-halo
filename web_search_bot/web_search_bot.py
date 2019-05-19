@@ -598,24 +598,6 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
-# Query the Searx instance and get its list of enabled search engines.  I don't
-# particularly like this kind of jiggery-pokery but I also have the JSON API
-# URI in the default configuration file to make life easier for people.  This
-# is probably the least bad of all possible worlds.
-try:
-    temp_searx = "/".join(searx.split('/')[0:-1]) + "/config"
-    request = requests.get(temp_searx)
-    search_engines = request.json()["engines"]
-except:
-    logger.error("Unable to contact Searx instance! Tried to contact configuration URL " + str(temp_searx))
-    logger.error("Terminating.")
-    sys.exit(1)
-
-# Remove all of the disabled search engines from the list.
-for i in search_engines:
-    if not bool(i["enabled"]):
-        search_engines.remove(i)
-
 # Debugging output, if required.
 logger.info("Everything is set up.")
 logger.debug("Values of configuration variables as of right now:")
@@ -636,10 +618,39 @@ if user_text:
 if user_acknowledged:
     logger.debug("User-defined command acknowledgement text: " + user_acknowledged)
 
+# Try to contact the XMPP bridge.  Keep trying until you reach it or the
+# system shuts down.
+logger.info("Trying to contact XMPP message bridge...")
+while True:
+    try:
+        send_message_to_user(bot_name + " now online.")
+        break
+    except:
+        logger.warn("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        time.sleep(float(polling_time))
+
+# Query the Searx instance and get its list of enabled search engines.  I don't
+# particularly like this kind of jiggery-pokery but I also have the JSON API
+# URI in the default configuration file to make life easier for people.  This
+# is probably the least bad of all possible worlds.
+while True:
+    try:
+        temp_searx = "/".join(searx.split('/')[0:-1]) + "/config"
+        request = requests.get(temp_searx)
+        search_engines = request.json()["engines"]
+        break
+    except:
+        send_message_to_user("Unable to contact Searx instance! Tried to contact configuration URL %s." % str(temp_searx))
+        time.sleep(float(polling_time))
+
+# Remove all of the disabled search engines from the list.
+for i in search_engines:
+    if not bool(i["enabled"]):
+        search_engines.remove(i)
+
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
-send_message_to_user(bot_name + " now online.")
 while True:
 
     # Reset the destination e-mail address and the outbound message.

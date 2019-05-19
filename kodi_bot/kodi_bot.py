@@ -16,6 +16,7 @@
 
 # License: GPLv3
 
+# v3.0 - Ported to Python 3.
 # v2.1 - Added ability to pause, unpause, and stop whatever's playing.  Added
 #   corpora and helper methods to support this.
 # v2.0 - Removed kodipydent, replaced it with direct HTTP calls to the Kodi
@@ -233,7 +234,6 @@ def build_local_media_library():
     logging.debug("Entered build_local_media_library().")
 
     media_library = {}
-
     media_library = kodi_library.build_media_library(kodi_url, kodi_auth,
         headers, sources, exclude_dirs)
 
@@ -321,7 +321,6 @@ def extract_search_term(search_term, matching_string):
     return result
 
 # Core code... let's do this.
-
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that interfaces with a Kodi media server.  It can run searches on the media library as well as send commands to the server.")
 
@@ -535,13 +534,10 @@ while True:
 
         # If the user is replying to the bot (they've been asked about
         # something specific), parse the reply and do something with it.
-        if media_to_play:
-            
-
-
-            media_to_play = None
-            time.sleep(float(polling_time))
-            continue
+        #if media_to_play:
+        #    media_to_play = None
+        #    time.sleep(float(polling_time))
+        #    continue
 
         # If the user is requesting help, get and return that help text to the
         # user.
@@ -581,8 +577,8 @@ while True:
                 parsed_command["corpus"])
 
             # Run the search.
-            search_result = kodi_library.search_media_library_albums(search_term,
-                media_library["albums"], match_confidence)
+            search_result = kodi_library.search_media_library_albums(
+                search_term, media_library["albums"], match_confidence)
 
             # Convert the array into a hash incorporating an array.
             search_result_tmp = {}
