@@ -630,7 +630,7 @@ while True:
         send_message_to_user(bot_name + " now online.")
         break
     except:
-        logger.warn("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
         time.sleep(float(polling_time))
 
 # Query the Searx instance and get its list of enabled search engines.  I don't
