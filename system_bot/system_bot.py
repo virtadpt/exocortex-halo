@@ -11,6 +11,10 @@
 
 # License: GPLv3
 
+# v4.2 - Reworked the startup logic so that being unable to immediately
+#       connect to either the message bus or the intended service is a
+#       terminal state.  Instead, it loops and sleeps until it connects and
+#       alerts the user appropriately.
 # v4.1 - Added a command to query the busiest processes in the system (in
 #       terms of CPU utilization).
 # v4.0 - Ported to Python 3.
@@ -338,10 +342,20 @@ if len(processes_to_monitor):
     for i in processes_to_monitor:
         print("    " + i[0])
 
+# Try to contact the XMPP bridge.  Keep trying until you reach it or the
+# system shuts down.
+logger.info("Trying to contact XMPP message bridge...")
+while True:
+    try:
+        send_message_to_user(bot_name + " now online.")
+        break
+    except:
+        logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        time.sleep(float(polling_time))
+
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
-send_message_to_user(bot_name + " now online.")
 while True:
 
     # Reset the command from the message bus, just in case.

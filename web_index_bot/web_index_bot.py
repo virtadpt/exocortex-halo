@@ -354,7 +354,7 @@ while True:
         send_message_to_user(bot_name + " now online.")
         break
     except:
-        logger.warn("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
         time.sleep(float(polling_time))
 
 # Go into a loop in which the bot polls the configured message queue with each
