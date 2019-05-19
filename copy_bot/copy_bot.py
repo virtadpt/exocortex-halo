@@ -14,6 +14,11 @@
 
 # License: GPLv3
 
+# v2.1 - Reworked the startup logic so that being unable to immediately
+#       connect to either the message bus or the intended service is a
+#       terminal state.  Instead, it loops and sleeps until it connects and
+#       alerts the user appropriately.
+#       - Changed logger.warn() to logger.warning().
 # v2.0 - Ported to Python 3.
 # v1.0 - Initial release.
 
@@ -181,7 +186,6 @@ def copy_files(filespecs):
     # directory listing.
     for file in source_files:
         source_file = os.path.join(source_path, file)
-        #source_file = normalize_file_path(source_file)
 
         if not ensure_readable(source_file):
             uncopied_files.append(file)
@@ -325,10 +329,20 @@ logger.debug("Bot name to respond to search requests with: " + bot_name)
 logger.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
 
+# Try to contact the XMPP bridge.  Keep trying until you reach it or the
+# system shuts down.
+logger.info("Trying to contact XMPP message bridge...")
+while True:
+    try:
+        send_message_to_user(bot_name + " now online.")
+        break
+    except:
+        logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        time.sleep(float(polling_time))
+
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any download requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
-send_message_to_user(bot_name + " now online.")
 while True:
     command = None
 
@@ -337,7 +351,7 @@ while True:
         logger.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)
     except:
-        logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        logging.warning("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
         time.sleep(float(polling_time))
         continue
 
