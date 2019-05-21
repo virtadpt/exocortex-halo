@@ -128,10 +128,9 @@ def load_corpora(corpora_dir, command_types):
     logging.debug("Recognized command types: %s" % str(list(command_types.keys())))
     return command_types
 
-# parse(): Function that parses commands from the message bus.  Takes MOOF args,
-#   the command to parse, a hash containing corpora to match against, and the
-#   type of command to match against.  A hash table with the best match is
-#   returned as a match or None on no match.
+# parse(): Function that parses commands from the message bus.  Takes two args,
+#   the command to parse and a hash containing corpora to match against.
+#   A hash table with the best match is returned as a match or None on no match.
 def parse(command, possible_commands):
     logging.debug("Entered parser.parse().")
 
@@ -143,6 +142,8 @@ def parse(command, possible_commands):
     command = command.strip()
     command = command.strip('.')
     command = command.strip(',')
+    command = command.strip('!')
+    command = command.strip('?')
     command = command.lower()
 
     # If the get request is empty (i.e., nothing in the queue), bounce.

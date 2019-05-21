@@ -64,7 +64,6 @@ import kodi_library
 import parser
 
 # Constants.
-
 # When POSTing something to a service, the correct Content-Type value has to
 # be set in the request.
 headers = {
@@ -884,6 +883,11 @@ while True:
 
             # Case: Start playback of cached search results.
             # We don't seem to want to use the Songs database.
+            # Check to see if there's an existing playlist #1.
+            # If there isn't, create playlist #1.
+            # Append each search result to playlist #1.
+            # If music, call play_that_funky_music_white_boy with the playlist.
+            # If video, call play_that_video with the playlist.
 
             # Figure out what the cached search results are - audio?  Video?
             # A playlist?
@@ -893,6 +897,7 @@ while True:
             # Kodi box.
             # Quietly run a search on the library to see if it exists.  Check
             # every part of the local database and go with the best match.
+            # Go to "Start playback of cached search results."
 
     # Message queue not found.
     if request.status_code == 404:

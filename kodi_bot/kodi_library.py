@@ -53,7 +53,6 @@ payload["method"] = ""
 payload["id"] = 1
 
 # Functions.
-
 # get_media_sources(): Generate a list of media sources on the Kodi box.  From
 #   the Kodi docs, there are only two we have to care about, video and music.
 #   I'm using the canonical Kodi names for consistency's sake.  Takes three
@@ -201,6 +200,7 @@ def build_media_library(kodi_url, kodi_auth, headers, sources, exclude_dirs):
 #   of custom headers.  Returns an array of artists.
 def get_artists(kodi_url, kodi_auth, headers):
     logging.debug("Entered kodi_library.get_artists().")
+
     request = None
     artists = None
     list_of_artists = []
@@ -232,6 +232,7 @@ def get_artists(kodi_url, kodi_auth, headers):
 #   of custom headers.  Returns an array of albums.
 def get_albums(kodi_url, kodi_auth, headers):
     logging.debug("Entered kodi_library.get_albums().")
+
     request = None
     albums = None
     list_of_albums = []
@@ -262,6 +263,7 @@ def get_albums(kodi_url, kodi_auth, headers):
 #   hash of custom headers.  Returns an array of songs.
 def get_songs(kodi_url, kodi_auth, headers):
     logging.debug("Entered kodi_library.get_songs().")
+
     request = None
     songs = None
     list_of_songs = []
@@ -293,6 +295,7 @@ def get_songs(kodi_url, kodi_auth, headers):
 #   hash of custom headers.  Returns an array of movies.
 def get_movies(kodi_url, kodi_auth, headers):
     logging.debug("Entered kodi_library.get_movies().")
+
     request = None
     movies = None
     list_of_movies = []
@@ -324,6 +327,7 @@ def get_movies(kodi_url, kodi_auth, headers):
 #   of custom headers.  Returns an array of TV shows.
 def get_tv_shows(kodi_url, kodi_auth, headers):
     logging.debug("Entered kodi_library.get_tv_shows().")
+
     request = None
     tv = None
     list_of_tv_shows = []
@@ -355,6 +359,7 @@ def get_tv_shows(kodi_url, kodi_auth, headers):
 #   ID codes.  Why this isn't part of the media library itself, I don't know.
 def get_audio_genres(kodi_url, kodi_auth, headers):
     logging.debug("Entered kodi_library.get_audio_genres().")
+
     request = None
     genres = None
     list_of_genres = []
@@ -386,6 +391,7 @@ def get_audio_genres(kodi_url, kodi_auth, headers):
 #   ID codes.
 def get_video_genres(kodi_url, kodi_auth, headers):
     logging.debug("Entered kodi_library.get_video_genres().")
+
     request = None
     genres = None
     list_of_genres = []
@@ -492,7 +498,7 @@ def search_media_library_artists(search_term, media_library, confidence):
 #   of ID3 genre codes (https://en.wikipedia.org/wiki/List_of_ID3v1_Genres).
 def search_media_library_genres(search_term, media_library, confidence):
     logging.debug("Entered kodi_library.search_media_library_genres.")
-    logging.debug("My minimum match confidence metric is %d." % confidence)
+    logging.debug("My minimum match confidence is %d." % confidence)
 
     match = 0
     result = []
@@ -748,7 +754,7 @@ def pause_media(kodi_url, kodi_auth, headers):
     # This seems kind of messy, but it's a fall-through for a no-op.
     return False
 
-# unpause_media: If something is playing, pause it.  Takes three arguments, the
+# unpause_media: If something is paused, unpause it.  Takes three arguments, the
 #   Kodi JSON RPC URL, an HTTP Basic Auth object, and a hash of headers.
 #   Returns False if nothing is playing.  Returns True if something was paused
 #   and is now playing.
