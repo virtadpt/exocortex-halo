@@ -4,7 +4,7 @@ Various and sundry additional pieces of software I've written to incorporate int
 ## deprecated/
 I move bots that are officially deprecated (i.e., no longer in development) into here rather than delete them.  You're welcome to pick them up and work on them if you want, or just refer to them as examples.
 
-## beta_fork/
+## [beta_fork/](beta_fork/)
 A more generic implementation of irc_bot/.  Again, there is a REST API server which maintains a Markov brain; hypothetically speaking, you could swap out the Markov engine for any other kind of conversation engine you want.  This simplifies writing other kinds of bots (IRC, Slack, XMPP, Twitter, et cetera) by breaking out the chat part into a separate process.  Right now only a proof-of-concept bot (an IRC bot) exists; it should serve as an example of writing other kinds of chatbots that plug into it.  This is, again, in the experimental stage and doesn't have a lot of features (like databases of stuff to monitor channels for) yet.
 
 ## command_line_messager/
