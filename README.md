@@ -79,10 +79,10 @@ Clone this repo onto a Linux box you control.  You could use a VPS running at a 
 ## Set up exocortex_XMPP_bridge
 
 * `cd exocortex-halo/exocortex_xmpp_bridge/`
-* Set up a [Python virtualenv](http://docs.python-guide.org/en/latest/dev/virtualenvs/) to install the XMPP bridge's dependencies into.
- * `virtualenv2 env`
+* Set up a [Python venv](https://docs.python.org/3/tutorial/venv.html/) to install the XMPP bridge's dependencies into.
+ * `python3 -mvenv env`
  * Wait...
-* Activate the virtualenv
+* Activate the venv
  * `. env/bin/activate`
  * The command line prompt will change - it will start with "(env) "
 * Install the dependencies
@@ -90,7 +90,8 @@ Clone this repo onto a Linux box you control.  You could use a VPS running at a 
 * Copy exocortex_xmpp_bridge.conf.example to exocortex_xmpp_bridge.conf and customize it for your environment.  The XMPP username and password you set up for the XMPP bridge need to go in here.  The 'real' names of the bots you plan to associate with this bridge need to go in the 'agents' list at the very end as shown.
 * You'll need one instance of exocortex_xmpp_bridge.py for each server you have.  I have multiple instances on different machines, all running different bots.
 * Start the XMPP bridge.
- * `python2 ./exocortex_xmpp_bridge.py`
+ * `python3 ./exocortex_xmpp_bridge.py`
+ * Or, `./run.sh`
 
 ## Log into your admin XMPP account and test the XMPP bridge.
 
