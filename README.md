@@ -80,18 +80,18 @@ Clone this repo onto a Linux box you control.  You could use a VPS running at a 
 
 * `cd exocortex-halo/exocortex_xmpp_bridge/`
 * Set up a [Python venv](https://docs.python.org/3/tutorial/venv.html/) to install the XMPP bridge's dependencies into.
- * `python3 -mvenv env`
- * Wait...
+  * `python3 -mvenv env`
+  * Wait...
 * Activate the venv
- * `. env/bin/activate`
- * The command line prompt will change - it will start with "(env) "
+  * `. env/bin/activate`
+  * The command line prompt will change - it will start with "(env) "
 * Install the dependencies
- * `pip install -r requirements.txt`
-* Copy exocortex_xmpp_bridge.conf.example to exocortex_xmpp_bridge.conf and customize it for your environment.  The XMPP username and password you set up for the XMPP bridge need to go in here.  The 'real' names of the bots you plan to associate with this bridge need to go in the 'agents' list at the very end as shown.
-* You'll need one instance of exocortex_xmpp_bridge.py for each server you have.  I have multiple instances on different machines, all running different bots.
+  * `pip install -r requirements.txt`
+* `cp exocortex_xmpp_bridge.conf.example exocortex_xmpp_bridge.conf` and customize it for your environment with [your favorite text editor](https://en.wikipedia.org/wiki/Category:Linux_text_editors).  The XMPP username and password you set up for the XMPP bridge need to go in here.  The 'real' names of the bots you plan to associate with this bridge need to go in the 'agents' list at the very end as shown.
+* You'll need one instance of exocortex_xmpp_bridge.py for each server you have.  Each running copy of the XMPP bridge can support (theoretically) an unlimited number of message queues for bots, so you don't need to start one per bot, just add another another name to the ''agents'' line of the config file and restart the message bridge.
 * Start the XMPP bridge.
- * `python3 ./exocortex_xmpp_bridge.py`
- * Or, `./run.sh`
+  * `python3 ./exocortex_xmpp_bridge.py`
+  * Or, `./run.sh`
 
 ## Log into your admin XMPP account and test the XMPP bridge.
 
