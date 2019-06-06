@@ -14,6 +14,9 @@
 
 # License: GPLv3
 
+# v2.3 - Changed things so that you'll only see site-by-site updates if the
+#       bot is in debug mode.
+#      - Fixed the last few logger.warn() to logger.warning() holdouts.
 # v2.2 - Reworked the startup logic so that being unable to immediately
 #       connect to either the message bus or the intended service is a
 #       terminal state.  Instead, it loops and sleeps until it connects and
@@ -40,7 +43,8 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# -
+# - Make it possible to run arbitrary scripts specified from the config file
+#   which are passed the URL on the command line as the final argument.
 
 # Load modules.
 import argparse
@@ -206,9 +210,12 @@ def submit_for_indexing(index_term):
             if method == "post":
                 request = requests.post(url)
             result = True
-            send_message_to_user("Successfully submitted link " + url + ".")
+
+            # Only pester the user in debug mode.
+            if loglevel == 10:
+                send_message_to_user("Successfully submitted link " + url + ".")
         except:
-            logger.warn("Unable to submit URL: " + str(url))
+            logger.warning("Unable to submit URL: " + str(url))
             send_message_to_user("ERROR: Unable to submit link " + url + ".")
 
         # Reset the urlencode flag to keep from breaking the other engines.
@@ -352,6 +359,7 @@ logger.info("Trying to contact XMPP message bridge...")
 while True:
     try:
         send_message_to_user(bot_name + " now online.")
+        logger.info("Success.")
         break
     except:
         logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
@@ -368,7 +376,7 @@ while True:
         logger.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)
     except:
-        logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        logger.warning("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
         time.sleep(float(polling_time))
         continue
 
@@ -407,7 +415,7 @@ while True:
 
         # If something went wrong...
         if not index_request:
-            logger.warn("Something went wrong when submitting the URL for indexing.")
+            logger.warning("Something went wrong when submitting the URL for indexing.")
             reply = "Something went wrong when I submitted the URL for indexing.  Check the shell I'm running in for more details."
             send_message_to_user(reply)
             continue
