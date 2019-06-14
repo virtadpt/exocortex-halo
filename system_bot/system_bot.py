@@ -463,7 +463,7 @@ while True:
                 info = system_stats.get_disk_usage()
                 message = "System disk space usage:\n"
                 for key in list(info.keys()):
-                    message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "% in use.\n"
+                    message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "%% in use.\n"
                 send_message_to_user(message)
 
             # Memory utilization.
@@ -472,7 +472,7 @@ while True:
                 info_total = info.total
                 info = (info.free + info.buffers + info.cached) / info_total
                 info = round(info * 100.0, 2)
-                message = str(info) + "% of the system memory is free."
+                message = str(info) + "%% of the system memory is free."
                 send_message_to_user(message)
 
             # System uptime.
@@ -541,7 +541,7 @@ while True:
                 else:
                     message = "The busiest processes on the system are:\n\n"
                     for i in info:
-                        message = message + str(i["pid"]) + "\t" + i["name"] + "\t" + str(i["cpu_percent"]) + "%\n"
+                        message = message + str(i["pid"]) + "\t" + i["name"] + "\t" + str(i["cpu_percent"]) + "%%\n"
                 send_message_to_user(message)
 
             # Fall-through.
