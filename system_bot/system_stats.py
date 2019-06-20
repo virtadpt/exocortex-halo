@@ -268,7 +268,7 @@ def check_memory_utilization(memory_free_counter, time_between_alerts,
     calculated_free_memory = round(calculated_free_memory * 100.0, 2)
     logging.debug("Percentage of free memory: %s" % str(calculated_free_memory))
     if calculated_free_memory <= memory_remaining:
-        message = "WARNING: The amount of free memory has reached the critical point of " + str(memory_free) + "%% free.  You'll want to see to this before the OOM killer starts reaping processes."
+        message = "WARNING: The amount of free memory has reached the critical point of " + str(calculated_free_memory) + "%% free.  You'll want to see to this before the OOM killer starts reaping processes."
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, send the bot's owner the
