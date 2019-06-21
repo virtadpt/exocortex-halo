@@ -206,7 +206,11 @@ def get_disk_usage():
 
     # Calculate the maximum and free bytes of each disk device.
     for i in list(disk_used.keys()):
-        disk_used[i] = psutil.disk_usage(i).percent
+        try:
+            disk_used[i] = psutil.disk_usage(i).percent
+        except:
+            # Docker causes this to not work with permissions problems.
+            logging.debug("Skipping disk device " + i + " due to restrictive permissions.")
     return disk_used
 
 # check_disk_usage(): Pull the amount of used storage for each disk device on
@@ -224,7 +228,7 @@ def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
     # running low on space construct a line of the message.
     for disk in list(disk_space_free.keys()):
         if disk_space_free[disk] > disk_usage:
-            message = message + "WARNING: Disk device " + disk + " has " + str(100.0 - disk_space_free[disk]) + "%% of its capacity left.\n"
+            message = message + "WARNING: Disk device " + disk + " has " + str(100.0 - disk_space_free[disk]) + "\% of its capacity left.\n"
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, sent the bot's owner
@@ -268,7 +272,7 @@ def check_memory_utilization(memory_free_counter, time_between_alerts,
     calculated_free_memory = round(calculated_free_memory * 100.0, 2)
     logging.debug("Percentage of free memory: %s" % str(calculated_free_memory))
     if calculated_free_memory <= memory_remaining:
-        message = "WARNING: The amount of free memory has reached the critical point of " + str(calculated_free_memory) + "%% free.  You'll want to see to this before the OOM killer starts reaping processes."
+        message = "WARNING: The amount of free memory has reached the critical point of " + str(calculated_free_memory) + "\% free.  You'll want to see to this before the OOM killer starts reaping processes."
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, send the bot's owner the
