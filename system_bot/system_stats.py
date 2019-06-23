@@ -227,8 +227,11 @@ def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
     # Check the amount of space free on each disk device.  For each disk that's
     # running low on space construct a line of the message.
     for disk in list(disk_space_free.keys()):
+        if not disk_space_free[disk]:
+            logging.debug("disk_space_free[disk] isn't usable.  Forget it.")
+            continue
         if disk_space_free[disk] > disk_usage:
-            message = message + "WARNING: Disk device " + disk + " has " + str(100.0 - disk_space_free[disk]) + "\% of its capacity left.\n"
+            message = message + "WARNING: Disk device " + disk + " has " + str(100.0 - disk_space_free[disk]) + "% of its capacity left.\n"
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, sent the bot's owner
@@ -272,7 +275,7 @@ def check_memory_utilization(memory_free_counter, time_between_alerts,
     calculated_free_memory = round(calculated_free_memory * 100.0, 2)
     logging.debug("Percentage of free memory: %s" % str(calculated_free_memory))
     if calculated_free_memory <= memory_remaining:
-        message = "WARNING: The amount of free memory has reached the critical point of " + str(calculated_free_memory) + "\% free.  You'll want to see to this before the OOM killer starts reaping processes."
+        message = "WARNING: The amount of free memory has reached the critical point of " + str(calculated_free_memory) + "% free.  You'll want to see to this before the OOM killer starts reaping processes."
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, send the bot's owner the
