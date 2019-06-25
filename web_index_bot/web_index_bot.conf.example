@@ -30,3 +30,11 @@ engine2 = no,get,http://www.gigablast.com/addurl?c=main&urls=
 engine3 = no,get,https://web.archive.org/save/
 engine4 = no,get,http://www.webcitation.org/archive?url=
 engine5 = yes,get,https://archive.fo/?run=1&url=
+
+# Format:
+# Full path to script or utility.
+# [scripts]
+# script1 = /path/to/my_custom_script.py
+# script2 = /path/to/my_other_custom_script.pl
+# script3 = ~/foo.sh
+

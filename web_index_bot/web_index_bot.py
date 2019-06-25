@@ -14,24 +14,29 @@
 
 # License: GPLv3
 
+# v2.4 - Added the ability to run one or more scripts whenever the bot is
+#        passed a URL.  The script is supposed to take the URL as an argument,
+#        do something, and return 0 on success or non-zero on failure.
+#      - Found a few instances of logger.foo() that should have been
+#        logging.foo().  Cleaned up for consistency's sake.
 # v2.3 - Changed things so that you'll only see site-by-site updates if the
-#       bot is in debug mode.
+#        bot is in debug mode.
 #      - Fixed the last few logger.warn() to logger.warning() holdouts.
 # v2.2 - Reworked the startup logic so that being unable to immediately
-#       connect to either the message bus or the intended service is a
-#       terminal state.  Instead, it loops and sleeps until it connects and
-#       alerts the user appropriately.
-#       - Moved the user-definable text upward in the online help, to match
-#       the other bots.
+#        connect to either the message bus or the intended service is a
+#        terminal state.  Instead, it loops and sleeps until it connects and
+#        alerts the user appropriately.
+#      - Moved the user-definable text upward in the online help, to match
+#        the other bots.
 # v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
-#       - Changed the default polling time to 10 seconds, because this bot
+#      - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...
-#       - Got rid of some redundancy.
-#       - Fixed some comments.
-#       - Cleaned up code formatting and conventions to match later generation
-#         bots.  Also, it's a good excuse for rereading the code with a
-#         critical eye.
-#       - Broke the online help out into a function.
+#      - Got rid of some redundancy.
+#      - Fixed some comments.
+#      - Cleaned up code formatting and conventions to match later generation
+#        bots.  Also, it's a good excuse for rereading the code with a
+#        critical eye.
+#      - Broke the online help out into a function.
 # v2.0 - Ported to Python 3.
 # v1.2 - Made the overly chatty status reports contingent upon the bot running
 #        in loglevel.DEBUG.
@@ -54,6 +59,7 @@ import logging
 import os
 import re
 import requests
+import subprocess
 import sys
 import time
 import urllib.error
@@ -95,9 +101,16 @@ search_engines = []
 # Handle to an index request from the user.
 index_request = None
 
+# Handle to the result of an index request from the user.
+index_result = None
+
 # Optional user-defined text strings for the online help and user interaction.
 user_text = None
 user_acknowledged = None
+
+# A list of one or more external utilities the bot will run when the user sends
+# it a URL.
+external_scripts = []
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -121,7 +134,7 @@ def set_loglevel(loglevel):
 #   are of the form "index <some URL here>".  Returns the URL to submit for
 #   indexing or None if it's not a well-formed request.
 def parse_index_request(index_request):
-    logger.debug("Entered function parse_index_request().")
+    logging.debug("Entered function parse_index_request().")
     index_url = ""
     words = []
 
@@ -133,12 +146,12 @@ def parse_index_request(index_request):
 
     # If the search request is empty (i.e., nothing in the queue) return None.
     if "no commands" in index_request:
-        logger.debug("Got an empty index request.")
+        logging.debug("Got an empty index request.")
         return None
 
     # Tokenize the search request.
     words = index_request.split()
-    logger.debug("Tokenized index request: " + str(words))
+    logging.debug("Tokenized index request: " + str(words))
 
     # Start parsing the the index request to see what kind it is.  After
     # making the determination, remove the words we've sussed out to make the
@@ -148,31 +161,31 @@ def parse_index_request(index_request):
     if not len(words):
         return None
     if words[0].lower() == "help":
-        logger.debug("User asked for online help.")
+        logging.debug("User asked for online help.")
         return words[0]
 
     # User asked the construct to submit the URL for indexing?
     if (words[0] == "index") or (words[0] == "spider") or \
             (words[0] == "submit" or words[0] == "store" or \
             words[0] == "archive" or words[0] == "get"):
-        logger.info("Got a token that suggests that this is an index request.")
+        logging.info("Got a token that suggests that this is an index request.")
     del words[0]
 
     # If the parsed search term is now empty, return an error.
     if not len(words):
-        logger.error("The indexing request appears to be empty.")
+        logging.error("The indexing request appears to be empty.")
         return None
 
     # Convert the remainder of the list into a URI-encoded string.
     index_url = words[0]
-    logger.debug("Index URL: " + index_url)
+    logging.debug("Index URL: " + index_url)
     return index_url
 
 # submit_for_indexing(): Function that takes as its argument a URL to submit
 #   to one or more search engines.  It walks through search_engines[]
 #   (declared in the global context) and submits the URL to each on in turn.
 def submit_for_indexing(index_term):
-    logger.debug("Entered function submit_for_indexing().")
+    logging.debug("Entered function submit_for_indexing().")
 
     # URL encode the indexing request?
     urlencode = "no"
@@ -192,14 +205,14 @@ def submit_for_indexing(index_term):
     for url in search_engines:
         # Split the method and the submission URL.
         (urlencode, method, url) = url.split(',')
-        logger.debug("Value of urlencode: " + urlencode)
+        logging.debug("Value of urlencode: " + urlencode)
 
         # Build the full submission URL.
         # If the urlencode flag is set, it means that the archive requires the
         # URLs sent to it to be URL encoded.
         if urlencode == "yes":
             url = url + urllib.parse.quote_plus(index_term)
-            logger.debug("URL encoding requested: " + str(index_term))
+            logging.debug("URL encoding requested: " + str(index_term))
         else:
             url = url + index_term
         try:
@@ -215,13 +228,13 @@ def submit_for_indexing(index_term):
             if loglevel == 10:
                 send_message_to_user("Successfully submitted link " + url + ".")
         except:
-            logger.warning("Unable to submit URL: " + str(url))
+            logging.warning("Unable to submit URL: " + str(url))
             send_message_to_user("ERROR: Unable to submit link " + url + ".")
 
         # Reset the urlencode flag to keep from breaking the other engines.
         urlencode = "no"
 
-    # Return the list of search results.
+    # Return the overall results.
     return result
 
 # send_message_to_user(): Function that does the work of sending messages back
@@ -252,6 +265,40 @@ def online_help():
     for engine in search_engines:
         reply = reply + "* " + engine.split(',')[2] + "\n"
     send_message_to_user(reply)
+    return
+
+# run_external_scripts(url): Function that takes two arguments, a string
+#   containing one or more utilities to shell out to, and a URL to pass to
+#   each one as an argument.  Returns True if the script returns zero (success)
+#   and False if the script returns non-zero (failure).
+def run_external_scripts(scripts, url):
+    logging.debug("Entered run_external_scripts().")
+    logging.debug("Value of url: " + str(url))
+
+    script = None
+    process = None
+
+    for script in scripts:
+        # subprocess.run() seems to work most reliably when you give it an array
+        # containing the command to run and all of its arguments.
+        args = script.split()
+
+        # Append the URL to the array of arguments.
+        args.append(url)
+        logging.debug("Value of args: " + str(args))
+
+        # Run the command.
+        logging.debug("Executing command.")
+        process = subprocess.run(args)
+        logging.debug("Script returned " + str(process.returncode) + ".")
+
+        # Test the return code from the script.
+        if process.returncode == 0:
+            send_message_to_user("Successfully executed script " + script + ".")
+        else:
+            send_message_to_user("Script " + script + " returned an error.")
+
+    logging.debug("Exiting run_external_scripts().")
     return
 
 # Core code...
@@ -322,6 +369,18 @@ for i in config.options("search engines"):
     if "engine" in i:
         search_engines.append(config.get("search engines", i))
 
+# If there are any external scripts defined in the config file, load them.
+if config.has_section("scripts"):
+    logging.info("The optional 'scripts' section exists.")
+    for i in config.options("scripts"):
+        if "script" in i:
+            logging.info("Found external script: " + i)
+            external_scripts.append(config.get("scripts", i))
+else:
+    # Nothing to do here, it's an optional configuration setting.
+    logging.info("Didn't find any external scripts.")
+    pass
+
 # Get user-defined doing-stuff text if defined in the config file.
 try:
     user_text = config.get("DEFAULT", "user_text")
@@ -337,57 +396,62 @@ except:
     pass
 
 # Debugging output, if required.
-logger.info("Everything is set up.")
-logger.debug("Values of configuration variables as of right now:")
-logger.debug("Configuration file: " + config_file)
-logger.debug("Server to report to: " + server)
-logger.debug("Message queue to report to: " + message_queue)
-logger.debug("Bot name to respond to search requests with: " + bot_name)
-logger.debug("Time in seconds for polling the message queue: " +
+logging.info("Everything is set up.")
+logging.debug("Values of configuration variables as of right now:")
+logging.debug("Configuration file: " + config_file)
+logging.debug("Server to report to: " + server)
+logging.debug("Message queue to report to: " + message_queue)
+logging.debug("Bot name to respond to search requests with: " + bot_name)
+logging.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
-logger.debug("Search engines available to submit URLs to:")
+logging.debug("Search engines available to submit URLs to:")
 for i in search_engines:
-    logger.debug("\t"+ i)
+    logging.debug("\t" + i)
 if user_text:
-    logger.debug("User-defined help text: " + user_text)
+    logging.debug("User-defined help text: " + user_text)
 if user_acknowledged:
-    logger.debug("User-defined command acknowledgement text: " + user_acknowledged)
+    logging.debug("User-defined command acknowledgement text: " + user_acknowledged)
+if external_scripts:
+    logging.debug("User-defined external scripts:")
+    for i in external_scripts:
+        logging.debug("\t" + i)
 
 # Try to contact the XMPP bridge.  Keep trying until you reach it or the
 # system shuts down.
-logger.info("Trying to contact XMPP message bridge...")
+logging.info("Trying to contact XMPP message bridge...")
 while True:
     try:
         send_message_to_user(bot_name + " now online.")
-        logger.info("Success.")
+        logging.info("Success.")
         break
     except:
-        logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
+        logging.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
         time.sleep(float(polling_time))
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
-logger.debug("Entering main loop to handle requests.")
+logging.debug("Entering main loop to handle requests.")
 while True:
     index_request = None
+    index_result = None
 
     # Check the message queue for index requests.
     try:
-        logger.debug("Contacting message queue: " + message_queue)
+        logging.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)
     except:
-        logger.warning("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        logging.warning("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
         time.sleep(float(polling_time))
         continue
 
     # Test the HTTP response code.
     # Success.
     if request.status_code == 200:
-        logger.debug("Message queue " + bot_name + " found.")
+        logging.debug("Message queue " + bot_name + " found.")
 
         # Extract the index request.
         index_request = json.loads(request.text)
-        logger.debug("Value of index_request: " + str(index_request))
+        logging.debug("Value of index_request: " + str(index_request))
         index_request = index_request['command']
 
         # Parse the index request.
@@ -411,14 +475,18 @@ while True:
         else:
             reply = "Submitting your index request now.  Please stand by."
             send_message_to_user(reply)
-        index_request = submit_for_indexing(index_request)
+        index_result = submit_for_indexing(index_request)
 
         # If something went wrong...
-        if not index_request:
-            logger.warning("Something went wrong when submitting the URL for indexing.")
+        if not index_result:
+            logging.warning("Something went wrong when submitting the URL for indexing.")
             reply = "Something went wrong when I submitted the URL for indexing.  Check the shell I'm running in for more details."
             send_message_to_user(reply)
-            continue
+
+        # If there are any external scripts to run, execute each one in
+        # sequence.
+        if external_scripts:
+            run_external_scripts(external_scripts, index_request)
 
         # Reply that it was successful.
         reply = "Your URL has been submitted to all of the search engines and archives I know about."
@@ -426,7 +494,7 @@ while True:
 
     # Message queue not found.
     if request.status_code == 404:
-        logger.info("Message queue " + bot_name + " does not exist.")
+        logging.info("Message queue " + bot_name + " does not exist.")
 
     # Sleep for the configured amount of time.
     time.sleep(float(polling_time))
