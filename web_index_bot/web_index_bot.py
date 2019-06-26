@@ -293,6 +293,7 @@ def run_external_scripts(scripts, url):
         logging.debug("Script returned " + str(process.returncode) + ".")
 
         # Test the return code from the script.
+        logging.debug("Value of process.returncode: " + str(process.returncode))
         if process.returncode == 0:
             send_message_to_user("Successfully executed script " + script + ".")
         else:
@@ -486,6 +487,8 @@ while True:
         # If there are any external scripts to run, execute each one in
         # sequence.
         if external_scripts:
+            reply = "Passing URL to external utilities..."
+            send_message_to_user(reply)
             run_external_scripts(external_scripts, index_request)
 
         # Reply that it was successful.
