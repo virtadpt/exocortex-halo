@@ -1,0 +1,11 @@
+[Unit]
+Description=Universal JSON document-to-REST API server
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/universal_json_server/
+ExecStart=%h/exocortex-halo/universal_json_server/universal_json_server.py
+Restart=always
+
+[Install]
+WantedBy=default.target

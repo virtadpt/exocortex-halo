@@ -48,8 +48,9 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Make it possible to run arbitrary scripts specified from the config file
-#   which are passed the URL on the command line as the final argument.
+# - Make it possible to configure no search engines at all (and not pester the
+#   user with messages about failed requests) so that the user can use this
+#   bot to only run external utilities with passed URLs.
 
 # Load modules.
 import argparse
@@ -477,6 +478,10 @@ while True:
             reply = "Submitting your index request now.  Please stand by."
             send_message_to_user(reply)
         index_result = submit_for_indexing(index_request)
+
+        # MOOF MOOF MOOF - detect the use case where there are no search
+        # engines defined.  Because someone might want to use this bot only
+        # to run utilities or scripts.
 
         # If something went wrong...
         if not index_result:
