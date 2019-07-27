@@ -60,7 +60,7 @@ For situations when you have machines which can't send outbound e-mail easily (f
 ## [system_bot/](system_bot/)
 System Bot is an all-in-one system monitoring bot.  It watches (among other things) system load, disk and memory usage, system uptime, and any processes you configure it to watch.  You can query various aspects of your system's status or it can run in the background and send you messages via the XMPP bridge if anything starts going wrong.  I run this bot on all of my machines and it's been a lifesaver time and again.  I strongly suggest that you name your System Bots the same as the hostnames they run on, but do whatever works best for you.
 
-##[universal_json_server/](universal_json_server/)
+## [universal_json_server/](universal_json_server/)
 A simple server which takes an arbitrary JSON document on the local system and exposes it through a REST API.  Keys in the document are parts of the URI, whatever values found at that key are returned as well-formed JSON.  I built this for exploring large JSON documents interactively, as well as making what I find available to other parts of my exocortex.
 
 ## [web_index_bot/](web_index_bot/)
