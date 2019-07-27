@@ -111,7 +111,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # If we get no URI, just return the top-level keys of the hash table.
         if not len(uri):
             logging.debug("Returning top-level keys to the user.")
-            self._send_http_response(200, json.dumps(list(cursor.keys())))
+            self._send_http_response(200, json.dumps(list(cursor.keys()),
+                sort_keys=True, indent=4))
             return
 
         # Inch around inside the hash table/database, matching every part of
@@ -130,7 +131,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                 return
 
         # Return what we found.
-        self._send_http_response(200, json.dumps(cursor))
+        self._send_http_response(200, json.dumps(cursor, sort_keys=True,
+            indent=4))
         return
 
     # Process HTTP/1.1 POST requests.
