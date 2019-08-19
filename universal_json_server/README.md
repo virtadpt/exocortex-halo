@@ -6,7 +6,9 @@ I also wanted a universal tool for this, so I could conceivably throw any JSON d
 
 This microservice requires no external dependencies, only a basic [Python 3](https://www.python.org/) install.  And, of course, a well-formed JSON document of some kind, like the aforementioned CIA World Factbook JSON dump.  No virtualenvs necessary.  No config files to mess around with.  Just a pure CLI (and systemd .service file, if that's how you roll).
 
-Online help: `./universal_json_server.py --help`
+Online help:
+* `./universal_json_server.py --help`
+* `curl http://<server>:<port>/_help`
 
 ```
 usage: universal_json_server.py [-h] [--loglevel LOGLEVEL] [--host HOST]
@@ -28,3 +30,5 @@ optional arguments:
 A basic example: `./universal_json_server.py --loglevel debug --json ~/cia_world_factbook_api/data/factbook.json`
 
 Access it with your favorite tool ([Huginn](https://github.com/huginn/huginn) bots, [cURL](https://curl.haxx.se/), whatever).
+
+Online documentation styling courtesy of [hello-css](https://github.com/arp242/hello-css).

@@ -40,7 +40,7 @@
 #   "degrees": 65
 # }
 #
-#   If you make a GET request to /help you'll get the online docs.
+#   If you make a GET request to /_help you'll get the online docs.
 
 # By: The Doctor <drwho at virtadpt dot net>
 # License: GPLv3
@@ -49,6 +49,10 @@
 #       "do this if not" structure.
 #       - Added support for "is this a list?" and "is this a string?" when
 #       parsing URIs.
+#       - Added CSS styling to the online docs using bits of hello-css
+#       (https://github.com/arp242/hello-css).
+#       - Changed /help to /_help in an attempt to not collide with keys
+#       called "help" in possible other JSON documents one might use.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -106,7 +110,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
         # If we get a URI of "help" and only "help", return the online help.
         if len(uri) == 1:
-            if uri[0] == "help":
+            if uri[0] == "_help":
                 self._online_help()
                 return
 
@@ -195,6 +199,46 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 <html><head><title>Universal JSON Server</title></head>
         """
         self.wfile.write(top_of_page)
+
+        # CSS to make the docs somewhat pretty.
+        css = b"""
+<style>
+pre, code {
+  font-family: 'DejaVu Sans Mono', 'Bitstream Vera Sans Mono', 'Consolas', monospace;
+}
+
+pre {
+  font-size: 14px;                     /* Smaller text to fit more. */
+  line-height: 130%;                   /* Idem. */
+}
+
+html {
+  background-color: #eee;              /* Neutral background to contrast with the page. */
+  color: /*textcolor*/#252525;         /* Slightly less "harsh" black; looks subtly better. */
+       tab-size: 4;                    /* Tab size of 4 is probably more common in editors etc. */
+  -moz-tab-size: 4;                    /* Still needed as of Jan 2019 :-( */
+}
+
+a,
+a code,                                /* Otherwise it would just stay black text; common enough to include here. */
+.link {
+  color: #00f;                         /* Make sure colour is the same in all browsers. */
+  text-decoration: none;               /* Underlining can look "busy"; the colour on its own should be enough. */
+  transition: color .2s;               /* Animate the change in colour effect on hover; subtle but noticeable. */
+}
+
+a:hover, .link:hover {
+  text-decoration: underline;          /* Provide some feedback by underlining and changing colour. */
+  color: #6491ff;                      /* Light blue */
+}
+
+a:hover code  {
+  color: #6491ff;                      /* Also change colour of code on hover. */
+}
+
+</style>
+        """
+        self.wfile.write(css)
 
         # Documentation.
         documentation = b"""
@@ -322,6 +366,7 @@ except:
 
 # Instantiate a copy of the HTTP server.
 api_server = HTTPServer((args.host, int(args.port)), RESTRequestHandler)
+logging.info("Universal JSON Server is now online.")
 logging.debug("REST API server now listening on " + str(args.host) +
     ", port " + str(args.port) + "/tcp.")
 while True:
