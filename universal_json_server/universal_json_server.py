@@ -45,6 +45,10 @@
 # By: The Doctor <drwho at virtadpt dot net>
 # License: GPLv3
 
+# v2.0 - Reworked the URI parser into a "do this if" structure instead of a
+#       "do this if not" structure.
+#       - Added support for "is this a list?" and "is this a string?" when
+#       parsing URIs.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -78,7 +82,6 @@ api_server = None
 # RESTRequestHandler: Subclass that implements a REST API service.  The rails
 #   are the...
 class RESTRequestHandler(BaseHTTPRequestHandler):
-
     # Set up the RESTRequestHandler object.  Most of the time this is a no-op
     # but it makes it easier to make additional support togglable later.
     def __init__(self, request, client_address, server):
@@ -90,7 +93,6 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         logging.debug("Entered RESTRequestHandler.do_GET().")
 
         # URI from the user.
-        uri = None
         uri = self.path.strip()
         uri = uri.split("/")
 
@@ -118,17 +120,30 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # Inch around inside the hash table/database, matching every part of
         # the URI to a hash table key at the current position.
         for key in uri:
-            if key in cursor.keys():
-                logging.debug("Found key " + str(key) + " in URI.")
-                cursor = cursor[key]
-                try:
-                    logging.debug("Available keys at this level: " + str(cursor.keys()))
-                except:
-                    logging.debug("No more keys, hit the end of the JSON path.")
-            else:
-                logging.debug("Didn't find key " + key + " at list entry " + str(uri.index(key)) + ".")
-                self._send_http_response(400, "Didn't find key " + key + " at list entry " + str(uri.index(key)) + ".")
-                return
+            # Case: Cursor is pointing at a hash table.
+            if isinstance(cursor, dict):
+                logging.debug("Cursor is pointing at a dict.")
+                if key in cursor.keys():
+                    logging.debug("Found key '" + str(key) + "' in URI.")
+                    cursor = cursor[key]
+                    try:
+                        logging.debug("Available keys at this level: " + str(list(cursor.keys())))
+                    except:
+                        logging.debug("No more keys, hit the end of the JSON path.")
+                    continue
+
+            # Case: Cursor is pointing at a list.
+            if isinstance(cursor, list):
+                logging.debug("Cursor is pointing at a list.")
+                cursor = cursor[int(key)]
+                continue
+
+            # Case: Cursor is pointing at a string.
+            # This is a terminal case - it's the end of a JSON path.
+            if isinstance(cursor, str):
+                logging.debug("Cursor is pointing at a string.")
+                break
+        # Bottom of loop.
 
         # Return what we found.
         self._send_http_response(200, json.dumps(cursor, sort_keys=True,
