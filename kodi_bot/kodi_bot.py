@@ -3,10 +3,7 @@
 # vim: set expandtab tabstop=4 shiftwidth=4 :
 
 # kodi_bot.py - Bot written in Python that interfaces with a Kodi instance and
-#   acts as a remote control for audio and video playback.  For forward
-#   compatibility, this bot uses kodipydent
-#   (https://github.com/haikuginger/kodipydent) because it's designed to adapt
-#   to new Kodi JSON-RPC API versions.
+#   acts as a remote control for audio and video playback.
 #
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
