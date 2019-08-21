@@ -1,5 +1,0 @@
-#!/bin/sh
-echo "Content-type: application/json"
-echo
-ubus call network.interface.wan status
-echo
