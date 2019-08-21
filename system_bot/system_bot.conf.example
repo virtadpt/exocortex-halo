@@ -50,3 +50,7 @@ ip_addr_site = https://api.ipify.org/
 #[processes to monitor]
 #process1 = test_bot.py --loglevel,python2 /home/user/exocortex-halo/test_bot/test_bot.py --loglevel debug
 #process2 = test_bot.py --name AnotherTestBot,python2 /home/user/exocortex-halo/test_bot/test_bot.py --name AnotherTestBot
+
+#[openwrt]
+#openwrt_host = 192.168.1.1
+#openwrt_port = 10000
