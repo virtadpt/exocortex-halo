@@ -45,10 +45,7 @@ import sys
 from datetime import timedelta
 
 import globals
-
-# Pull in the OpenWRT monitoring module as well as the URL.
-if globals.openwrt_url:
-    import openwrt
+import openwrt
 
 # Variables global to this module.
 # Running lists of system averages.
@@ -174,7 +171,7 @@ def cpus():
 #   CPUs are idle as a floating point number.
 def cpu_idle_time():
     if globals.openwrt_url:
-        return openwrt.cpu_idle_time(globals.openwrt_url)
+        return openwrt.cpu_idle_time()
     else:
         return psutil.cpu_times_percent()[3]
 
@@ -220,7 +217,7 @@ def get_disk_usage():
 
     # If OpenWRT mode is enabled, we can short-circuit this function.
     if globals.openwrt_url:
-        disk_used = openwrt.get_disk_usage(globals.openwrt_url)
+        disk_used = openwrt.get_disk_usage()
         return disk_used
 
     # Not in OpenWRT mode.
@@ -294,9 +291,10 @@ def check_memory_utilization(memory_free_counter, time_between_alerts,
     message = ""
     if globals.openwrt_url:
         memory_stats = openwrt.memory_utilization(globals.openwrt_url)
+        calculated_free_memory = memory_stats["free"] + memory_stats["buffers"] + memory_stats["cached"]
     else:
         memory_stats = memory_utilization()
-    calculated_free_memory = memory_stats.free + memory_stats.buffers + memory_stats.cached
+        calculated_free_memory = memory_stats.free + memory_stats.buffers + memory_stats.cached
     logging.debug("Calculated free memory: %s" % convert_bytes(calculated_free_memory))
 
     # Check the amount of memory free.  If it's below a critical threshold

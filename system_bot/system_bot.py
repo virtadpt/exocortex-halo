@@ -11,6 +11,7 @@
 
 # License: GPLv3
 
+# v4.3 - Started adding support for remotely monitoring OpenWRT devices.
 # v4.2 - Reworked the startup logic so that being unable to immediately
 #       connect to either the message bus or the intended service is a
 #       terminal state.  Instead, it loops and sleeps until it connects and
