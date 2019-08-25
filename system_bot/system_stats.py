@@ -250,7 +250,7 @@ def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
     # running low on space construct a line of the message.
     for disk in list(disk_space_free.keys()):
         if not disk_space_free[disk]:
-            logging.debug("disk_space_free[disk] isn't usable.  Forget it.")
+            logging.debug("disk_space_free[disk] value " + str(disk_space_free[disk]) + " isn't usable.  Forget it.")
             continue
         try:
             if disk_space_free[disk] > disk_usage:
@@ -473,7 +473,10 @@ def centigrade_to_fahrenheit(celsius):
 #   containing the data.  Returns None if there are no sensors (i.e., this is a
 #   virtual machine).
 def get_hardware_temperatures():
-    return psutil.sensors_temperatures()
+    if globals.openwrt_url:
+        return None
+    else:
+        return psutil.sensors_temperatures()
 
 # check_hardware_temperatures: Function that analyzes the values of the
 #   hardware temperatures and alerts the user if one of them has either reached
