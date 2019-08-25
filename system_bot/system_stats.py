@@ -217,7 +217,7 @@ def get_disk_usage():
 
     # If OpenWRT mode is enabled, we can short-circuit this function.
     if globals.openwrt_url:
-        disk_used = openwrt.get_disk_usage()
+        disk_used = openwrt.get_disk_usage(globals.openwrt_url)
         return disk_used
 
     # Not in OpenWRT mode.
