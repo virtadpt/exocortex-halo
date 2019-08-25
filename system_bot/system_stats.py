@@ -171,7 +171,7 @@ def cpus():
 #   CPUs are idle as a floating point number.
 def cpu_idle_time():
     if globals.openwrt_url:
-        return openwrt.cpu_idle_time()
+        return openwrt.cpu_idle_time(globals.openwrt_url)
     else:
         return psutil.cpu_times_percent()[3]
 
