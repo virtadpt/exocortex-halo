@@ -64,6 +64,7 @@ import requests
 import sys
 import time
 
+import globals
 import parser
 import processes
 import system_stats
@@ -149,8 +150,13 @@ dead_processes = None
 # URL of web service that just returns the IP address of the host.
 ip_addr_web_service = ""
 
-# Functions.
+# Hostname and port of the web server on the embedded device to monitor.  If
+# there is a constructed openwrt_url, then we know external monitoring mode
+# is on.
+openwrt_host = ""
+openwrt_port = 0
 
+# Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
 def set_loglevel(loglevel):
@@ -172,7 +178,6 @@ def set_loglevel(loglevel):
 #   send to the user.  Returns a True or False which delineates whether or not
 #   it worked.
 def send_message_to_user(message):
-
     # Headers the XMPP bridge looks for for the message to be valid.
     headers = {"Content-type": "application/json"}
 
@@ -193,8 +198,19 @@ def send_message_to_user(message):
 def online_help():
     logger.debug("Entered the function online_help().")
     message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
+
+    # Handle the embedded mode case.
+    if globals.openwrt_url:
+        message = message + """
+    I remotely monitor the state of an embedded system I've been configured with, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge.  The URL I use to access these system stats is: """
+        message = message + globals.openwrt_url + "\n\n"
+    else:
+        message = message + """
+    I continually monitor the state of the system I'm running on, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge."""
+
+    # Continue building the help message.
     message = message + """
-    I continually monitor the state of the system I'm running on, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge.  I currently monitor system load, CPU idle time, disk utilization, and memory utilization.  The interactive commands I currently support are:
+    I currently monitor system load, CPU idle time, disk utilization, and memory utilization.  The interactive commands I currently support are:
 
     help - Display this online help.
     load/sysload/system load - Get current system load.
@@ -318,6 +334,23 @@ if config.has_section("processes to monitor"):
         if "process" in i:
             processes_to_monitor.append(config.get("processes to monitor", i).split(','))
 
+# See if the bot is configured for remote monitoring mode of embedded devices.
+if config.has_section("openwrt"):
+    logging.debug("Detected remote monitoring of OpenWRT devices mode.")
+    try:
+        openwrt_host = config.get("openwrt", "openwrt_host")
+    except:
+        logging.error("In OpenWRT mode, you need to set a hostname or IP address of the device you want to monitor.")
+        sys.exit(1)
+
+    try:
+        openwrt_port = config.get("openwrt", "openwrt_port")
+    except:
+        logging.error("In OpenWRT mode, you need to set a port number of the monitoring HTTP server on the device you want to monitor.")
+        sys.exit(1)
+
+    globals.openwrt_url = "http://" + openwrt_host + ":" + openwrt_port
+
 # In debugging mode, dump the bot'd configuration.
 logger.info("Everything is configured.")
 logger.debug("Values of configuration variables as of right now:")
@@ -341,6 +374,9 @@ if len(processes_to_monitor):
     logger.debug("There are " + str(len(processes_to_monitor)) + " processes to watch over on the system.")
     for i in processes_to_monitor:
         print("    " + i[0])
+if globals.openwrt_url:
+    logging.debug("OpenWRT remote monitoring mode active.")
+    logger.debug("URL of OpenWRT remote monitoring server: " + globals.openwrt_url)
 
 # Try to contact the XMPP bridge.  Keep trying until you reach it or the
 # system shuts down.

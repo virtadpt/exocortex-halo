@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v4.1 - Added support for OpenWRT with a separate module I wrote.
 # v4.0 - Ported to Python 3.
 # v3.3 - Added a Centigrade-to-Fahrenheit utility function.
 #      - Added a function that periodically checks the current temperature
@@ -43,6 +44,12 @@ import sys
 
 from datetime import timedelta
 
+import globals
+
+# Pull in the OpenWRT monitoring module as well as the URL.
+if globals.openwrt_url:
+    import openwrt
+
 # Variables global to this module.
 # Running lists of system averages.
 one_minute_average = []
@@ -75,7 +82,10 @@ def check_sysload(sysload_counter, time_between_alerts, status_polling,
     std_devs, sys_avg_min_len, sys_avg_max_len, send_message_to_user):
     message = ""
     std_dev = 0.0
-    current_load_avg = sysload()
+    if globals.openwrt_url:
+        current_load_avg = openwrt.sysload(globals.openwrt_url)
+    else:
+        current_load_avg = sysload()
 
     logging.debug("Value of sys_avg_min_len: " + str(sys_avg_min_len))
     logging.debug("Value of sys_avg_max_len: " + str(sys_avg_max_len))
@@ -143,21 +153,30 @@ def check_sysload(sysload_counter, time_between_alerts, status_polling,
 #   Returns a hash table containing the information.
 def uname():
     system_info = {}
-    sysinfo = os.uname()
-    system_info["hostname"] = sysinfo[1]
-    system_info["version"] = sysinfo[2]
-    system_info["buildinfo"] = sysinfo[3]
-    system_info["arch"] = sysinfo[4]
+    if globals.openwrt_url:
+        system_info = openwrt.uname(globals.openwrt_url)
+    else:
+        sysinfo = os.uname()
+        system_info["hostname"] = sysinfo[1]
+        system_info["version"] = sysinfo[2]
+        system_info["buildinfo"] = sysinfo[3]
+        system_info["arch"] = sysinfo[4]
     return system_info
 
 # cpus(): Takes no arguments.  Returns the number of CPUs on the system.
 def cpus():
-    return psutil.cpu_count()
+    if globals.openwrt_url:
+        return openwrt.cpu_count(globals.openwrt_url)
+    else:
+        return psutil.cpu_count()
 
 # cpu_idle_time(): Takes no arguments.  Returns the percentage of runtime the
 #   CPUs are idle as a floating point number.
 def cpu_idle_time():
-    return psutil.cpu_times_percent()[3]
+    if globals.openwrt_url:
+        return openwrt.cpu_idle_time(globals.openwrt_url)
+    else:
+        return psutil.cpu_times_percent()[3]
 
 # check_cpu_idle_time(): Monitors the amount of time the CPU(s) are idle.
 #   Takes four arguments: the CPU idle time counter, the time between alerts,
@@ -199,6 +218,12 @@ def get_disk_usage():
     max = 0.0
     used = 0.0
 
+    # If OpenWRT mode is enabled, we can short-circuit this function.
+    if globals.openwrt_url:
+        disk_used = openwrt.get_disk_usage(globals.openwrt_url)
+        return disk_used
+
+    # Not in OpenWRT mode.
     # Prime the hash with the names of the mounted disk partitions.
     disk_partitions = psutil.disk_partitions()
     for i in disk_partitions:
@@ -267,7 +292,10 @@ def memory_utilization():
 def check_memory_utilization(memory_free_counter, time_between_alerts,
         status_polling, memory_remaining, send_message_to_user):
     message = ""
-    memory_stats = memory_utilization()
+    if globals.openwrt_url:
+        memory_stats = openwrt.memory_utilization(globals.openwrt_url)
+    else:
+        memory_stats = memory_utilization()
     calculated_free_memory = memory_stats.free + memory_stats.buffers + memory_stats.cached
     logging.debug("Calculated free memory: %s" % convert_bytes(calculated_free_memory))
 
@@ -306,14 +334,17 @@ def uptime():
     uptime_seconds = None
     uptime_string = None
 
-    try:
-        file = open("/proc/uptime", "r")
-        uptime_seconds = float(file.readline().split()[0])
-        file.close()
-    except:
-        return None
-    uptime_string = str(timedelta(seconds = uptime_seconds))
-    return uptime_string
+    if globals.openwrt_url:
+        return openwrt.uptime(globals.openwrt_url)
+    else:
+        try:
+            file = open("/proc/uptime", "r")
+            uptime_seconds = float(file.readline().split()[0])
+            file.close()
+        except:
+            return None
+        uptime_string = str(timedelta(seconds = uptime_seconds))
+        return uptime_string
 
 # current_ip_address(): Function that returns the current non-RFC 1989 IP
 #   address of the system using an external HTTP(S) service or REST API.
