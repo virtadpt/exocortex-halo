@@ -10,7 +10,7 @@
 
 # License: GPLv3
 
-# v4.1 - Added support for OpenWRT with a separate module I wrote.
+# v4.1 - Added support for OpenWRT with a separate module.
 # v4.0 - Ported to Python 3.
 # v3.3 - Added a Centigrade-to-Fahrenheit utility function.
 #      - Added a function that periodically checks the current temperature

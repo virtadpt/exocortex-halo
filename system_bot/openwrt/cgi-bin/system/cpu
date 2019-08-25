@@ -1,0 +1,4 @@
+#!/bin/sh
+echo "Content-type: application/json"
+echo
+grep '^processor' /proc/cpuinfo  | wc -l
