@@ -111,3 +111,20 @@ lrwxrwxrwx 1 drwho drwho   52 Jan 26 14:16 system_bot.service -> /home/drwho/.co
 * Ensure that systemd in --user mode will start on boot and run even when you're not logged in: `loginctl enable-linger <your username here>`
 
 # OpenWRT and other embedded devices
+Due to the fact that many [OpenWRT](https://openwrt.org/) devices lack the storage space to comfortably install a sufficient [Python](https://python.org/) environment* to run exocortex-halo software, functionality for remotely monitoring such a device has been incorporated into Systembot.  This functionality has been implemented as a series of [cgi-bin scripts](https://en.wikipedia.org/wiki/Common_Gateway_Interface) which mimic to some extent a standard REST API while needing as few external packages as possible.  These scripts interrogate the OpenWRT system and return system information.
+
+Builds of OpenWRT later than the v10.x series have standardized on using [uhttpd](https://openwrt.org/docs/guide-user/services/webserver/uhttpd) instead of [Busybox's httpd](https://openwrt.org/docs/guide-user/services/webserver/http.httpd) feature.
+
+To deploy this functionality, first ensure that there is an instance of the [XMPP bridge](/exocortex_xmpp_bridge) running with a message queue for the OpenWRT device to talk to.  I prefer setting aside a separate XMPP bridge for every device but do whatever makes sense for you.  Ensure that uhttpd is installed and operable on your OpenWRT device (it should be, it's used for the built-in control panel).  Upload the contents of the [/system_bot/openwrt](/system_bot/openwrt) directory structure to your OpenWRT device and install them someplace permanent, such as in `/etc`.  Please note that they must be placed into a subdirectory, and the files must be kept in their relative positions!  Copy [system_bot.conf.example](system_bot.conf.example) to `openwrt_device-system_bot.conf` and edit it appropriately.  Ensure that you uncomment the `[openwrt]` section of the file and set the IP address or hostname of the OpenWRT device's management interface and the port you want uhttpd to serve the status monitoring scripts on.
+
+Start an instance of `uhttpd` to serve the cgi-bin scripts to Systembot.  I recommend adding the command to the `/etc/rc.local` script on the OpenWRT device and then rebooting.
+
+```
+uhttpd -p 31337 -h /etc/systembot -S -D -R
+```
+
+If you wish to add the `-s <address>:<different port>` option to the command line to enable HTTPS, you may do so but I haven't added that feature to Systembot yet (pull request, anyone?)
+
+Assuming that the additional uhttpd instance is running on your OpenWRT device, when you start the additional copy of `system_bot.py` and supply the additional command line option `--config openwrt_device-system_bot.conf`, Systembot should contact the OpenWRT device and begin monitoring system stats.
+
+* While it should be possible, in theory, to install the [Python packages](https://openwrt.org/packages/pkgdata/python3) to a flash drive and run them that way, I have no idea if this would even be feasible (though [Python Light](https://openwrt.org/docs/guide-user/services/python) could be an option).  So, if you try it please let me know how it turned out.
