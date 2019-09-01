@@ -20,11 +20,9 @@
 #   system monitoring (i.e, everything that's monitored automatically.)
 
 # TO-DO:
-# - Write shell scripts which implement some of the hardcoded "I don't support
-#   this yet" stats.  I don't want to start that until I get home, get access
-#   to an OpenWRT device, and debug what I already have.
 # - temperature?
 # - top?
+# - system time
 
 # Load modules.
 import json
@@ -344,6 +342,12 @@ def network_traffic(openwrt_host):
         logging.debug("Traffic volume to date for " + i + ": " + str(stats[i]))
 
     return stats
+
+# local_datetime(): Function that queries the OpenWRT unit's current date
+#   and time.  Not implemented yet.  Takes one argument, the base URL to the
+#   OpenWRT node.
+def local_datetime(openwrt_host):
+    return "Not implemented yet."
 
 if "__name__" == "__main__":
     pass

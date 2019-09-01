@@ -11,7 +11,8 @@
 
 # License: GPLv3
 
-# v4.3 - Started adding support for remotely monitoring OpenWRT devices.
+# v4.4 - Added support for local date/time requests.
+# v4.3 - Added support for remotely monitoring OpenWRT devices.
 # v4.2 - Reworked the startup logic so that being unable to immediately
 #       connect to either the message bus or the intended service is a
 #       terminal state.  Instead, it loops and sleeps until it connects and
@@ -225,6 +226,7 @@ def online_help():
     network traffic/traffic volume/network stats/traffic stats/traffic count - Bytes sent and received per network interface.
     System temperature/system temp/temperature/temp/overheating/core temperature/core temp - Hardware temperature in Centigrade and Fahrenheit, if temperature sensors are enabled.
     top processes/busy processes/busiest processes - Top 5 busiest processes on the system.
+    date/time/local date/local time/datetime/local datetime - Current date and time.
 
     All commands are case-insensitive.
     """
@@ -579,6 +581,12 @@ while True:
                     message = "The busiest processes on the system are:\n\n"
                     for i in info:
                         message = message + str(i["pid"]) + "\t" + i["name"] + "\t" + str(i["cpu_percent"]) + "%\n"
+                send_message_to_user(message)
+
+            # Local date and time?
+            if command == "datetime":
+                info = system_stats.local_datetime()
+                message = "The current date and time is: " + info
                 send_message_to_user(message)
 
             # Fall-through.

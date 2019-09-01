@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v4.2 - Added support for getting the local date and time.
 # v4.1 - Added support for OpenWRT with a separate module.
 # v4.0 - Ported to Python 3.
 # v3.3 - Added a Centigrade-to-Fahrenheit utility function.
@@ -41,6 +42,7 @@ import psutil
 import requests
 import statistics
 import sys
+import time
 
 from datetime import timedelta
 
@@ -621,6 +623,24 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
         temperature_counter = temperature_counter + status_polling
         logging.debug("Incrementing time between alerts counter.")
     return temperature_counter
+
+# local_datetime: Utility function which gets the current date and time from
+#   the system and returns it as a string.  Returns None if it can't.  Takes
+#   no arguments.
+def local_datetime():
+    logging.debug("Entered system_stats.local_datetime().")
+
+    current_datetime = ""
+
+    current_datetime = time.asctime(time.localtime()) + " "
+
+    # Account for daylight savings time.
+    if time.daylight:
+        current_datetime = current_datetime + time.tzname[1]
+    else:
+        current_datetime = current_datetime + time.tzname[0]
+
+    return current_datetime
 
 if "__name__" == "__main__":
     pass

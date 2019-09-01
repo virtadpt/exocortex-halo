@@ -68,6 +68,13 @@ These are the system attributes Systembot monitors, and how to query them:
   * <bot's name>, overheating.
   * <bot's name>, core temperature.
   * <bot's name>, core temp.
+* System's local date and time:
+  * <bot's name>, date.
+  * <bot's name>, time.
+  * <bot's name>, local date.
+  * <bot's name>, local time.
+  * <bot's name>, datetime.
+  * <bot's name>, local datetime.
 
 All of these commands (save the bot's name) are case insensitive.
 

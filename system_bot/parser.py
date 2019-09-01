@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v3.2 - Added local date and time to the command structure.
 # v3.1 - Added the ability to understand requests for the top processes (in
 #   terms of CPU time at the moment) running on the system.
 # v3.0 - Ported to Python 3.
@@ -116,6 +117,17 @@ busiest_processes_command = busiest_command + processes_command
 
 top_processes_commands = pp.Or([top_processes_command, busy_processes_command,
     busiest_processes_command])
+
+date_command = pp.CaselessLiteral("date")
+time_command = pp.CaselessLiteral("time")
+datetime_command = pp.CaselessLiteral("datetime")
+local_command = pp.CaselessLiteral("local")
+local_date_command = local_command + date_command
+local_time_command = local_command + time_command
+local_datetime_command = load_command + datetime_command
+
+local_datetime_commands = pp.Or([date_command, time_command, datetime_command,
+    local_date_command, local_time_command, local_datetime_command])
 
 # parse_help(): Function that matches the word "help" all by itself in an input
 #   string.  Returns the string "help" on a match and None if not.
@@ -234,6 +246,16 @@ def parse_top_processes(command):
     except:
         return None
 
+# parse_datetime(): Function that matches the strings "date", "time", "local
+#   date", "local time", "datetime", "local datetime".  Returns the string
+#   "datetime" on a match and None if not.
+def parse_datetime(command):
+        try:
+            parsed_command = local_datetime_commands.parseString(command)
+            return "datetime"
+        except:
+            return None
+
 # parse_command(): Function that parses commands from the message bus.
 #   Commands come as strings and are run through PyParsing to figure out what
 #   they are.  A single-word string is returned as a match or None on no match.
@@ -309,6 +331,11 @@ def parse_command(command):
     # Busiest processes on the system?
     parsed_command = parse_top_processes(command)
     if parsed_command == "processes":
+        return parsed_command
+
+    # Local date and time?
+    parsed_command = parse_datetime(command)
+    if parsed_command == "datetime":
         return parsed_command
 
     # Fall-through: Nothing matched.
