@@ -13,6 +13,7 @@
 
 # License: GPLv3
 
+# v1.2 - Added local time and date support.
 # v1.1 - Added CPU counting support.
 #      - Added CPU idle time support.
 #      - Added disk usage support.
@@ -29,6 +30,7 @@ import json
 import logging
 import math
 import requests
+import time
 
 from datetime import timedelta
 
@@ -344,10 +346,31 @@ def network_traffic(openwrt_host):
     return stats
 
 # local_datetime(): Function that queries the OpenWRT unit's current date
-#   and time.  Not implemented yet.  Takes one argument, the base URL to the
-#   OpenWRT node.
+#   and time.  Takes one argument, the base URL to the OpenWRT node.  Returns
+#   a string, the local date and time.
 def local_datetime(openwrt_host):
-    return "Not implemented yet."
+    logging.debug("Entered function openwrt.local_datetime().")
+
+    request = None
+    system_info = {}
+    local_time = None
+    system_time = ""
+
+    #  Contact the OpenWRT host and get system info.
+    request = requests.get(openwrt_host + "/cgi-bin/system/info")
+    if not request:
+        logging.err("Failed to contact endpoint " + openwrt_host + "/cgi-bin/system/info")
+        return None
+
+    # Convert the current system time into a time struct.
+    system_info = json.loads(request.text)
+    local_time = time.localtime(system_info["localtime"])
+
+    # Convert the time struct into an actual system time.
+    system_time = time.strftime("%A, %d %B %Y %Z (UTC%z), %I:%M.%S %p",
+        local_time)
+    logging.debug("The remote node's system time is: " + system_time)
+    return system_time
 
 if "__name__" == "__main__":
     pass

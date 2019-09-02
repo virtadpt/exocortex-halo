@@ -11,6 +11,7 @@
 # License: GPLv3
 
 # v4.2 - Added support for getting the local date and time.
+#       - Added OpenWRT support for local date and time.
 # v4.1 - Added support for OpenWRT with a separate module.
 # v4.0 - Ported to Python 3.
 # v3.3 - Added a Centigrade-to-Fahrenheit utility function.
@@ -632,13 +633,18 @@ def local_datetime():
 
     current_datetime = ""
 
-    current_datetime = time.asctime(time.localtime()) + " "
-
-    # Account for daylight savings time.
-    if time.daylight:
-        current_datetime = current_datetime + time.tzname[1]
+    if globals.openwrt_url:
+        current_datetime = openwrt.local_datetime(globals.openwrt_url)
+        if not current_datetime:
+            return "Unable to get the current date and time."
     else:
-        current_datetime = current_datetime + time.tzname[0]
+        current_datetime = time.asctime(time.localtime()) + " "
+
+        # Account for daylight savings time.
+        if time.daylight:
+            current_datetime = current_datetime + time.tzname[1]
+        else:
+            current_datetime = current_datetime + time.tzname[0]
 
     return current_datetime
 
