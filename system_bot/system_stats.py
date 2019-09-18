@@ -310,7 +310,10 @@ def check_memory_utilization(memory_free_counter, time_between_alerts,
         if calculated_free_memory <= memory_remaining:
             message = "WARNING: The amount of free memory has reached the critical point of " + str(calculated_free_memory) + "% free.  You'll want to see to this before the OOM killer starts reaping processes."
     except:
-        message = "Unable to get accurate memory stats from this platform."
+        # message = "Unable to get accurate memory stats from this platform."
+        # MOOF MOOF MOOF - commented out because the OpenWRT case tends to
+        # have a lot of false positives
+        pass
 
     # If a message has been constructed, check how much time has passed since
     # the last message was sent.  If enough time has, send the bot's owner the
