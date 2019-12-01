@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v4.3 - Fixed a bug in Fahrenheit to Centigrade conversion.  Oops.
 # v4.2 - Added support for getting the local date and time.
 #       - Added OpenWRT support for local date and time.
 # v4.1 - Added support for OpenWRT with a separate module.
@@ -469,8 +470,8 @@ def centigrade_to_fahrenheit(celsius):
     logging.debug("Temperature in Centigrade: " + str(celsius))
     fahrenheit = 0.0
     fahrenheit = celsius * 9.0
-    fahrenheit = celsius / 5.0
-    fahrenheit = celsius + 32.0
+    fahrenheit = fahrenheit / 5.0
+    fahrenheit = fahrenheit + 32.0
     logging.debug("Temperature in Fahrenheit: " + str(fahrenheit))
     return fahrenheit
 
