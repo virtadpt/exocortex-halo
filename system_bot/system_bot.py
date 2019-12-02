@@ -513,8 +513,8 @@ while True:
                     # Add the disk space used to the message.
                     message = message + system_stats.convert_bytes(space["used"]) + " / "
 
-                    # Add the available disk space.
-                    message = message + system_stats.convert_bytes(space["free"]) + ")"
+                    # Add the total disk space.
+                    message = message + system_stats.convert_bytes(space["total"]) + ")"
 
                     # Finish the message.
                     # /home - (xGB out of yTB) z.0% in use.
