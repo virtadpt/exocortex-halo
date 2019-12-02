@@ -11,6 +11,8 @@
 
 # License: GPLv3
 
+# v4.5 - Made disk space usage messages easier to read by adding space used
+#       and total space available.
 # v4.4 - Added support for local date/time requests.
 # v4.3 - Added support for remotely monitoring OpenWRT devices.
 # v4.2 - Reworked the startup logic so that being unable to immediately
@@ -502,7 +504,21 @@ while True:
                 info = system_stats.get_disk_usage()
                 message = "System disk space usage:\n"
                 for key in list(info.keys()):
-                    message = message + "\t" + key + " - " + str("%.2f" % info[key]) + "% in use.\n"
+                    # Start a message line.
+                    message = message + "\t" + key + " - ("
+
+                    # Get disk usage (in bytes) for this device.
+                    space = system_stats.get_disk_space(key)
+
+                    # Add the disk space used to the message.
+                    message = message + system_stats.convert_bytes(space["used"]) + " / "
+
+                    # Add the available disk space.
+                    message = message + system_stats.convert_bytes(space["free"]) + ")"
+
+                    # Finish the message.
+                    # /home - (xGB out of yTB) z.0% in use.
+                    message = message + " - " + str("%.2f" % info[key]) + "% in use.\n"
                 send_message_to_user(message)
 
             # Memory utilization.

@@ -11,6 +11,8 @@
 # License: GPLv3
 
 # v4.3 - Fixed a bug in Fahrenheit to Centigrade conversion.  Oops.
+#       - Added a utility function get_disk_space(), which returns the amount
+#       of disk space used by a mount point.
 # v4.2 - Added support for getting the local date and time.
 #       - Added OpenWRT support for local date and time.
 # v4.1 - Added support for OpenWRT with a separate module.
@@ -238,6 +240,26 @@ def get_disk_usage():
             # Docker causes this to not work with permissions problems.
             logging.debug("Skipping disk device " + i + " due to restrictive permissions.")
     return disk_used
+
+# get_disk_space(): Takes a string corresponding to a mountpoint ("/home").
+#   Looks up the total amount of disk space, the amount of disk space used,
+#   and the amount of disk space free.  Returns those values as a hash table
+#   or None if it wasn't able to.
+def get_disk_space(device):
+    logging.debug("Entered system_stats.get_disk_space().")
+    disk_space = {}
+    disk_stats = None
+
+    try:
+        disk_stats = psutil.disk_usage(device)
+        disk_space["total"] = disk_stats.total
+        disk_space["used"] = disk_stats.used
+        disk_space["free"] = disk_stats.free
+    except:
+        logging.debug("Unable to get disk stats for " + str(device) + ".")
+        return None
+    logging.debug("Value of disk_space: " + str(disk_space))
+    return disk_space
 
 # check_disk_usage(): Pull the amount of used storage for each disk device on
 #   the system and send the bot's owner an alert if one of the disks gets too
