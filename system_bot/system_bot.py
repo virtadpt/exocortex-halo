@@ -13,6 +13,7 @@
 
 # v4.5 - Made disk space usage messages easier to read by adding space used
 #       and total space available.
+#        - Made memory usage messages easier to understand, too.
 # v4.4 - Added support for local date/time requests.
 # v4.3 - Added support for remotely monitoring OpenWRT devices.
 # v4.2 - Reworked the startup logic so that being unable to immediately
@@ -524,10 +525,18 @@ while True:
             # Memory utilization.
             if command == "memory":
                 info = system_stats.memory_utilization()
-                info_total = info.total
-                info = (info.free + info.buffers + info.cached) / info_total
-                info = round(info * 100.0, 2)
-                message = str(info) + "% of the system memory is free."
+                logging.debug("value of info: " + str(info))
+
+                # x GB / y GB (z%) memory in use.
+                message = system_stats.convert_bytes(info.used)
+                message = message + " / " + system_stats.convert_bytes(info.total)
+                message = message + " (" + str(info.percent) + "%) memory in use.  "
+
+                # a GB / y GB (b%)  free.
+                message = message + system_stats.convert_bytes(info.free + info.buffers + info.cached)
+                message = message + " / " + system_stats.convert_bytes(info.total)
+                message = message + " (" + str(100.0 - info.percent) + "%) free."
+                logging.debug("Value of message: " + str(message))
                 send_message_to_user(message)
 
             # System uptime.
