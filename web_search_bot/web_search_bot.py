@@ -15,6 +15,9 @@
 
 # License: GPLv3
 
+# v5.3 - Added some new commands to the parser to implement searching in
+#       specific Searx categories.
+#       - Added code to pull the list of known categories from Searx.
 # v5.2 - Reworked the startup logic so that being unable to immediately
 #       connect to either the message bus or the intended service is a
 #       terminal state.  Instead, it loops and sleeps until it connects and
@@ -71,6 +74,7 @@
 #   the effect of "I don't know what you just said."
 # - Break out the "handle HTTP result code" handler into a function.
 # - Break up the main loop into a few functions to make it easier to read.
+# - Split the parser out into a separate file.
 
 # Load modules.
 from email.message import Message
@@ -87,6 +91,8 @@ import requests
 import smtplib
 import sys
 import time
+
+import parser
 
 # Constants.
 # Hash table that maps numbers-as-words ("ten") into numbers (10).
@@ -160,6 +166,10 @@ message = ""
 user_text = None
 user_acknowledged = None
 
+# List of search categories Searx has configured.  This'll be populated from
+# Searx so don't worry about configuring it.
+search_categories = []
+
 # Parser primitives.
 # We define them up here because they'll be re-used over and over.
 help_command = pp.CaselessLiteral("help")
@@ -184,6 +194,31 @@ for_command = pp.Optional(pp.CaselessLiteral("for"))
 # (list) (search) engines
 list_command = pp.CaselessLiteral("list")
 engines_command = pp.CaselessLiteral("engines")
+
+# (list) (search) categories
+categories_command = pp.CaselessLiteral("categories")
+
+# Categories
+# &categories=general
+category_everything_command = pp.CaselessLiteral("everything")
+category_general_command = pp.CaselessLiteral("general")
+# &categories=files
+category_files_command = pp.CaselessLiteral("files")
+# &categories=images
+category_images_command = pp.CaselessLiteral("images")
+# &categories=it
+category_it_command = pp.CaselessLiteral("it")
+# &categories=map
+category_map_command = pp.CaselessLiteral("map")
+category_maps_command = pp.CaselessLiteral("maps")
+# &categories=music
+category_music_command = pp.CaselessLiteral("music")
+# &categories=news
+category_news_command = pp.CaselessLiteral("news")
+# &categories=science
+category_science_command = pp.CaselessLiteral("science")
+# &categories=videos
+category_science_command = pp.CaselessLiteral("videos")
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -218,6 +253,16 @@ def online_help():
     reply = reply + bot_name + ", (list (search)) engines\n\n"
     reply = reply + "I can run searches using specific search engines I'm configured for:\n\n"
     reply = reply + bot_name + ", search <search engine shortcode> for <search request...>\n\n"
+    send_message_to_user(reply)
+
+    # Now let's handle the "search categories" case.
+    reply = "I can also run searches based upon categories of content.  The\n"
+    reply = reply + "categories I support are:\n\n"
+    reply = reply + ", ".join(category for category in search_categories) + "\n\n"
+    reply = reply + "To list the search categories by themselves:\n\n"
+    reply = reply + bot_name + ", list (search) categories\n\n"
+    reply = reply + ""
+    reply = reply + ""
     send_message_to_user(reply)
     return
 
@@ -651,6 +696,17 @@ while True:
 for i in search_engines:
     if not bool(i["enabled"]):
         search_engines.remove(i)
+logging.debug("Enabled search engines: %s" % str(search_engines))
+
+# Query the Searx instance and get its list of configured search categories.
+try:
+    temp_searx = "/".join(searx.split('/')[0:-1]) + "/config"
+    request = requests.get(temp_searx)
+    search_categories = request.json()["categories"]
+except:
+    send_message_to_user("Unable to get list of search categories from Searx.")
+logging.debug("Search categories Searx knows about: %s"
+    % str(search_categories))
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -687,7 +743,7 @@ while True:
             continue
 
         # Parse the search request.
-        (number_of_results, search, destination_email_address) = parse_search_request(search_request)
+        (number_of_results, search, destination_email_address) = parser.parse_search_request(search_request)
         logger.debug("Number of search results: " + str(number_of_results))
         logger.debug("Search request: " + str(search))
         if destination_email_address == "XMPP":
@@ -711,6 +767,15 @@ while True:
             reply = reply + "Shortcode\t\tSearch engine name\n"
             for i in search_engines:
                 reply = reply + i["shortcut"] + "\t\t" + i["name"].title() + "\n"
+            send_message_to_user(reply)
+            continue
+
+        # Test to see if the user requested a list of search categories.  If
+        # so, assemble a response, send it back to the user, and restart the
+        # loop.
+        if (str(number_of_results).lower() == "categories"):
+            reply = "These are the search categories I have available:\n"
+            reply = reply + ", ".join(category for category in search_categories)
             send_message_to_user(reply)
             continue
 
