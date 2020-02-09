@@ -18,10 +18,20 @@
 # TO-DO:
 # - Come up with a better way of passing data around.  Tuples are nice, but I
 #   can do so much better.
+# - I know that it would make more sense to loop through the list of categories
+#   and then run them through the parser.  Certainly cleaner that way.  PoC
+#   first.
+# - .setResultsName() can and probably should be used at the very top when
+#   the parsing primitives are set up.
+# - There are some top-level search requests (like the "mail me the results"
+#   one) that should be made smarter at long last.  I mean, sheesh... how long
+#   have I been putting that one off?
 
 # Load modules.
 import logging
 import pyparsing as pp
+
+import globals
 
 # Constants.
 # Hash table that maps numbers-as-words ("ten") into numbers (10).
@@ -39,7 +49,7 @@ numbers = { "one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
     "fifty":50 }
 
 # Loglevel for the bot.
-loglevel = logging.INFO
+#loglevel = logging.INFO
 
 # Default e-mail address to send search results to.
 default_email = ""
@@ -74,25 +84,31 @@ categories_command = pp.CaselessLiteral("categories")
 
 # Categories
 # &categories=general
-category_everything_command = pp.CaselessLiteral("everything")
-category_general_command = pp.CaselessLiteral("general")
+category_everything_command = pp.CaselessLiteral("everything").setResultsName("category")
+category_general_command = pp.CaselessLiteral("general").setResultsName("category")
 # &categories=files
-category_files_command = pp.CaselessLiteral("files")
+category_files_command = pp.CaselessLiteral("files").setResultsName("category")
 # &categories=images
-category_images_command = pp.CaselessLiteral("images")
+category_images_command = pp.CaselessLiteral("images").setResultsName("category")
 # &categories=it
-category_it_command = pp.CaselessLiteral("it")
+category_it_command = pp.CaselessLiteral("it").setResultsName("category")
 # &categories=map
-category_map_command = pp.CaselessLiteral("map")
-category_maps_command = pp.CaselessLiteral("maps")
+category_map_command = pp.CaselessLiteral("map").setResultsName("category")
+category_maps_command = pp.CaselessLiteral("maps").setResultsName("category")
 # &categories=music
-category_music_command = pp.CaselessLiteral("music")
+category_music_command = pp.CaselessLiteral("music").setResultsName("category")
 # &categories=news
-category_news_command = pp.CaselessLiteral("news")
+category_news_command = pp.CaselessLiteral("news").setResultsName("category")
 # &categories=science
-category_science_command = pp.CaselessLiteral("science")
+category_science_command = pp.CaselessLiteral("science").setResultsName("category")
 # &categories=videos
-category_science_command = pp.CaselessLiteral("videos")
+category_science_command = pp.CaselessLiteral("videos").setResultsName("category")
+
+# make_search_term(): Function that takes a string of the form "foo bar baz"
+#   and turns it into a URL encoded string "foo+bar+baz", which is then
+#   returned to the calling method.
+def make_search_term(search_terms):
+    return "+".join(term for term in search_terms)
 
 # word_and_number(): Function that takes a number represented as a word
 #   ("twenty") or a number ("20") and turns it into a number (20) if it's the
@@ -117,6 +133,7 @@ def word_and_number(value):
 #   input string.  Returns "help" for the number of search terms, None for the
 #   search string, and None for the destination e-mail.
 def parse_help(request):
+    logging.debug("Entered function parse_help().")
     try:
         parsed_command = help_command.parseString(request)
         return ("help", None, None)
@@ -129,6 +146,7 @@ def parse_help(request):
 #   number of search terms, one for the search string, and None for the
 #   destination e-mail.
 def parse_list(request):
+    logging.debug("Entered function parse_list().")
     command = pp.Optional(list_command) + pp.Optional(search_command)
     command = command + engines_command
     try:
@@ -144,6 +162,7 @@ def parse_list(request):
 #   address "XMPP", meaning that the results will be sent to the user via the
 #   XMPP bridge.
 def parse_get_request(request):
+    logging.debug("Entered function parse_get_request().")
     command = get_command + top_command + results_count + hitsfor_command
     command = command + pp.Group(search_terms).setResultsName("searchterms")
 
@@ -166,6 +185,7 @@ def parse_get_request(request):
 #   integer number of search results (up to 50), a URL encoded search string,
 #   and an e-mail address.
 def parse_and_email_results(request):
+    logging.debug("Entered function parse_and_email_results().")
     command = send_command + destination + top_command + results_count
     command = command + hitsfor_command
     command = command + pp.Group(search_terms).setResultsName("searchterms")
@@ -198,6 +218,7 @@ def parse_and_email_results(request):
 #   ("!foo"), and "XMPP", because this is really only useful for mobile
 #   requests.
 def parse_specific_search(request):
+    logging.debug("Entered function parse_specific_search().")
     command = search_command + shortcut_command + for_command
     command = command + pp.Group(search_terms).setResultsName("searchterms")
 
@@ -209,6 +230,8 @@ def parse_specific_search(request):
         parsed_command = command.parseString(request)
         engine = parsed_command["shortcode"]
         searchterms = parsed_command["searchterms"]
+        logging.debug("Value of engine: %s" % engine)
+        logging.debug("Value of searchterms: %s" % searchterms)
 
         # Check to see if the search engine is enabled.  We do this in a
         # circuitous fashion because we want either the shortcode or a failure,
@@ -216,6 +239,7 @@ def parse_specific_search(request):
         # name of the search engine.
         engine = is_enabled_engine(engine)
         if not engine:
+            logging.debug("Engine %s matches but is not enabled." % engine)
             return(0, "", "")
 
         # Create a search term that includes the shortcode for the search
@@ -227,6 +251,7 @@ def parse_specific_search(request):
         logging.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
+    logging.debug("Returning number_of_search_results==%d, searchterms==%s, and XMPP." % (number_of_search_results, searchterms))
     return (number_of_search_results, searchterms, "XMPP")
 
 # is_enabled_engine(): Utility function that scans the list of enabled search
@@ -235,7 +260,7 @@ def is_enabled_engine(engine):
     # Test to see if the shortcode given (which could be either the name of the
     # search engine or the actual shortcode) are in the list.  We append a bang
     # (!) to the shortcode so that Searx knows to use it as a specific search.
-    for i in search_engines:
+    for i in globals.search_engines:
         if i["name"] == engine.lower():
             logging.debug("Search engine " + str(engine) + " enabled.")
             return "!" + i["shortcut"]
@@ -249,6 +274,7 @@ def is_enabled_engine(engine):
 #   for the number of search terms, one for the search string, and None for
 #   the destination e-mail.
 def parse_list_categories(request):
+    logging.debug("Entered function parse_list_categories().")
     command = list_command + pp.Optional(search_command) + categories_command
     try:
         parsed_command = command.parseString(request)
@@ -257,12 +283,66 @@ def parse_list_categories(request):
         logging.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
+# parse_search_category_request(): Function that matches whenever it encounters
+#   a search request of the form "search <category> (for) top <n> hits
+#   for <foo>."
+def parse_search_category_request(request):
+    logging.debug("Entered function parse_search_category_request().")
+    #command = search_command + category_files_command
+    #command = command + for_command + top_command + results_count
+    #command = command + hitsfor_command
+    #command = command + pp.Group(search_terms).setResultsName("searchterms")
+
+    command = None
+    number_of_search_results = 10
+    category = ""
+    searchterms = []
+
+    logging.debug("Value of globals.search_categories: %s" % globals.search_categories)
+    
+    for i in globals.search_categories:
+        logging.debug("Trying category %s." % i)
+        command = search_command
+        category_command = pp.CaselessLiteral(i).setResultsName("category")
+
+        # Assemble the search command custom for this iteration of the loop.
+        # The process is unrolled to make it easier to understand, and thus
+        # maintain later.
+        command = command + category_command
+        command = command + for_command
+        command = command + top_command
+        command = command + results_count
+        command = command + hitsfor_command
+        command = command + pp.Group(search_terms).setResultsName("searchterms")
+
+        # See if the newly assembled command matches.
+        try:
+            parsed_command = command.parseString(request)
+
+            # Extract the specifics.
+            number_of_search_results = word_and_number(parsed_command["count"])
+            search_term = make_search_term(parsed_command["searchterms"])
+            category = parsed_command["category"]
+
+            # Append the search category to the search term.
+            search_term = search_term + "&categories=" + i
+
+            # Yup.
+            return (number_of_search_results, search_term, "XMPP")
+        except pp.ParseException as x:
+            # Nope.
+            logging.debug("Category %s didn't work." % i)
+
+    # Trap case: No categories matched.
+    logging.info("No categories matched.")
+    return (None, None, None)
+
 # parse_search_request(): Takes a string and figures out what kind of search
 #   request the user wants.  Requests are something along the form of "top ten
 #   hits for foo" or "search Tor for bar".  Returns the number of results to
-#   send the user, the URI for the search terms, and the address to send the
+#   send the user,bthe URI for the search terms, and the address to send the
 #   results to ("XMPP" if it's supposed to go back to the user via the XMPP
-#   bridge.
+#   bridge).
 def parse_search_request(search_request):
     logging.debug("Entered function parse_search_request().")
     number_of_search_results = 0
@@ -321,7 +401,13 @@ def parse_search_request(search_request):
         logging.info("The user has requested a list of search categories.")
         return ("categories", None, None)
 
+    # Attempt to parse a "search <category> for" search request.
+    (number_of_search_results, search_term, email_address) = parse_search_category_request(search_request)
+    if number_of_search_results and (email_address == "XMPP"):
+        logging.info("The user has sent the search term " + str(search_term))
+        return (number_of_search_results, search_term, "XMPP")
+
     # Fall-through - this should happen only if nothing at all matches.
     logging.info("Fell all the way through in parse_search_request().  Telling the user I didn't understand what they said.")
-    send_message_to_user("I didn't understand your command.  Try again, please.")
+    globals.send_message_to_user(globals.server, "I didn't understand your command.  Try again, please.")
     return (0, "", None)
