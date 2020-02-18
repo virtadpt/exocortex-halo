@@ -18,9 +18,6 @@
 # TO-DO:
 # - Come up with a better way of passing data around.  Tuples are nice, but I
 #   can do so much better.
-# - I know that it would make more sense to loop through the list of categories
-#   and then run them through the parser.  Certainly cleaner that way.  PoC
-#   first.
 # - .setResultsName() can and probably should be used at the very top when
 #   the parsing primitives are set up.
 # - There are some top-level search requests (like the "mail me the results"
@@ -299,7 +296,7 @@ def parse_search_category_request(request):
     searchterms = []
 
     logging.debug("Value of globals.search_categories: %s" % globals.search_categories)
-    
+
     for i in globals.search_categories:
         logging.debug("Trying category %s." % i)
         command = search_command
@@ -310,9 +307,11 @@ def parse_search_category_request(request):
         # maintain later.
         command = command + category_command
         command = command + for_command
-        command = command + top_command
-        command = command + results_count
-        command = command + hitsfor_command
+        # There has to be a better way to do this.  I haven't figured it out
+        # yet, though.
+        command = command + pp.Optional(top_command)
+        command = command + pp.Optional(results_count)
+        command = command + pp.Optional(hitsfor_command)
         command = command + pp.Group(search_terms).setResultsName("searchterms")
 
         # See if the newly assembled command matches.

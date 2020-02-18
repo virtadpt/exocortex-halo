@@ -85,8 +85,6 @@
 # - Replace the tuple returned by the parser with something a bit more
 #   sensible.  This bot's grown a lot and something like a hash table (with a
 #   couple of key checks) seems like it'd be a better solution.
-# - I think I can do a bit better with the read-the-config-from-searx-and-
-#   do-stuff-with-it part.  Pull it once, then pick it apart.
 
 # Load modules.
 from email.message import Message
@@ -476,26 +474,21 @@ while True:
             globals.send_message_to_user(globals.server, "Running web search.  Please stand by.")
         search_results = get_search_results(search)
 
-        # HTTP error/FOAD case.
-        if not search_results:
-            time.sleep(float(polling_time))
-            continue
-
         # If no search results were returned, put that message into the
         # (empty) list of search results.
         if len(search_results) == 0:
             temp = {}
-            temp['title'] = "No search results found."
-            temp['url'] = ""
-            temp['score'] = 0.0
+            temp["title"] = "No search results found."
+            temp["url"] = ""
+            temp["score"] = 0.0
             search_results.append(temp)
 
         # Construct the message containing the search results.
         message = "Here are your search results:\n"
         for result in search_results:
-            message = message + result['title'] + "\n"
-            message = message + result['url'] + "\n"
-            message = message + "Relevance: " + str(result['score']) + "\n\n"
+            message = message + result["title"] + "\n"
+            message = message + result["url"] + "\n"
+            message = message + "Relevance: " + str(result["score"]) + "\n\n"
         message = message + "End of search results.\n"
 
         # If the response is supposed to go over XMPP, send it back and go
