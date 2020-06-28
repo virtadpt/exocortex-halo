@@ -215,9 +215,9 @@ def centigrade_to_kelvin(temperature):
 def get_temperature():
     temperature = sensor.temperature
     if scale == "fahrenheit":
-        temperature = celsius_to_fahrenheit(temperature)
+        temperature = centigrade_to_fahrenheit(temperature)
     if scale == "kelvin":
-        temperature = celsius_to_kelvin(temperature)
+        temperature = centigrade_to_kelvin(temperature)
     return(temperature)
 
 # get_temperature(): Helper function that queries the humidity sensor and
