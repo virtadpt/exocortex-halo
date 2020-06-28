@@ -1,3 +1,5 @@
 adafruit-blinka
 adafruit-circuitpython-ahtx0
+ConfigParser
+requests
 RPI.GPIO
