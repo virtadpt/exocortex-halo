@@ -247,7 +247,7 @@ argparser.add_argument("--loglevel", action="store",
 argparser.add_argument("--polling", action="store", help="Default: 30 seconds")
 
 # Temperature scale the user wants to use.
-argparser.add_argument("--scale", action="store", default="fahrenheit",
+argparser.add_argument("--scale", action="store",
     help="Possible temperature scales: fahrenheit, celsius, centigrade, kelvin")
 
 # Parse the command line arguments.
