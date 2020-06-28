@@ -17,3 +17,6 @@ loglevel = info
 # Defaults to Fahrenheit.
 scale = fahrenheit
 
+# The location the sensor is located at.
+location = office
+

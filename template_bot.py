@@ -107,14 +107,14 @@ def parse_...(user_command):
 
     # If the user command is empty (i.e., nothing in the queue) return None.
     if "no commands" in user_command:
-        logging.debug("Got an empty index request.")
+        logging.debug("Got an empty command.")
         return None
 
     # Tokenize the search request.
     words = user_command.split()
-    logging.debug("Tokenized index request: " + str(words))
+    logging.debug("Tokenized command: " + str(words))
 
-    # Start parsing the the index request to see what kind it is.  After
+    # Start parsing the the command to see what kind it is.  After
     # making the determination, remove the words we've sussed out to make the
     # rest of the query easier.
 
@@ -286,7 +286,7 @@ logging.debug("Entering main loop to handle requests.")
 while True:
     user_command = None
 
-    # Check the message queue for index requests.
+    # Check the message queue for commands.
     try:
         logging.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)

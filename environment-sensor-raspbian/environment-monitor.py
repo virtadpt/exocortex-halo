@@ -25,8 +25,6 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Split the "send the temperature" and "send the humidity" code off into
-#   separate functions.
 # -
 
 # Load modules.
@@ -73,6 +71,9 @@ polling_time = 30
 # What temperature scale to use.  Defaults to Fahrenheit.
 scale = "fahrenheit"
 
+# String holding the location of the physical device, from the config file.
+location = "not configured"
+
 # Temperature from the sensor.
 temperature = 0.0
 
@@ -110,12 +111,10 @@ def set_loglevel(loglevel):
     if loglevel == "notset":
         return 0
 
-# parse_...(): Takes a string and figures out if it was a correctly
-#   formatted request to...  Requests
-#   are of the form "..".  Returns ...
-#   or None if it's not a well-formed request.
-def parse_...(user_command):
-    logger.debug("Entered function parse_...().")
+# parse_command(): Takes a string and parses it to see if it's a correctly
+#   formatted request to.  Returns an easily if-then-able keyword or None.
+def parse_command(user_command):
+    logger.debug("Entered function parse_command().")
     words = []
 
     # Clean up the search request.
@@ -126,14 +125,14 @@ def parse_...(user_command):
 
     # If the user command is empty (i.e., nothing in the queue) return None.
     if "no commands" in user_command:
-        logging.debug("Got an empty index request.")
+        logging.debug("Got an empty command.")
         return None
 
     # Tokenize the search request.
     words = user_command.split()
-    logging.debug("Tokenized index request: " + str(words))
+    logging.debug("Tokenized command: " + str(words))
 
-    # Start parsing the the index request to see what kind it is.  After
+    # Start parsing the the command to see what kind it is.  After
     # making the determination, remove the words we've sussed out to make the
     # rest of the query easier.
 
@@ -144,22 +143,25 @@ def parse_...(user_command):
         logging.debug("User asked for online help.")
         return words[0]
 
-    # User asked the construct to...
-    if (words[0] == "foo") or (words[0] == "bar") or \
-            (words[0] == "baz"):
-        logging.info("Got a token that suggests that this is...")
-    del words[0]
+    # User asked the construct to return the local environment's temperature.
+    if (words[0] == "temperature") or (words[0] == "temp"):
+        logging.info("Got a token that suggests that this is a local temperature query.")
+        return("temperature")
 
-    # If the parsed search term is now empty, return an error.
-    if not len(words):
-        logging.error("The indexing request appears to be empty.")
-        return None
+    # User asked the construct to return the local environment's relative
+    # humidity.
+    if (words[0] == "humidity") or (words[0] == "relative humidity"):
+        logging.info("Got a token that suggests that this is a local humidity query.")
+        return("humidity")
 
-    # The above, one or more times...
+    # User asked the construct to return the configured location of the unit.
+    if (words[0] == "location"):
+        logging.info("Got a token that suggests that this is a location query.")
+        return("location")
 
-    # Return the final result.
-    logging.debug("Final result: " + something_final_result)
-    return something_final_result
+    # Fall through.
+    logging.debug("Fell through - nothing matched.")
+    return None
 
 # send_message_to_user(): Function that does the work of sending messages back
 #   to the user by way of the XMPP bridge.  Takes one argument, the message to
@@ -182,16 +184,18 @@ def send_message_to_user(message):
 #   requested.  Takes no args.  Returns nothing.
 def online_help():
     reply = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
-    reply = reply + """I am... send me a message that looks something like this:\n\n"""
-    reply = reply + bot_name + ", [command, synonym, synonym...] args...\n\n"
-    reply = reply + bot_name + ", [command, synonym, synonym...] args...\n\n"
-    reply = reply + bot_name + ", [command, synonym, synonym...] args...\n\n"
+    reply = reply + "I am a bot which interfaces with a temperature and/or humidity sensor directly connected to the system I'm running on.  My configuration file says that I am physically located at %s." % location
+    reply = reply + "Send me a message that looks something like this:\n\n"
+    reply = reply + bot_name + ", [temperature, temp].\n\n"
+    reply = reply + bot_name + ", [humidity, relative humidity]\n\n"
+    reply = reply + bot_name + ", [location]\n\n"
     send_message_to_user(reply)
     return
 
 # centigrade_to_fahrenheit():  Function that takes the current temperature
 #   from the environment sensor in degrees Centigrade and converts it to
 #   degrees Fahrenheit.
+#   Implemented this way so it's obvious what the conversion process is.
 def centigrade_to_fahrenheit(temperature):
     fahrenheit = (float(temperature) * 9/5) + 32.0
     return(fahrenheit)
@@ -199,9 +203,27 @@ def centigrade_to_fahrenheit(temperature):
 # centigrade_to_kelvin(): Function that takes the current temperature from
 #   the environment sensor in degrees Centigrade and converts it to degrees
 #   Kelvin.
+#   Implemented this way so it's obvious what the conversion process is.
 def centigrade_to_kelvin(temperature):
     kelvin = float(temperature) + 273.15
     return(kelvin)
+
+# get_temperature(): Helper function that queries the temperature sensor and
+#   returns the value in degrees per the configured scale.  The configured
+#   temperature measurement scale is set in the global context, so all we
+#   need to worry about is the number.
+def get_temperature():
+    temperature = sensor.temperature
+    if scale == "fahrenheit":
+        temperature = celsius_to_fahrenheit(temperature)
+    if scale == "kelvin":
+        temperature = celsius_to_kelvin(temperature)
+    return(temperature)
+
+# get_temperature(): Helper function that queries the humidity sensor and
+#   returns the value in percent relative humidity.
+def get_humidity():
+    return(sensor.relative_humidity)
 
 # Core code...
 # Set up the command line argument parser.
@@ -270,22 +292,26 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
-# Parse the rest of the configuration file...
+# Configure the desired temperature scale.
 scale = config.get("DEFAULT", "scale")
 if args.scale:
     scale = args.scale
 scale = scale.lower()
 
+# Configure the node's physical location, from the config file.
+location = config.get("DEFAULT", "location")
+
 # Debugging output, if required.
 logging.info("Everything is set up.")
-logging.debug("Values of configuration variables as of right now:")
-logging.debug("Configuration file: " + config_file)
-logging.debug("Server to report to: " + server)
-logging.debug("Message queue to report to: " + message_queue)
-logging.debug("Bot name to respond to search requests with: " + bot_name)
-logging.debug("Time in seconds for polling the message queue: " +
+logging.debug("Values of configuration variables on startup:")
+logging.debug("Configuration file: %s" % config_file)
+logging.debug("Server to report to: %s" % server)
+logging.debug("Message queue to report to: %s" % message_queue)
+logging.debug("Bot name to respond to search requests with: %s" % bot_name)
+logging.debug("Time in seconds for polling the message queue: %s" %
     str(polling_time))
 logging.debug("Temperature scale: %s" % scale)
+logging.debug("Configured location string of the node: %s" % location)
 
 # Try to contact the XMPP bridge.  Keep trying until you reach it or the
 # system shuts down.
@@ -330,17 +356,11 @@ if sensor.calibrate():
 else:
     logging.debug("Sensor calibration failed.")
 
-# MOOF MOOF MOOF - Split this off into two separate functions.
 # Send the initial environment stats to the user.
-temperature = sensor.temperature
-if scale == "fahrenheit":
-    temperature = celsius_to_fahrenheit(temperature)
-if scale == "kelvin":
-    temperature = celsius_to_kelvin(temperature)
 send_message_to_user("The current temperature is %0.1f degrees %s." %
-    (temperature, scale.capitalize()))
+    (get_temperature(), scale.capitalize()))
 send_message_to_user("The current relative humidity is %0.1f %%." %
-    (sensor.relative_humidity))
+    get_humidity())
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -348,7 +368,7 @@ logging.debug("Entering main loop to handle requests.")
 while True:
     user_command = None
 
-    # Check the message queue for index requests.
+    # Check the message queue for commands.
     try:
         logging.debug("Contacting message queue: " + message_queue)
         request = requests.get(message_queue)
@@ -368,11 +388,12 @@ while True:
         user_command = user_command["command"]
 
         # Parse the user command.
-        parsed_command = parse_...(user_command)
+        parsed_command = parse_command(user_command)
 
         # If the parsed command comes back None (i.e., it wasn't well formed)
         # throw an error and bounce to the top of the loop.
         if not parsed_command:
+            send_message_to_user("I'm sorry, that query didn't match anything I understand.")
             time.sleep(float(polling_time))
             continue
 
@@ -382,21 +403,22 @@ while True:
             online_help()
             continue
 
-        # Tell the user what the bot is about to do.
-        reply = "Doing the thing.  Please stand by."
-        send_message_to_user(reply)
-        parsed_command = do_the_thing(parsed_command)
-
-        # If something went wrong...
-        if not parsed_command:
-            logging.warning("Something went wrong with...")
-            reply = "Something went wrong with..."
-            send_message_to_user(reply)
+        # The user is requesting a local temperature reading.
+        if parsed_command.lower() == "temperature":
+            send_message_to_user("The current temperature is %0.1f degrees %s."
+                % (get_temperature(), scale.capitalize()))
             continue
 
-        # Reply that it was successful.
-        reply = "Tell the user that it was successful."
-        send_message_to_user(reply)
+        # The user is requesting a local relative humidity reading.
+        if parsed_command.lower() == "humidity":
+            send_message_to_user("The current relative humidity is %0.1f %%." %
+                get_humidity())
+            continue
+
+        # The user is requesting a location check.
+        if parsed_command.lower() == "location":
+            send_message_to_user("The device is configured for the location %s." % location)
+            continue
 
     # Message queue not found.
     if request.status_code == 404:
