@@ -106,6 +106,8 @@ def parse_...(user_command):
     user_command = user_command.strip(",")
     user_command = user_command.strip(".")
     user_command = user_command.strip("'")
+    user_command = user_command.strip("?")
+    user_command = user_command.strip("!")
 
     # If the user command is empty (i.e., nothing in the queue) return None.
     if "no commands" in user_command:
