@@ -69,6 +69,9 @@ A bot that sends URLs given to it to the web indexing and archival sites listed 
 ## [web_search_bot/](web_search_bot/)
 A bot that periodically polls its message queue on the XMPP bridge looking for search requests.  It carries out those web search requests by relaying them to a copy of [Searx](https://github.com/asciimoo/searx), extracts the results, and either sends them back to you via XMPP or to an arbitrary e-mail address.  One can in theory point it any Searx instance out there and get useful results instantly.
 
+## [environment-sensor-raspbian/](environment-sensor-raspbian/)
+A bot that polls a locally attached temperature/humidity sensor like the [AHT20 from Adafruit](https://www.adafruit.com/product/4566) (it's the only one I have right now - pull requests welcome) when requested and tells the user what the temperature or relative humidity are in the vicinity of the sensor.  Not only is this one of my covid-19 projects but I also need to keep an eye on the server rack in my office these days.. eventually I'll build a 'real' embedded one but that'll have to wait a bit.  Please note that this project might require a bit of soldering on your part, and it's only a prototype.  I have plans to add continual monitoring to it but haven't gotten around to it yet.
+
 # HOWTO
 
 ## Get an account on an XMPP server
