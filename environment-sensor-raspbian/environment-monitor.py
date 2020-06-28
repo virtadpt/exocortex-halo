@@ -393,7 +393,6 @@ while True:
         # If the parsed command comes back None (i.e., it wasn't well formed)
         # throw an error and bounce to the top of the loop.
         if not parsed_command:
-            send_message_to_user("I'm sorry, that query didn't match anything I understand.")
             time.sleep(float(polling_time))
             continue
 
