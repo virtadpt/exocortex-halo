@@ -190,7 +190,7 @@ def online_help():
     reply = reply + "I am a bot which interfaces with a temperature and/or humidity sensor directly connected to the system I'm running on.  My configuration file says that I am physically located at %s." % location
     reply = reply + "Send me a message that looks something like this:\n\n"
     reply = reply + bot_name + ", [temperature, temp].\n\n"
-    reply = reply + bot_name + ", [humidity, relative humidity]\n\n"
+    reply = reply + bot_name + ", [humidity]\n\n"
     reply = reply + bot_name + ", [location]\n\n"
     send_message_to_user(reply)
     return
