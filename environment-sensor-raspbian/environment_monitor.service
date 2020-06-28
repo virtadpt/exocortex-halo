@@ -1,0 +1,14 @@
+[Unit]
+Description=Exocortex environment monitoring bot
+After=xmpp_bridge.service
+Wants=xmpp_bridge.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/environment-sensor-raspbian/
+ExecStart=%h/exocortex-halo/environment-sensor-raspbian/run.sh
+Restart=always
+
+[Install]
+WantedBy=default.target
+
