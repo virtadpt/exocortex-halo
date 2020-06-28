@@ -152,7 +152,7 @@ def parse_command(user_command):
 
     # User asked the construct to return the local environment's relative
     # humidity.
-    if (words[0] == "humidity") or (words[0] == "relative humidity"):
+    if (words[0] == "humidity"):
         logging.info("Got a token that suggests that this is a local humidity query.")
         return("humidity")
 
