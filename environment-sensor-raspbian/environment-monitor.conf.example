@@ -13,7 +13,7 @@ loglevel = info
 # How often to poll the message queue for orders.  Defaults to 30 seconds.
 # polling_time = 30
 
-# Fahrenheit, Celsius, Kelvin?
+# Fahrenheit, Celsius, Centigrade, Kelvin?
 # Defaults to Fahrenheit.
 scale = fahrenheit
 

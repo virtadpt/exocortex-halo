@@ -25,7 +25,8 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# -
+# - Add continuous temperature and humidity monitoring code, like I have in
+#   Systembot.
 
 # Load modules.
 import adafruit_ahtx0
@@ -220,6 +221,9 @@ def get_temperature():
         temperature = centigrade_to_fahrenheit(temperature)
     if scale == "kelvin":
         temperature = centigrade_to_kelvin(temperature)
+    if scale == "centigrade":
+        # Celsius is the same as Centigrade.
+        pass
     return(temperature)
 
 # get_temperature(): Helper function that queries the humidity sensor and
@@ -244,7 +248,7 @@ argparser.add_argument("--polling", action="store", help="Default: 30 seconds")
 
 # Temperature scale the user wants to use.
 argparser.add_argument("--scale", action="store", default="fahrenheit",
-    help="Possible temperature scales: fahrenheit, celsius, kelvin")
+    help="Possible temperature scales: fahrenheit, celsius, centigrade, kelvin")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
