@@ -31,7 +31,7 @@
 import adafruit_ahtx0
 import argparse
 import board
-import ConfigParser
+import configparser
 import json
 import logging
 import os

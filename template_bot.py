@@ -27,7 +27,7 @@
 
 # Load modules.
 import argparse
-import ConfigParser
+import configparser
 import json
 import logging
 import os
