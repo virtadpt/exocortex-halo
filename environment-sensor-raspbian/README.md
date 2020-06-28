@@ -27,12 +27,4 @@ Included a .service file (`environment_monitor.service`) in case you want to use
 [pi @ audra ~] (3) $ ps aux | grep [e]nvironment
 pi        1865 30.1  3.2  24408 16028 pts/2    S+   15:22   0:03 python3 ./environment-monitor.py
 ```
-
-```
-[drwho@windbringer download_bot]$ ls -alF ~/.config/systemd/user/default.target.wants/
-total 8
-drwxr-xr-x 2 drwho drwho 4096 Jan 26 14:16 ./
-drwxr-xr-x 3 drwho drwho 4096 Jan 26 14:15 ../
-lrwxrwxrwx 1 drwho drwho   52 Jan 26 14:16 download_bot.service -> /home/drwho/.config/systemd/user/download_bot.service
-```
 * Ensure that systemd in --user mode will start on boot and run even when you're not logged in: `loginctl enable-linger <your username here>`
