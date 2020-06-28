@@ -12,14 +12,16 @@
 
 # License: GPLv3
 
+# v1.3 - Updated some comments and boilerplate.
+#      - Changed ConfigParser to configparser, per Python 3 and PEP-8.
 # v1.2 - Changed logging.warn() to logging.warning().
-#       - Reworked the startup logic so that being unable to immediately
-#       connect to either the message bus or the intended service is a
-#       terminal state.  Instead, it loops and sleeps until it connects and
-#       alerts the user appropriately.
-#       - Changed logger to logging.
+#      - Reworked the startup logic so that being unable to immediately
+#      connect to either the message bus or the intended service is a
+#      terminal state.  Instead, it loops and sleeps until it connects and
+#      alerts the user appropriately.
+#      - Changed logger to logging.
 # v1.1 - Updated template to look more like the code I have in production.
-#       - Added the facility for user-defined output.
+#      - Added the facility for user-defined output.
 # v1.0 - Initial release.
 
 # TO-DO:
