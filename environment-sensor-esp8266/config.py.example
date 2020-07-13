@@ -1,0 +1,13 @@
+# Configuration file for whatever Python code you want to run.  It's regular
+# Python but treated as a module with a bunch of constants it.  Upload it
+# to the microcontroller with ampy (https://github.com/scientifichackers/ampy).
+
+# How long to sleep in between failed network connection attempts.
+delay = 5
+
+# ESSID of the wireless network to connect to.
+network = "Cyberdelia-Guest"
+
+# Password for the network.
+password = "LoveSexSecretGod"
+
