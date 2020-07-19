@@ -13,6 +13,7 @@
 # v4.3 - Fixed a bug in Fahrenheit to Centigrade conversion.  Oops.
 #       - Added a utility function get_disk_space(), which returns the amount
 #       of disk space used by a mount point.
+#       - Fixed a bug in which disk space usage alerts didn't get rounded off.
 # v4.2 - Added support for getting the local date and time.
 #       - Added OpenWRT support for local date and time.
 # v4.1 - Added support for OpenWRT with a separate module.
@@ -280,7 +281,7 @@ def check_disk_usage(disk_usage_counter, time_between_alerts, status_polling,
             continue
         try:
             if disk_space_free[disk] > disk_usage:
-                message = message + "WARNING: Disk device " + disk + " has " + str(100.0 - disk_space_free[disk]) + "% of its capacity left.\n"
+                message = message + "WARNING: Disk device " + disk + " has " + str(round(100.0 - disk_space_free[disk], 2)) + "% of its capacity left.\n"
         except:
                 message = message + "NOTICE: Storage usage monitoring is not yet implemented for storage device " + disk + ".\n"
 

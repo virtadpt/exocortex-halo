@@ -39,7 +39,7 @@ i2c.scan()
 # i2c.scan() value      hex value      device
 # ----------------      ---------      ------
 # I2C address 56        0x38           AHT20 temperature/humidity sensor
-# I2C address 60        0x38           AHT20 temperature/humidity sensor
+# I2C address 60        0x3c           SSD1306 monochrome OLED
 
 # Initialize the display.  We're going to turn it all the way on, and then all
 # the way off to show that it works.
