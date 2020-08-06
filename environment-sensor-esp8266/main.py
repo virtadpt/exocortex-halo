@@ -61,11 +61,12 @@ else:
 # Calibrate the AHT20 sensor.
 response = None
 response = i2c.writeto(aht20_device_id, calibrate_command)
-print("Value of response: %s" % response)
+print("Value of response to calibration command: %s" % response)
 
 # We do this in a loop because it can take a while.
 while True:
     status = i2c.readfrom(aht20_device_id, 1)
+    print("Status while inside loop: %s" % status)
 
     # If the device is still running its calibration sequence, let it.
     if status == status_busy:
@@ -84,9 +85,10 @@ while True:
     print("I have no idea what happened.  Returned status: %s" % status)
     sys.exit(1)
 
+print("Burp.")
+
 # Blank the display.
 
 # Okay, let's do this.
-while True
-    
-    time.sleep(config.delay)
+#while True
+    #time.sleep(config.delay)
