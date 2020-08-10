@@ -15,6 +15,7 @@
 
 # License: GPLv3
 
+# v5.4 - Pulled out search category code.  It never worked right.
 # v5.3 - Added some new commands to the parser to implement searching in
 #       specific Searx categories.
 #       - Added code to pull the list of known categories from Searx.
@@ -182,17 +183,6 @@ def online_help():
     reply = reply + globals.bot_name + ", (list (search)) engines\n\n"
     reply = reply + "I can run searches using specific search engines:\n\n"
     reply = reply + globals.bot_name + ", search <search engine shortcode> for <search request...>\n\n"
-    globals.send_message_to_user(globals.server, reply)
-
-    # Now let's handle the "search categories" case.
-    reply = "I can also run searches based upon different categories.  The\n"
-    reply = reply + "categories I support are:\n\n"
-    reply = reply + ", ".join(category for category in globals.search_categories) + "\n\n"
-    reply = reply + "To list the search categories:\n\n"
-    reply = reply + globals.bot_name + ", list (search) categories\n\n"
-    reply = reply + "To search in a particular category:\n\n"
-    reply = reply + globals.bot_name + ", search <category> for top <n> hits for <search request...>\n\n"
-    reply = reply + ""
     globals.send_message_to_user(globals.server, reply)
     return
 
@@ -366,14 +356,12 @@ while True:
         logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
         time.sleep(float(polling_time))
 
-# Query the Searx instance and get its list of enabled search engines and
-# categories.
+# Query the Searx instance and get its list of enabled search engines.
 while True:
     try:
         temp_searx = "/".join(searx.split('/')[0:-1]) + "/config"
         request = requests.get(temp_searx)
         globals.search_engines = request.json()["engines"]
-        globals.search_categories = request.json()["categories"]
         break
     except:
         globals.send_message_to_user(globals.server, "Unable to contact Searx instance! Tried to contact configuration URL %s." % str(temp_searx))
@@ -384,8 +372,6 @@ for i in globals.search_engines:
     if not bool(i["enabled"]):
         globals.search_engines.remove(i)
 logging.debug("Enabled search engines: %s" % str(globals.search_engines))
-logging.debug("Search categories Searx knows about: %s"
-    % str(globals.search_categories))
 
 # Go into a loop in which the bot polls the configured message queue with each
 # of its configured names to see if it has any search requests waiting for it.
@@ -447,15 +433,6 @@ while True:
             reply = reply + "Shortcode\t\tSearch engine name\n"
             for i in globals.search_engines:
                 reply = reply + i["shortcut"] + "\t\t" + i["name"].title() + "\n"
-            globals.send_message_to_user(globals.server, reply)
-            continue
-
-        # Test to see if the user requested a list of search categories.  If
-        # so, assemble a response, send it back to the user, and restart the
-        # loop.
-        if (str(number_of_results).lower() == "categories"):
-            reply = "These are the search categories I know about:\n"
-            reply = reply + ", ".join(category for category in globals.search_categories)
             globals.send_message_to_user(globals.server, reply)
             continue
 

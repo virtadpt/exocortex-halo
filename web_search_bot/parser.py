@@ -76,31 +76,6 @@ for_command = pp.Optional(pp.CaselessLiteral("for"))
 list_command = pp.CaselessLiteral("list")
 engines_command = pp.CaselessLiteral("engines")
 
-# (list) (search) categories
-categories_command = pp.CaselessLiteral("categories")
-
-# Categories
-# &categories=general
-category_everything_command = pp.CaselessLiteral("everything").setResultsName("category")
-category_general_command = pp.CaselessLiteral("general").setResultsName("category")
-# &categories=files
-category_files_command = pp.CaselessLiteral("files").setResultsName("category")
-# &categories=images
-category_images_command = pp.CaselessLiteral("images").setResultsName("category")
-# &categories=it
-category_it_command = pp.CaselessLiteral("it").setResultsName("category")
-# &categories=map
-category_map_command = pp.CaselessLiteral("map").setResultsName("category")
-category_maps_command = pp.CaselessLiteral("maps").setResultsName("category")
-# &categories=music
-category_music_command = pp.CaselessLiteral("music").setResultsName("category")
-# &categories=news
-category_news_command = pp.CaselessLiteral("news").setResultsName("category")
-# &categories=science
-category_science_command = pp.CaselessLiteral("science").setResultsName("category")
-# &categories=videos
-category_science_command = pp.CaselessLiteral("videos").setResultsName("category")
-
 # make_search_term(): Function that takes a string of the form "foo bar baz"
 #   and turns it into a URL encoded string "foo+bar+baz", which is then
 #   returned to the calling method.
@@ -266,76 +241,6 @@ def is_enabled_engine(engine):
             return "!" + i["shortcut"]
     return None
 
-# parse_list_categories(): Function that matches whenever it encounters the
-#   phrase "list (search) categories" in an input string.  Returns "categories"
-#   for the number of search terms, one for the search string, and None for
-#   the destination e-mail.
-def parse_list_categories(request):
-    logging.debug("Entered function parse_list_categories().")
-    command = list_command + pp.Optional(search_command) + categories_command
-    try:
-        parsed_command = command.parseString(request)
-        return("categories", None, None)
-    except pp.ParseException as x:
-        logging.info("No match: {0}".format(str(x)))
-        return (None, None, None)
-
-# parse_search_category_request(): Function that matches whenever it encounters
-#   a search request of the form "search <category> (for) top <n> hits
-#   for <foo>."
-def parse_search_category_request(request):
-    logging.debug("Entered function parse_search_category_request().")
-    #command = search_command + category_files_command
-    #command = command + for_command + top_command + results_count
-    #command = command + hitsfor_command
-    #command = command + pp.Group(search_terms).setResultsName("searchterms")
-
-    command = None
-    number_of_search_results = 10
-    category = ""
-    searchterms = []
-
-    logging.debug("Value of globals.search_categories: %s" % globals.search_categories)
-
-    for i in globals.search_categories:
-        logging.debug("Trying category %s." % i)
-        command = search_command
-        category_command = pp.CaselessLiteral(i).setResultsName("category")
-
-        # Assemble the search command custom for this iteration of the loop.
-        # The process is unrolled to make it easier to understand, and thus
-        # maintain later.
-        command = command + category_command
-        command = command + for_command
-        # There has to be a better way to do this.  I haven't figured it out
-        # yet, though.
-        command = command + pp.Optional(top_command)
-        command = command + pp.Optional(results_count)
-        command = command + pp.Optional(hitsfor_command)
-        command = command + pp.Group(search_terms).setResultsName("searchterms")
-
-        # See if the newly assembled command matches.
-        try:
-            parsed_command = command.parseString(request)
-
-            # Extract the specifics.
-            number_of_search_results = word_and_number(parsed_command["count"])
-            search_term = make_search_term(parsed_command["searchterms"])
-            category = parsed_command["category"]
-
-            # Append the search category to the search term.
-            search_term = search_term + "&categories=" + i
-
-            # Yup.
-            return (number_of_search_results, search_term, "XMPP")
-        except pp.ParseException as x:
-            # Nope.
-            logging.debug("Category %s didn't work." % i)
-
-    # Trap case: No categories matched.
-    logging.info("No categories matched.")
-    return (None, None, None)
-
 # parse_search_request(): Takes a string and figures out what kind of search
 #   request the user wants.  Requests are something along the form of "top ten
 #   hits for foo" or "search Tor for bar".  Returns the number of results to
@@ -392,18 +297,6 @@ def parse_search_request(search_request):
     (number_of_search_results, search_term, email_address) = parse_specific_search(search_request)
     if number_of_search_results and (email_address == "XMPP"):
         logging.info("The user has requested a specific search: " + str(search_term))
-        return (number_of_search_results, search_term, "XMPP")
-
-    # Attempt to parse a "list categories" request.
-    (number_of_search_results, search_term, email_address) = parse_list_categories(search_request)
-    if number_of_search_results == "categories":
-        logging.info("The user has requested a list of search categories.")
-        return ("categories", None, None)
-
-    # Attempt to parse a "search <category> for" search request.
-    (number_of_search_results, search_term, email_address) = parse_search_category_request(search_request)
-    if number_of_search_results and (email_address == "XMPP"):
-        logging.info("The user has sent the search term " + str(search_term))
         return (number_of_search_results, search_term, "XMPP")
 
     # Fall-through - this should happen only if nothing at all matches.

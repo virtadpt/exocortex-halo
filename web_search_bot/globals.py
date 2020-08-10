@@ -44,9 +44,6 @@ bot_name = ""
 # Search engines Searx is configured for.
 search_engines = []
 
-# Search categories.
-search_categories = []
-
 # Functions.
 # send_message_to_user(): Function that does the work of sending messages back
 # to the user by way of the XMPP bridge.  Takes two arguments, the server to
