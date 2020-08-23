@@ -13,6 +13,8 @@
 
 # License: GPLv3
 
+# v1.1 - Fixed a bug in which mailing search results was broken.  This
+#   happened when I refuctored the command parser into a separate file.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -44,12 +46,6 @@ numbers = { "one":1, "two":2, "three":3, "four":4, "five":5, "six":6,
     "forty-two":42, "forty-three":43, "forty-four":44, "forty-five":45,
     "forty-six":46, "forty-seven":47, "forty-eight":48, "forty-nine":49,
     "fifty":50 }
-
-# Loglevel for the bot.
-#loglevel = logging.INFO
-
-# Default e-mail address to send search results to.
-default_email = ""
 
 # Parser primitives.
 # We define them up here because they'll be re-used over and over.
@@ -177,7 +173,12 @@ def parse_and_email_results(request):
         if "dest" in list(parsed_command.keys()):
             destination_address = parsed_command["dest"]
         else:
-            destination_address = default_email
+            destination_address = "default_email"
+
+        logging.debug("number_of_search_results: %s" % number_of_search_results)
+        logging.debug("search_term: %s" % search_term)
+        logging.debug("destination_address: %s" % destination_address)
+
         return (number_of_search_results, search_term, destination_address)
     except pp.ParseException as x:
         logging.info("No match: {0}".format(str(x)))
@@ -287,9 +288,10 @@ def parse_search_request(search_request):
 
     # Attempt to parse an "email results" request.
     (number_of_search_results, search_term, email_address) = parse_and_email_results(search_request)
-    if number_of_search_results and ("@" in email_address):
-        logging.info("The user has requested that search results for " + str(search_term) + " be e-mailed to " + email_address + ".")
-        return (number_of_search_results, search_term, email_address)
+    if number_of_search_results:
+        if ("@" in email_address) or (email_address == "default_email"):
+            logging.info("The user has requested that search results for " + str(search_term) + " be e-mailed to " + email_address + ".")
+            return (number_of_search_results, search_term, email_address)
 
     # Attempt to parse a search for a specific engine.  If it works, prepend
     # the string "!<search shortcode>" so that Searx knows to search on one

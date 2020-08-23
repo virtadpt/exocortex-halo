@@ -15,6 +15,8 @@
 
 # License: GPLv3
 
+# v5.5 - Fixed a bug in which mailing search results didn't work.  I broke
+#   this when I pulled the comand parser into a separate file.
 # v5.4 - Pulled out search category code.  It never worked right.
 # v5.3 - Added some new commands to the parser to implement searching in
 #       specific Searx categories.
@@ -415,7 +417,10 @@ while True:
         if destination_email_address == "XMPP":
             logger.debug("Sending search results back via XMPP.")
 
-        # MOOF MOOF MOOF
+        if destination_email_address == "default_email":
+            destination_email_address = default_email
+            logger.debug("Sending search results to the default e-mail address.")
+
         if destination_email_address:
             logger.debug("E-mail address to send search results to: " +
                 str(destination_email_address))
