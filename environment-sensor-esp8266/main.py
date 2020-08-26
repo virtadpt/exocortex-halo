@@ -11,17 +11,25 @@ from machine import I2C
 # Pull in the config file.
 import config
 
+# Variables.
 # Generic response to hardware call variable.  We need to be careful with
 # memory usage.
 response = None
 
-# Status from the I2C device.
-status = None
+# Handle to a display object.
+display = None
 
-# Initialize the I2C bus.
-i2c = I2C(sda=machine.Pin(4), scl=machine.Pin(5))
-response = i2c.scan()
-print("I2C devices found on the bus: %s" % response)
+# Measurement from the sensor.
+measurement = None
+
+# Data split out of the sensor's measurement.
+humidity = None
+temperature = None
+
+# Constants.
+# Required delays (in seconds, because they're specified as ms in the docs).
+state_delay = 0.04
+measurement_delay = 0.075
 
 # Repeating documentation from boot.py
 # I2C addresses are assigned by manufacturers so they're static.  When scanning
@@ -37,58 +45,114 @@ print("I2C devices found on the bus: %s" % response)
 # the code more literate.
 aht20_device_id = 0x38
 
-# I2C bus status bytes are standardized, also.
-status_busy = b'\x80'
-status_calibrated = b'\x08'
-
 # I2C commands, as constants to make them easier to work with (and document
-
-# Status from the I2C device.# them).
-reset_command = b'\xba'
+# them.
+initialize_command = b'\xbe\x08\x00'
 calibrate_command = b'\xe1\x08\x00'
-read_command = b'\xac'
+reset_command = b'\xba'
+measure_command = b'\xac\x33\x00'
+read_command = b'\x71'
 
-# Reset the AHT20 device.
+# The sensor always returns six (6) bytes.  This eliminates magick numbers.
+measurement_bytes = 6
+
+# Bit manipulation constant.  Expressed as math so it matches the datasheet.
+bit_manipulation_constant = 2**20
+
+# Functions.
+# Clears the display.
+def blank_display(display):
+    display.fill(0)
+    display.show()
+    print("Display cleared.")
+    return()
+
+# Core code.
+# Build a display object.
+display = ssd1306.SSD1306_I2C(128, 32, i2c)
+
+# Initialize the AHT20 device.
 response = None
-response = i2c.writeto(aht20_device_id, reset_command)
-time.sleep(config.delay)
+response = i2c.writeto(aht20_device_id, initialize_command)
+time.sleep(state_delay)
 if response:
-    print("I2C device %s has been successfully reset." % (aht20_device_id))
+    print("I2C device %s successfully initialized." % (aht20_device_id))
 else:
-    print("I2C device %s was not successfully reset." % (aht20_device_id))
+    print("I2C device %s not successfully initialized." % (aht20_device_id))
     sys.exit(1)
 
 # Calibrate the AHT20 sensor.
 response = None
 response = i2c.writeto(aht20_device_id, calibrate_command)
+time.sleep(state_delay)
 print("Value of response to calibration command: %s" % response)
 
-# We do this in a loop because it can take a while.
-while True:
-    status = i2c.readfrom(aht20_device_id, 1)
-    print("Status while inside loop: %s" % status)
-
-    # If the device is still running its calibration sequence, let it.
-    if status == status_busy:
-        print("Calibration sequence running.")
-        time.sleep(config.delay)
-        continue
-
-    # If the device is done calibrating itself, bounce.
-    if status == status_calibrated:
-        # Do something on the display here.
-        print("The device is now calibrated: %s" % status)
-        break
-
-    # If the device returned an undocumented value, ABEND.
-    # Do something on the display here.
-    print("I have no idea what happened.  Returned status: %s" % status)
-    sys.exit(1)
-
-print("Burp.")
-
 # Blank the display.
+blank_display(display)
 
 # Okay, let's do this.
-#while True
-    #time.sleep(config.delay)
+while True:
+    # Belt and suspenders.
+    measurement = None
+    humidity_data = None
+    temperature_data = None
+
+    # Tell the sensor to take a measurement.
+    response = i2c.writeto(aht20_device_id, measure_command)
+    print("Requested measurement.  Got %s from the i2c bus." % response)
+
+    # Get the measurement from the sensor.
+    response = i2c.writeto(aht20_device_id, read_command)
+    print("Requested results.  Got %s from the i2c bus." % response)
+
+    # Structure of measurement (in bytes)
+    # [status]  [humidity data: 2] [humidity temperature] [temperature data: 2]
+    measurement = i2c.readfrom(aht20_device_id, measurement_bytes)
+    print("Bytes from sensor: %s" % measurement)
+
+    # Dice up the measurement.
+    # status = measurement[0]
+    # Source: https://github.com/adafruit/Adafruit_CircuitPython_AHTx0/blob/master/adafruit_ahtx0.py
+    humidity = (measurement[1] << 12 | measurement[2] << 4 | measurement[3] >> 4)
+    temperature = (((measurement[3] & 0xf) << 16) | measurement[4] << 8 | measurement[5])
+    print("humidity: %s" % humidity)
+    print("temperature %s" % temperature)
+
+    # Calculate the humidity.
+    humidity = (humidity * 100) / bit_manipulation_constant
+    humidity = round(humidity, 2)
+    print("Humidity: %s%% relative" % humidity)
+
+    # Calculate the temperature (in Centigrade by default).
+    temperature = ((temperature * 200.0) / bit_manipulation_constant) - 50.0
+    print("Temperature %s degrees Centigrade." % temperature)
+
+    # Fahrenheit?
+    if config.temperature_scale == "f":
+        temperature = ((temperature * 9) / 5) + 35.0
+        print("Temperature %s degrees Fahrenheit." % temperature)
+
+    # Kelvin?
+    if config.temperature_scale == "k":
+        temperature = temperature + 273.15
+        print("Temperature %s degrees Kelvin." % temperature)
+
+    # Round to 2 decimal places, just because.
+    temperature = round(temperature, 2)
+
+    # Convert figures to strings to make life easier.
+    humidity = str(humidity)
+    temperature = str(temperature)
+
+    # Update the display.
+    display.text(humidity + "% rH", 0, 0)
+    display.text(temperature + " deg " + config.temperature_scale.upper(), 0, 10)
+    display.show()
+
+    # MOOF MOOF MOOF - send the measurements to my exocortex.
+
+    # Sleep for a while.
+    time.sleep(config.delay)
+    blank_display(display)
+
+# Fin.

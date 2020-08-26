@@ -49,9 +49,6 @@ print("Done.")
 # the way off to show that it works.
 print("Initializing the sensor's display.")
 display = ssd1306.SSD1306_I2C(128, 32, i2c)
-display.fill(1)
-display.show()
-time.sleep(1)
 display.fill(0)
 display.show()
 print("Display initialized.")
@@ -105,13 +102,14 @@ if wifi.isconnected():
     ifconfig = wifi.ifconfig()
     display.fill(0)
     display.text("Wifi active!", 0, 0)
-    display.text("Network: " + config.network, 0, 10)
-    display.text("IP: " + ifconfig[0], 0, 20)
+    display.text(config.network, 0, 10)
+    display.text(ifconfig[0], 0, 20)
     print("Network: " + config.network)
     print("IP: " + ifconfig[0])
     display.show()
     print("Successfully connected to wifi network %s!" % config.network)
     print("IP address is: %s" % ifconfig[0])
+    time.sleep(config.delay)
 else:
     display.fill(0)
     display.text("Couldn't find", 0, 0)
@@ -124,4 +122,3 @@ else:
 
 # Clean up.
 gc.collect()
-

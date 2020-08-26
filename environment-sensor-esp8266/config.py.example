@@ -11,3 +11,5 @@ network = "Cyberdelia-Guest"
 # Password for the network.
 password = "LoveSexSecretGod"
 
+# Temperature scale: f (fahrenheit), c (celsius), k (kelvin)
+temperature_scale = "f"
