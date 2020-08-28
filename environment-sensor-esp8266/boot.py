@@ -1,4 +1,28 @@
+# -*- coding: utf-8 -*-
+# vim: set expandtab tabstop=4 shiftwidth=4 :
+
+# boot.py: This file started life as the basic boot.py file that comes with
+#   Micropython.  I turned it into a utility to initialize an ESP8266
+#   microcontroller and get it onto a wireless network set in config.py.
+#
+# Temperatures are read in degrees Centigrade from the sensor.  So, they
+# will need to be converted to other scales depending upon what the user
+# has configured.
+#
 # print() statements are for debugging while connected through a serial port.
+
+#   This is part of the Exocortex Halo project
+#   (https://github.com/virtadpt/exocortex-halo/).
+
+# By: The Doctor <drwho at virtadpt dot net>
+#       0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
+
+# License: GPLv3
+
+# v1.0 - Initial release.
+
+# TO-DO:
+# -
 
 # Bare minimum to bootstrap the uc.
 import gc
