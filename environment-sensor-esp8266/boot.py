@@ -5,10 +5,6 @@
 #   Micropython.  I turned it into a utility to initialize an ESP8266
 #   microcontroller and get it onto a wireless network set in config.py.
 #
-# Temperatures are read in degrees Centigrade from the sensor.  So, they
-# will need to be converted to other scales depending upon what the user
-# has configured.
-#
 # print() statements are for debugging while connected through a serial port.
 
 #   This is part of the Exocortex Halo project
@@ -22,7 +18,8 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# -
+# - Make the presence of a display optional.
+# - 
 
 # Bare minimum to bootstrap the uc.
 import gc

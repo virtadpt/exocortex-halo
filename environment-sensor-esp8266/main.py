@@ -1,4 +1,36 @@
-# print() statements are for serial terminal debugging.
+# -*- coding: utf-8 -*-
+# vim: set expandtab tabstop=4 shiftwidth=4 :
+
+# main.py: This file initializes the environment sensor itself (here, an
+#   AHT20 breakout board from Adafruit) and takes temperature and
+#   relative humidity readings every couple of seconds.  It's not done
+#   yet.
+#
+# Temperatures are read in degrees Centigrade from the sensor.  So, they
+# will need to be converted to other scales depending upon what the user
+# has configured.
+#
+# print() statements are for debugging while connected through a serial port.
+#
+# Location of the AHT20 datasheet:
+# https://files.seeedstudio.com/wiki/Grove-AHT20_I2C_Industrial_Grade_Temperature_and_Humidity_Sensor/AHT20-datasheet-2020-4-16.pdf
+#
+# Mirror: https://drwho.virtadpt.net/files/AHT20.pdf
+
+#   This is part of the Exocortex Halo project
+#   (https://github.com/virtadpt/exocortex-halo/).
+
+# By: The Doctor <drwho at virtadpt dot net>
+#       0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
+
+# License: GPLv3
+
+# v1.0 - Initial release.
+
+# TO-DO:
+# - Make SSD1306 support optional.
+# - Add "send sensor readings to a web service" support.
+# - Make "send sensor readings to a web service" support optional.
 
 # Modules for basic operation of the sensor.
 import machine
@@ -118,6 +150,7 @@ while True:
     print("humidity: %s" % humidity)
     print("temperature %s" % temperature)
 
+    # Calculations are all taken from the AHT20 datasheet.
     # Calculate the humidity.
     humidity = (humidity * 100) / bit_manipulation_constant
     humidity = round(humidity, 2)
