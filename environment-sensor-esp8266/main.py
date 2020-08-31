@@ -25,16 +25,15 @@
 
 # License: GPLv3
 
+# v1.1 - Made the presence of a display optional.
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Make SSD1306 support optional.
 # - Add "send sensor readings to a web service" support.
 # - Make "send sensor readings to a web service" support optional.
 
 # Modules for basic operation of the sensor.
 import machine
-import ssd1306
 import sys
 import time
 
@@ -42,6 +41,15 @@ from machine import I2C
 
 # Pull in the config file.
 import config
+
+# Try to import the ssd1306 driver.
+has_display = None
+try:
+    import ssd1306
+    has_display = True
+    print("ssd1306 driver module found.")
+except:
+    print("ssd1306 driver module not found.")
 
 # Variables.
 # Generic response to hardware call variable.  We need to be careful with
@@ -101,7 +109,12 @@ def blank_display(display):
 
 # Core code.
 # Build a display object.
-display = ssd1306.SSD1306_I2C(128, 32, i2c)
+try:
+    display = ssd1306.SSD1306_I2C(128, 32, i2c)
+    print("main.py got the display.")
+except:
+    has_display = False
+    print("No display found.")
 
 # Initialize the AHT20 device.
 response = None
@@ -120,7 +133,8 @@ time.sleep(state_delay)
 print("Value of response to calibration command: %s" % response)
 
 # Blank the display.
-blank_display(display)
+if has_display:
+    blank_display(display)
 
 # Okay, let's do this.
 while True:
@@ -178,14 +192,16 @@ while True:
     temperature = str(temperature)
 
     # Update the display.
-    display.text(humidity + "% rH", 0, 0)
-    display.text(temperature + " deg " + config.temperature_scale.upper(), 0, 10)
-    display.show()
+    if has_display:
+        display.text(humidity + "% rH", 0, 0)
+        display.text(temperature + " deg " + config.temperature_scale.upper(), 0, 10)
+        display.show()
 
     # MOOF MOOF MOOF - send the measurements to my exocortex.
 
     # Sleep for a while.
     time.sleep(config.delay)
-    blank_display(display)
+    if has_display:
+        blank_display(display)
 
 # Fin.

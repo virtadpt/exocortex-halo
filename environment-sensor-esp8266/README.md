@@ -10,7 +10,7 @@ On the development roadmap:
 
 * Send the temperature and relative humidity readings to a [webhook](https://en.wikipedia.org/wiki/Webhook) for processing.
 
-To drive the display, this repository has a copy of Adafruit's [SSD 1306 module for Micropython](https://github.com/adafruit/micropython-adafruit-ssd1306) included with it.  The driver module itself has been checked into this repository because the Git repository has been archived, which means that it could go away without warning.  At the moment I haven't made it optional yet, but that's on the roadmap.
+To drive the display, this repository has a copy of Adafruit's [SSD 1306 module for Micropython](https://github.com/adafruit/micropython-adafruit-ssd1306) included with it.  The driver module itself has been checked into this repository because the Git repository has been archived, which means that it could go away without warning.  The presence of an OLED display is optional.
 
 Why [Micropython](https://micropython.org/)?  Circuitpython [no longer supports](https://learn.adafruit.com/welcome-to-circuitpython/circuitpython-for-esp8266) the ESP8266.
 

@@ -15,18 +15,17 @@
 
 # License: GPLv3
 
+# v1.1 - Made the presence of a display optional.
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Make the presence of a display optional.
-# - 
+# -
 
 # Bare minimum to bootstrap the uc.
 import gc
 import network
 import machine
 import time
-import ssd1306
 import sys
 import uos
 
@@ -35,6 +34,15 @@ from machine import I2C
 
 # Pull in the configuration file.
 import config
+
+# Try to import the ssd1306 driver.
+has_display = False
+try:
+    import ssd1306
+    has_display = True
+    print("ssd1306 driver module found.")
+except:
+    print("ssd1306 driver module not found.")
 
 # Handle to an I2C bus object.
 i2c = None
@@ -68,29 +76,37 @@ print("Done.")
 
 # Initialize the display.  We're going to turn it all the way on, and then all
 # the way off to show that it works.
-print("Initializing the sensor's display.")
-display = ssd1306.SSD1306_I2C(128, 32, i2c)
-display.fill(0)
-display.show()
-print("Display initialized.")
+try:
+    print("Initializing the sensor's display.")
+    display = ssd1306.SSD1306_I2C(128, 32, i2c)
+    display.fill(0)
+    display.show()
+    print("Display initialized.")
+except:
+    has_display = False
+    print("No ssd1306 display found.")
 
 # Tell the user something helpful.
 # We have to micromanage the display.
 # ssd1306.SSD1306_I2C.show("text", horizontal position, vertical position)
-display.text("Sensor online.", 0, 0)
-display.text("Looking for", 0, 10)
-display.text("network...", 10, 20)
-display.show()
+if has_display:
+    display.text("Sensor online.", 0, 0)
+    display.text("Looking for", 0, 10)
+    display.text("network...", 10, 20)
+    display.show()
+else:
+    print("Sensor online.")
 
 # Configure up the wireless interface as a client (it defaults to an access
 # point) and associate with the configured network.
 print("Searching for configured wireless network.")
 wifi = network.WLAN(network.STA_IF)
 if not wifi.active():
-    display.fill(0)
-    display.text("No wifi.", 0, 0)
-    display.text("Trying again.", 0, 10)
-    display.show()
+    if has_display:
+        display.fill(0)
+        display.text("No wifi.", 0, 0)
+        display.text("Trying again.", 0, 10)
+        display.show()
     print("Wifi not online.  Trying again.")
     time.sleep(config.delay)
     sys.exit(1)
@@ -104,10 +120,11 @@ for ap in local_networks:
 print("Networks found: %s" % local_networks)
 
 if bytes(config.network, "utf-8") not in local_networks:
-    display.fill(0)
-    display.text("No network.", 0, 0)
-    display.text("Trying again.", 0, 10)
-    display.show()
+    if has_display:
+        display.fill(0)
+        display.text("No network.", 0, 0)
+        display.text("Trying again.", 0, 10)
+        display.show()
     print("Configured wireless network %s not found.  Trying again." % config.network)
     time.sleep(config.delay)
     sys.exit(1)
@@ -121,22 +138,25 @@ time.sleep(config.delay)
 # This is actually supposed to go to the local display.
 if wifi.isconnected():
     ifconfig = wifi.ifconfig()
-    display.fill(0)
-    display.text("Wifi active!", 0, 0)
-    display.text(config.network, 0, 10)
-    display.text(ifconfig[0], 0, 20)
+    if has_display:
+        display.fill(0)
+        display.text("Wifi active!", 0, 0)
+        display.text(config.network, 0, 10)
+        display.text(ifconfig[0], 0, 20)
     print("Network: " + config.network)
     print("IP: " + ifconfig[0])
-    display.show()
+    if has_display:
+        display.show()
     print("Successfully connected to wifi network %s!" % config.network)
     print("IP address is: %s" % ifconfig[0])
     time.sleep(config.delay)
 else:
-    display.fill(0)
-    display.text("Couldn't find", 0, 0)
-    display.text(config.network, 5, 10)
-    display.text("Rebooting...", 0, 20)
-    display.show()
+    if has_display:
+        display.fill(0)
+        display.text("Couldn't find", 0, 0)
+        display.text(config.network, 5, 10)
+        display.text("Rebooting...", 0, 20)
+        display.show()
     print("Unable to connect to network.")
     time.sleep(config.delay)
     sys.exit(1)
