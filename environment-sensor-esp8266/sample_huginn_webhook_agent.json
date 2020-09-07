@@ -1,0 +1,7 @@
+{
+  "secret": "this is a random string",
+  "expected_receive_period_in_days": "7",
+  "payload_path": ".",
+  "event_headers": "",
+  "event_headers_key": "headers"
+}

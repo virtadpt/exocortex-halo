@@ -6,11 +6,10 @@ At the moment, this project carries out the following tasks:
 * Take temperature and relative humidity readings every couple of seconds
 * Display the readings on the on-board OLED display
 
-On the development roadmap:
+If configured, the sensor code can contact an arbitrary URL with the value of an "Authorization" HTTP request header to send periodic measurements to.  Right now, the monitoring software in `main.py` is hardcoded to send a measurement packet to a
+webhook not more often than every 60 seconds.  I need to figure out a better way of doing this, but for now it works.
 
-* Send the temperature and relative humidity readings to a [webhook](https://en.wikipedia.org/wiki/Webhook) for processing.
-
-To drive the display, this repository has a copy of Adafruit's [SSD 1306 module for Micropython](https://github.com/adafruit/micropython-adafruit-ssd1306) included with it.  The driver module itself has been checked into this repository because the Git repository has been archived, which means that it could go away without warning.  The presence of an OLED display is optional.
+The code in this repository uses the built in ssd1306 module that is part of the Micropython ESP8266 firmware image.
 
 Why [Micropython](https://micropython.org/)?  Circuitpython [no longer supports](https://learn.adafruit.com/welcome-to-circuitpython/circuitpython-for-esp8266) the ESP8266.
 
@@ -32,7 +31,9 @@ How to use:
   * `ampy --port /dev/ttyUSB0 put boot.py`
   * `ampy --port /dev/ttyUSB0 put config.py`
   * `ampy --port /dev/ttyUSB0 put main.py`
-  * `ampy --port /dev/ttyUSB0 put ssd1306.py`
 * Cycle power on the sensor by unplugging it and plugging it back in.
 * After a few seconds, the display will show text as it tries to get on the wireless network you set in `config.py` (remember: The 8266 can only do wifi b, g, and n, so make sure you set the right ESSID!)
 * After the sensor is on the wireless network, it'll initialize the AHT20 sensor and display the current temperature and relative humidity every couple of seconds.
+
+Included in this repository is a [sample webhook agent](sample_huginn_webhook_agent.json) for [Huginn](https://github.com/huginn/huginn) which can accept measurements from sensors running this software.
+
