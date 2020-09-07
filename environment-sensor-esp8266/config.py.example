@@ -13,3 +13,14 @@ password = "LoveSexSecretGod"
 
 # Temperature scale: f (fahrenheit), c (celsius), k (kelvin)
 temperature_scale = "f"
+
+# The webhook to POST data to.
+webhook = "https://server.example.com/"
+
+# An HTTP basic auth string - base64(username:password)
+# This is optional.
+auth = "Basic neverGonnaGiveYouUpNeverGonnaLetYouDown="
+
+# If an API key in a header is needed, specify the name of the header and key
+# below.  This is optional (and a work in progress).
+# header_api_key = "header : key"

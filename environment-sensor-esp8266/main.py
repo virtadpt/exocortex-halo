@@ -25,17 +25,19 @@
 
 # License: GPLv3
 
+# v1.2 - Added "send measurements to an arbitrary URL" functionality.
 # v1.1 - Made the presence of a display optional.
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Add "send sensor readings to a web service" support.
-# - Make "send sensor readings to a web service" support optional.
+# -
 
 # Modules for basic operation of the sensor.
+import gc
 import machine
 import sys
 import time
+import urequests
 
 from machine import I2C
 
@@ -77,6 +79,25 @@ temperature = None
 
 # Handle to a urequests object.
 request = None
+
+# HTTP headers.
+headers = {}
+
+# URL to contact (if configured).
+url = None
+
+# Handle to an HTTP request, for use if configured.
+request = None
+
+# Data to send to the URL.
+measurement = {}
+
+# Used to determine when to send measurements to the webhook (if enabled).
+loop_counter = 0
+
+# How often the sensor sends measurements to the webhook, if enabled.
+# This is hardwired to 60 seconds untill I figure out how to do it right.
+status_polling = 60
 
 # Constants.
 # Required delays (in seconds, because they're specified as ms in the docs).
@@ -144,6 +165,14 @@ response = i2c.writeto(aht20_device_id, calibrate_command)
 time.sleep(state_delay)
 print("Value of response to calibration command: %s" % response)
 
+# Check for the presence of a URL to send measurements to in the config
+# file.
+if config.webhook:
+    print("Going to send measurements to URL %s." % config.webhook)
+if config.auth:
+     print("Got basic auth header %s." % config.auth)
+     headers["Authorization"] = config.auth
+
 # Blank the display.
 if has_display:
     blank_display(display)
@@ -209,7 +238,47 @@ while True:
         display.text(temperature + " deg " + config.temperature_scale.upper(), 0, 10)
         display.show()
 
-    # MOOF MOOF MOOF - send the measurements to my exocortex.
+    # Send the measurements to the configured webhook.
+    if config.webhook:
+        # If it's not time to send a measurement to the webhook, bounce out
+        # of this conditional.
+        if loop_counter < status_polling:
+            print("Not going to send a measurement to the webhook.")
+            print("Incrementing the loop counter.")
+            loop_counter = loop_counter + config.delay
+            print("Loop counter is now %s" % loop_counter)
+            time.sleep(config.delay)
+            if has_display:
+                blank_display(display)
+            continue
+
+        print("Trying to send measurement to the webhook.")
+
+        # Build a new measurement.
+        measurement = {}
+        measurement["stats"] = {}
+        measurement["stats"]["temperature"] = temperature
+        measurement["stats"]["humidity"] = humidity
+        measurement["stats"]["scale"] = config.temperature_scale
+
+        # Send the measurement to the webhook.
+        print("Trying to contact the webhook.")
+        try:
+            request = urequests.post(config.webhook, json=measurement,
+                headers=headers)
+        except:
+            print("Connection attempt failed.")
+        print("HTTP return code: %s" % request.status_code)
+        print("HTTP status: %s" % request.reason)
+
+        # Nullify the request handle.
+        request = None
+
+        # Reset the loop counter.
+        loop_counter = 0
+
+        # Free up some memory because the urequests object is pretty hefty.
+        gc.collect()
 
     # Sleep for a while.
     time.sleep(config.delay)
