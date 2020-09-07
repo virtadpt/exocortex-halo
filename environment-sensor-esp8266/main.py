@@ -51,6 +51,15 @@ try:
 except:
     print("ssd1306 driver module not found.")
 
+# Try to import the urequests (https://github.com/micropython/micropython-lib/tree/master/urequests) module.
+has_requests = False
+try:
+    import urequests as requests
+    has_requests = True
+    print("urequests module found, imported as requests.")
+except:
+    print("Unable to import urequests module.")
+
 # Variables.
 # Generic response to hardware call variable.  We need to be careful with
 # memory usage.
@@ -65,6 +74,9 @@ measurement = None
 # Data split out of the sensor's measurement.
 humidity = None
 temperature = None
+
+# Handle to a urequests object.
+request = None
 
 # Constants.
 # Required delays (in seconds, because they're specified as ms in the docs).

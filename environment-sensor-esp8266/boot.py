@@ -101,6 +101,7 @@ else:
 # point) and associate with the configured network.
 print("Searching for configured wireless network.")
 wifi = network.WLAN(network.STA_IF)
+wifi.active(True)
 if not wifi.active():
     if has_display:
         display.fill(0)
@@ -109,7 +110,6 @@ if not wifi.active():
         display.show()
     print("Wifi not online.  Trying again.")
     time.sleep(config.delay)
-    sys.exit(1)
 
 # This should make sure the wifi nic is awake.
 local_networks = wifi.scan()
