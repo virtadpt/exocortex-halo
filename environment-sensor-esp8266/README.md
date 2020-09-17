@@ -9,6 +9,18 @@ At the moment, this project carries out the following tasks:
 If configured, the sensor code can contact an arbitrary URL with the value of an "Authorization" HTTP request header to send periodic measurements to.  Right now, the monitoring software in `main.py` is hardcoded to send a measurement packet to a
 webhook not more often than every 60 seconds.  I need to figure out a better way of doing this, but for now it works.
 
+The schema of the measurement packet looks like this:
+
+```
+{
+    "stats": {
+        "temperature": 93.0,
+        "humidity": 23,
+        "scale": "f"
+    }
+}
+```
+
 The code in this repository uses the built in ssd1306 module that is part of the Micropython ESP8266 firmware image.
 
 Why [Micropython](https://micropython.org/)?  Circuitpython [no longer supports](https://learn.adafruit.com/welcome-to-circuitpython/circuitpython-for-esp8266) the ESP8266.
