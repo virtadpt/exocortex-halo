@@ -464,7 +464,7 @@ while True:
     # measurement somewhere.
     if webhook:
         logging.debug("Going to send measurement offsite.")
-        send_measurement(get_temperature(), get_humidity(), get_scale())
+        send_measurement(get_temperature(), get_humidity(), scale)
 
     # Reset the user command handle.
     user_command = None
