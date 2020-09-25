@@ -28,3 +28,27 @@ Included a .service file (`environment_monitor.service`) in case you want to use
 pi        1865 30.1  3.2  24408 16028 pts/2    S+   15:22   0:03 python3 ./environment-monitor.py
 ```
 * Ensure that systemd in --user mode will start on boot and run even when you're not logged in: `loginctl enable-linger <your username here>`
+
+If you want to send measurements to an API rail or webhook someplace (say, to [Huginn](https://github.com/huginn/huginn)) you need to uncomment and configure some additional variables in the environment-monitor.conf file:
+
+* `webhook`
+  * URL for an arbitrary webhook.
+  * e.g., https://huginn.example.com/users/1/web_requests/1337/LoveSexSecretGod
+* `webhook_username` and `webhook_password`
+  * HTTP basic auth credentials for the API rail or webhook.
+* `header_api_key`
+  * If the endpoint you're sending the measurements to requires authorization in the form of an HTTP header, configure it here.
+  * e.g., `header_api_key = X-API-Auth-Key : JoeyHardcastleIsStilltheHero`
+  * The bot will split the value at the ':', .strip() each half to get rid of extra whitespace, and send it as a key/value pair in the HTTP headers.
+
+The schema of the measurement packet looks like this:
+
+```
+{
+    "stats": {
+        "temperature": 93.0,
+        "humidity": 23,
+        "scale": "f"
+    }
+}
+```
