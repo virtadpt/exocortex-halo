@@ -22,6 +22,7 @@
 
 # License: GPLv3
 
+# v1.1 - Added "push a measurement to an arbitrary URL" support.
 # v1.0 - Initial release.
 
 # TO-DO:
