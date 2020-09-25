@@ -27,6 +27,8 @@
 # TO-DO:
 # - Add continuous temperature and humidity monitoring code, like I have in
 #   Systembot.
+# - Make the HTTP verb used for "push measurements to a webhook" support
+#   configurable.
 
 # Load modules.
 import adafruit_ahtx0
@@ -94,6 +96,16 @@ group = ""
 
 # Handle to a sensor on the board.
 sensor = None
+
+# URL of a webhook to send measurements to.
+webhook = ""
+
+# HTTP basic auth credentials for the webhook.
+webhook_username = ""
+webhook_password = ""
+
+# Header value with API key if required.
+header_api_key = ""
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -231,6 +243,43 @@ def get_temperature():
 def get_humidity():
     return(sensor.relative_humidity)
 
+# send_measurement(): Helper function that builds a JSON document and
+#   sends it to a configured webhook elsewhere.  Takes as its arguments
+#   a temperature as a floating point value, the relative humidity as a
+#   floating point value, and the temperature scale as a string.  Returns
+#   True if it worked or False if the HTTP(S) request didn't.
+def send_measurement(temperature, humidity, scale):
+
+    request = None
+    headers = {}
+    auth = ()
+
+    # Hash table that holds a measurement.
+    measurement = {}
+    measurement["stats"] = {}
+    measurement["stats"]["temperature"] = temperature
+    measurement["stats"]["humidity"] = humidity
+    measurement["stats"]["scale"] = scale
+
+    # If a HTTP header of some kind is supplied for authentication, split it
+    # and use it.
+    if header_api_key:
+        headers[header_api_key.split(":")[0].strip()] = headers[header_api_key.split(":")[1].strip()]
+
+    # If HTTP auth is configured, set that up.
+    if webhook_username and webhook_password:
+        auth = (webhook_username.strip(), webhook_password.strip())
+
+    # Send the measurement off-device.
+    try:
+        request = requests.post(webhook, headers=headers, auth=auth,
+            data=measurement)
+        logging.debug(request.text)
+        return True
+    except:
+        logging.debug("Unable to transmit measurement.")
+        return False
+
 # Core code...
 # Set up the command line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that interfaces with an environment monitoring peripheral and keeps tabs on the temperature and relative humidty.  It reports to the user over the XMPP bridge.")
@@ -307,6 +356,36 @@ scale = scale.lower()
 # Configure the node's physical location, from the config file.
 location = config.get("DEFAULT", "location")
 
+# Get the webhook URL from the config file, if it's configured.
+try:
+    webhook = config.get("DEFAULT", "webhook")
+    logging.debug("Successfully got a webhook URL.")
+except:
+    logging.debug("No webhook URL configured.  This is optional anyway.")
+    pass
+
+# Get the HTTP basic auth credentials for the webhook, if configured.
+try:
+    webhook_username = config.get("DEFAULT", "webhook_username")
+    logging.debug("Got HTTP auth username for webhook.")
+except:
+    logging.debug("No webhook auth username configured.  This is optional anyway.")
+    pass
+try:
+    webhook_password = config.get("DEFAULT", "webhook_password")
+    logging.debug("Got HTTP auth password for webhook.")
+except:
+    logging.debug("No webhook auth password configured.  This is optional anyway.")
+    pass
+
+# Get an API authentication header from the config file if it exists.
+try:
+    header_api_key = config.get("DEFAULT", "header_api_key")
+    logging.debug("Got API auth header for webhook.")
+except:
+    logging.debug("No auth header for webhook configured.  This is optional anyway.")
+    pass
+
 # Debugging output, if required.
 logging.info("Everything is set up.")
 logging.debug("Values of configuration variables on startup:")
@@ -318,6 +397,14 @@ logging.debug("Time in seconds for polling the message queue: %s" %
     str(polling_time))
 logging.debug("Temperature scale: %s" % scale)
 logging.debug("Configured location string of the node: %s" % location)
+if webhook:
+    logging.debug("Webhook URL: %s" % webhook)
+if webhook_username:
+    logging.debug("Webhook HTTP basic auth username: %s" % webhook_username)
+if webhook_password:
+    logging.debug("Webhook HTTP basic auth password: %s" % webhook_password)
+if header_api_key:
+    logging.debug("Webhook API auth header: %s" % header_api_key)
 
 # Try to contact the XMPP bridge.  Keep trying until you reach it or the
 # system shuts down.
@@ -372,6 +459,14 @@ send_message_to_user("The current relative humidity is %0.1f %%." %
 # of its configured names to see if it has any search requests waiting for it.
 logging.debug("Entering main loop to handle requests.")
 while True:
+
+    # If a webhook URL is configured, that means the user wants to send a
+    # measurement somewhere.
+    if webhook:
+        logging.debug("Going to send measurement offsite.")
+        send_measurement(get_temperature(), get_humidity(), get_scale())
+
+    # Reset the user command handle.
     user_command = None
 
     # Check the message queue for commands.

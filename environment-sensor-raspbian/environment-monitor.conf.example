@@ -20,3 +20,14 @@ scale = fahrenheit
 # The location the sensor is located at.
 location = office
 
+# URL to a webhook to POST measurements to.
+# webhook = https://www.example.com/path/to/webhook
+
+# HTTP basic auth credentials for the webhook (if appropriate).
+# webhook_username = alice
+# webhook_password = bob
+
+# If an API key in a header is needed, specify the name of the header and key
+# below.  This is optional (and a work in progress).
+# If an API key is required but goes into the URL, just put it into the URL above.
+# header_api_key = "header : key"
