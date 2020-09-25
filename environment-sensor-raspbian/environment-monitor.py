@@ -273,8 +273,8 @@ def send_measurement(temperature, humidity, scale):
     # Send the measurement off-device.
     try:
         request = requests.post(webhook, headers=headers, auth=auth,
-            data=measurement)
-        logging.debug(request.text)
+            data=json.dumps(measurement))
+        logging.debug(str(request))
         return True
     except:
         logging.debug("Unable to transmit measurement.")
