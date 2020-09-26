@@ -274,7 +274,7 @@ def send_measurement(temperature, humidity, scale):
     # Send the measurement off-device.
     try:
         request = requests.post(webhook, headers=headers, auth=auth,
-            data=json.dumps(measurement))
+            json=measurement)
         logging.debug(str(request))
         return True
     except:
