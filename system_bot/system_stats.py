@@ -563,7 +563,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
                         logging.debug("System temperature alerting disabled.")
                         continue
                     fahrenheit = centigrade_to_fahrenheit(i[1])
-                    message = "WARNING: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit).  This is alarmingly high!"
+                    message = "WARNING: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit).  This is alarmingly high!"
                     send_message_to_user(message)
                     continue
             else:
@@ -581,7 +581,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
                         continue
 
                     fahrenheit = centigrade_to_fahrenheit(i[1])
-                    message = "DANGER: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit).  Critical temperature reached!  Investigate immediately!"
+                    message = "DANGER: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit).  Critical temperature reached!  Investigate immediately!"
                     send_message_to_user(message)
                     continue
             else:
@@ -634,7 +634,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
                         continue
 
                     fahrenheit = centigrade_to_fahrenheit(i[1])
-                    message = message + "WARNING: The temperature of sensor " + label + " has spiked to " + str(i[1]) + " degrees Centigrade (" + str(fahrenheit) + " degrees Fahrenheit)!  Investigate immediately!"
+                    message = message + "WARNING: The temperature of sensor " + label + " has spiked to " + str(i[1]) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit)!  Investigate immediately!"
             # Bottom of cycle through sensors on this device.
         # Bottom of cycle through temperature sensors on the system.
 
