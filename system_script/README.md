@@ -11,12 +11,12 @@ The to-do list is pretty long, so don't expect to get full functionality just ye
 * Library functions
     * Calculation of the average of a list of numbers
     * Calculation of the standard deviation of a list of numbers
-* Monitoring of the one, five, and ten minute load averages
-* Monitoring of available space on all writable file systems mounted on the device
+* Monitoring the one, five, and ten minute load averages
+* Monitoring available space on all writable file systems mounted on the device
+* Monitoring memory usage of the device
 
 On the roadmap:
 
-* Monitoring the memory usage of the device
 * Monitoring the temperature sensors in the device
 * Config file support
 * Command line options
@@ -29,6 +29,7 @@ Default settings:
 * Time to sleep in between loops: 10 seconds
 * Number of [standard deviations](https://www.mathsisfun.com/data/standard-deviation.html) which will trigger an alert: 2 sigma
 * Disk space usage danger zone: 85% of capacity
+* Memory usage danger zone: 85% of capacity
 
 Installation
 

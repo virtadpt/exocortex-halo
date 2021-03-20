@@ -21,6 +21,7 @@
 # PLEASE READ THE README.MD FILE BEFORE ATTEMPTING TO USE THIS UTILITY.  THIS
 # IS STILL A WORK IN PROGRESS.
 
+# v0.3 - Added memory usage monitoring.
 # v0.2 - Prototype release.
 
 # TODO:
@@ -29,11 +30,11 @@
 #   * Debug mode (--debug / -d)
 #   * Move the list length calculations into a separate function.
 #   * Loadable (sourceable?) config file.
-#   * Memory usage
-#   * System temperature
+#   * System temperature (if detected?)
 #   * Add a configurable cooldown period for each metric (i.e., only alert on
 #     dangerous storage usage every n seconds/hours/whatever).  This might
 #     take a little math.
+#   * Network traffic stats?
 
 # Debug mode?
 DEBUG=0
@@ -59,6 +60,9 @@ ten_minute_stddev=0
 
 # Percentage of disk space used which is considered too high.
 disk_space_danger_zone=85
+
+# Memory usage percentage which is considered too high.
+memory_danger_zone=85
 
 # Functions
 # Library function which takes a list of numbers and calulates the average.
@@ -286,8 +290,31 @@ analyze_storage_space () {
     done
 }
 
-# analyze_memory_usage () {
-# }
+# Primary function which monitors memory utilization on the device.
+analyze_memory_usage () {
+
+    local memory=""
+    local memory_total=""
+    local memory_used=""
+    local memory_free=""
+
+    # Get the current memory usage situation.
+    memory=$( free -m | grep '^Mem' )
+    memory_total=$( echo $memory | awk '{ print $2 }' )
+    memory_used=$( echo $memory | awk '{ print $3 }' )
+    memory_free=$( echo $memory | awk '{ print $4 }' )
+
+    # Compute memory usage as a percentage.  This is the cleanest way I know
+    # of to get an integer result.
+    memory=$( echo "scale=2; ( $memory_used / $memory_total ) * 100" | bc -l )
+    memory=$( echo "$memory / 1" | bc )
+
+    # Test the memory stats.
+    if [ $memory -ge $memory_danger_zone ]; then
+        echo "WARNING: Memory utilization is at $memory% of maximum."
+        echo "Please investigate before system stability is impacted."
+    fi
+}
 
 # check_system_temperature () {
 # }
@@ -305,6 +332,7 @@ fi
 while true; do
     analyze_system_load
     analyze_storage_space
+    analyze_memory_usage
 
     echo "Sleeping..."
     sleep $cycle_time
