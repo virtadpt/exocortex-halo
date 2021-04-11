@@ -11,6 +11,9 @@
 #
 #   This script requires the presence of the bc utility to do math.  If it's
 #   not there it'll ABEND.
+#
+#   Temperature monitoring will only work if you have the lm-sensors package
+#   installed.
 
 # by: The Doctor [412/724/301/703/415/510] <drwho at virtadpt dot net>
 # License: GPLv3
@@ -35,6 +38,8 @@
 #     dangerous storage usage every n seconds/hours/whatever).  This might
 #     take a little math.
 #   * Network traffic stats?
+#   * Add a config feature which sets Celsius, Fahrenheit, or Kelvin for the
+#     temperature outputs.
 
 # Debug mode?
 DEBUG=0
@@ -63,6 +68,12 @@ disk_space_danger_zone=85
 
 # Memory usage percentage which is considered too high.
 memory_danger_zone=85
+
+# Flag that determines whether or not device sensors can be accessed.
+sensors_available=1
+
+# List of temperature sensing devices in the device.
+temperature_sensors=""
 
 # Functions
 # Library function which takes a list of numbers and calulates the average.
@@ -316,10 +327,27 @@ analyze_memory_usage () {
     fi
 }
 
-# check_system_temperature () {
-# }
+# This helper function populates a list with the names of the lm sensors
+#   chips on the device.  This is to make parsing their data significantly
+#   easier later.
+find_temperature_sensors () {
+    temperature_sensors=$( sensors -A | grep -v '^temp' | grep -v '^$' )
+}
 
-# Setup the script environment.
+# Primary function which interrogates the temperature sensors and determines
+#   whether or not one of them has spiked to dangerous levels.
+check_system_temperature () {
+    echo "Entered check_system_temperature()."
+
+    for i in $temperature_sensors; do
+        local sensor_output=""
+        sensor_output=$(sensors -f $i | grep -v $i )
+    done
+
+    echo "Exiting check_system_temperature()."
+}
+
+# Core code.
 # See if bc is present.  If it's not, ABEND.
 which bc > /dev/null
 if [ $? -gt 0 ]; then
@@ -328,11 +356,35 @@ if [ $? -gt 0 ]; then
     exit 1
 fi
 
+# See if the lm-sensors package is installed.  If it's not disable temperature
+# monitoring.
+pkg_installed=$(opkg list-installed | grep lm-sensors | wc -l)
+if [ $pkg_installed -ne 1 ]; then
+    echo "Package lm-sensors not installed.  Disabling temperature monitoring."
+    sensors_available=0
+fi
+
+# See if the sensors are accessible.  If not, disable temperature monitoring.
+sensors 1>/dev/null 2>/dev/null
+if [ $? -gt 0 ]; then
+    echo "Unable to probe sensors.  Disabling temperature monitoring."
+    sensors_available=0
+fi
+
+# Set up the list of temperature sensors.
+if [ $sensors_available -eq 1 ]; then
+    find_temperature_sensors
+fi
+
 # Main loop.
 while true; do
     analyze_system_load
     analyze_storage_space
     analyze_memory_usage
+
+    if [ $sensors_available -gt 0 ]; then
+        check_system_temperature
+    fi
 
     echo "Sleeping..."
     sleep $cycle_time

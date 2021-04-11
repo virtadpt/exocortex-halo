@@ -456,6 +456,17 @@ while True:
             globals.send_message_to_user(globals.server, "Running web search.  Please stand by.")
         search_results = get_search_results(search)
 
+        # Catch the case where Searx freaked out and returned something... I don't
+        # know exactly what it returns if it throws a fatal exception, but Web
+        # Search Bot sees an object of NoneType.
+        if not search_results:
+            message = "Searx freaked out and returned something I don't know how to parse."
+            message = message + "I'm pretty sure that it threw an exception on its end, and"
+            message = message + "probably crashed."
+            globals.send_message_to_user(globals.server, message)
+            time.sleep(float(polling_time))
+            continue
+
         # If no search results were returned, put that message into the
         # (empty) list of search results.
         if len(search_results) == 0:
