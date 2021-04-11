@@ -15,6 +15,9 @@
 
 # License: GPLv3
 
+# v5.6 - Fixed a bug where Searx crashing could take the bot down with it.
+#      - Minor edits to the message text that reflect how I'm changing shortcode
+#        use.
 # v5.5 - Fixed a bug in which mailing search results didn't work.  I broke
 #   this when I pulled the comand parser into a separate file.
 # v5.4 - Pulled out search category code.  It never worked right.
@@ -184,7 +187,8 @@ def online_help():
     reply = reply + "I can list the search engines I know about:\n\n"
     reply = reply + globals.bot_name + ", (list (search)) engines\n\n"
     reply = reply + "I can run searches using specific search engines:\n\n"
-    reply = reply + globals.bot_name + ", search <search engine shortcode> for <search request...>\n\n"
+    reply = reply + globals.bot_name + ", search !<search engine shortcode> for <search request...>\n"
+    reply = reply + "Yes, an exclamation point goes in front of the shortcode.\n\n"
     globals.send_message_to_user(globals.server, reply)
     return
 
@@ -437,7 +441,7 @@ while True:
             reply = "These are the search engines I am configured to use:\n"
             reply = reply + "Shortcode\t\tSearch engine name\n"
             for i in globals.search_engines:
-                reply = reply + i["shortcut"] + "\t\t" + i["name"].title() + "\n"
+                reply = reply + "!" + i["shortcut"] + "\t\t" + i["name"].title() + "\n"
             globals.send_message_to_user(globals.server, reply)
             continue
 

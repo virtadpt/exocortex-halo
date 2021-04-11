@@ -13,8 +13,10 @@
 
 # License: GPLv3
 
+# v1.2 - Modified the parser to reflect the user having to put a ! in front of
+#        a search engine's shortcode.
 # v1.1 - Fixed a bug in which mailing search results was broken.  This
-#   happened when I refuctored the command parser into a separate file.
+#        happened when I refuctored the command parser into a separate file.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -65,7 +67,7 @@ destination = pp.Optional(me) + pp.Optional(email).setResultsName("dest")
 
 # search <engine or shortcut> (for) <search terms>
 search_command = pp.CaselessLiteral("search")
-shortcut_command = pp.Word(pp.alphanums).setResultsName("shortcode")
+shortcut_command = "!" + pp.Word(pp.alphanums).setResultsName("shortcode")
 for_command = pp.Optional(pp.CaselessLiteral("for"))
 
 # (list) (search) engines
@@ -236,10 +238,10 @@ def is_enabled_engine(engine):
     for i in globals.search_engines:
         if i["name"] == engine.lower():
             logging.debug("Search engine " + str(engine) + " enabled.")
-            return "!" + i["shortcut"]
+            return i["shortcut"]
         if i["shortcut"] == engine.lower():
             logging.debug("Search engine " + str(engine) + " enabled.")
-            return "!" + i["shortcut"]
+            return i["shortcut"]
     return None
 
 # parse_search_request(): Takes a string and figures out what kind of search
