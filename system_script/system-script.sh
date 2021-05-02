@@ -1,4 +1,4 @@
-#!/usr/bin/env -S busybox sh
+#!/usr/bin/env busybox sh
 
 # system-script.sh - An experimental re-implementation of Systembot as a shell
 #   script, suitable for deployment on embedded devices running OpenWRT,
@@ -24,6 +24,7 @@
 # PLEASE READ THE README.MD FILE BEFORE ATTEMPTING TO USE THIS UTILITY.  THIS
 # IS STILL A WORK IN PROGRESS.
 
+# v0.4 - Added temperature monitoring.
 # v0.3 - Added memory usage monitoring.
 # v0.2 - Prototype release.
 
@@ -33,7 +34,6 @@
 #   * Debug mode (--debug / -d)
 #   * Move the list length calculations into a separate function.
 #   * Loadable (sourceable?) config file.
-#   * System temperature (if detected?)
 #   * Add a configurable cooldown period for each metric (i.e., only alert on
 #     dangerous storage usage every n seconds/hours/whatever).  This might
 #     take a little math.
@@ -72,8 +72,11 @@ memory_danger_zone=85
 # Flag that determines whether or not device sensors can be accessed.
 sensors_available=1
 
-# List of temperature sensing devices in the device.
-temperature_sensors=""
+# Directory that holds text files that contain device sensor readings.  We do
+# this because ash doesn't support associative arrays/hash tables.  There are
+# undoubtedly worse ways of doing it but there's no reason to make it suck any
+# more than it already does.
+sensor_readings_dir="/tmp/sensors"
 
 # Functions
 # Library function which takes a list of numbers and calulates the average.
@@ -331,20 +334,107 @@ analyze_memory_usage () {
 #   chips on the device.  This is to make parsing their data significantly
 #   easier later.
 find_temperature_sensors () {
-    temperature_sensors=$( sensors -A | grep -v '^temp' | grep -v '^$' )
+    if [ -d $sensor_readings_dir ]; then
+        echo "Regenerating device's temperature sensor records."
+        rm -rf $sensor_readings_dir
+    fi
+    mkdir $sensor_readings_dir
+
+    # Each sensor gets its own tempfile.  File paths will look like this:
+    #   /tmp/sensors/tmp421-i2c-0-4c.temp1
+    for i in $( sensors -A | grep -v '^temp' | grep -v '^$' ); do
+        for j in $( sensors -f $i | grep '^temp' | awk '{print $1}' | sed 's/:$//' ); do
+            touch $sensor_readings_dir/$i.$j
+        done
+    done
 }
 
 # Primary function which interrogates the temperature sensors and determines
 #   whether or not one of them has spiked to dangerous levels.
 check_system_temperature () {
-    echo "Entered check_system_temperature()."
 
-    for i in $temperature_sensors; do
-        local sensor_output=""
-        sensor_output=$(sensors -f $i | grep -v $i )
+    # The output for a sensor will look something like this:
+    #   Adapter: mv64xxx_i2c adapter
+    #   temp1:       +121.5°F  
+    #   temp2:       +124.4°F  
+    for i in $sensor_readings_dir/*; do
+
+        # Skip backup files.  Source:
+        #   https://github.com/dylanaraps/pure-sh-bible
+        case $i in
+            *.bak)
+                continue
+        esac
+
+        # We need a list of values for the heavy math later.
+        local temperature_list=""
+
+        # We also need variables to hold diced-up filenames.
+        local chip=""
+        local sensor=""
+        local temp=""
+
+        # Variables for the temperature readings.
+        local temperature=""
+        local sum_of_temperatures=0
+        local temperature_list=""
+        local number_of_samples=0
+        local temperature_average=0
+
+        # Calculated standard deviation of the sensor's temperature history.
+        local sensor_stddev=0
+
+        # Suss out the temperatures for each sensor.  There can be (and usually
+        # is) more than one per sensor, and is stored as the file extension.
+        chip=$( basename $i )
+        sensor=$( echo $chip | awk -F. '{print $1}' )
+        temp=$( echo $chip | awk -F. '{print $2}' )
+
+        # It would be really nice if the sensors utility would just print
+        # the temperature reading for a particular chip and a particular
+        # sensor, but whatever.
+        temperature=$( sensors -f -A $sensor | grep $temp | awk '{print $2}' | sed 's/+//' | sed 's/°//' | sed 's/F$//i' | sed 's/C$//i' )
+
+        # Calculate the sum of the temperatures from that file.
+        for j in $( cat $i ); do
+            sum_of_temperatures=$( echo "$sum_of_temperatures + $j" | bc -l )
+
+            # We also need to build a list of temperature samples.
+            temperature_list="$temperature_list $temperature"
+        done
+        sum_of_temperatures=$( echo "$sum_of_temperatures + $temperature" | bc -l )
+
+        # Calculate length of tempfile.
+        number_of_samples=$( wc -l $i | awk '{print $1}' )
+
+        # Save the new sample to the tempfile.
+        if [ -f $i.bak ]; then
+            rm -f $i.bak
+        fi
+        mv -f $i $i.bak
+        tail -$(( $max_array_len-1 )) $i.bak > $i
+        echo $temperature >> $i
+
+        # Catch the "just started up" condition, where we don't have enough
+        # samples to do the math right.  Or at all. #divbyzero
+        if [ $( echo "$number_of_samples < $max_array_len" | bc -l ) -ne 0 ]; then
+            continue
+        fi
+
+        # Calculate the average of the temperatures.
+        calculate_list_average temperature_average "$temperature_list" \
+            $number_of_samples
+
+        # Calculate the standard deviation.
+        calculate_list_stddev sensor_stddev "$temperature_list" \
+            $number_of_samples $temperature_average
+
+        # If the temperature has jumped x standard deviations, complain.
+        if [ $( echo "$sensor_stddev > $stddev" | bc -l ) -ne 0 ]; then
+            echo "WARNING: Temperature sensor $chip has climbed to $temperature degrees Fahrenheit."
+            echo "This is $sensor_stddev over the recorded history.  Investigate immediately."
+        fi
     done
-
-    echo "Exiting check_system_temperature()."
 }
 
 # Core code.
