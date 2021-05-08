@@ -1,4 +1,4 @@
-#!/usr/bin/env busybox sh
+#!/bin/busybox sh
 
 # system-script.sh - An experimental re-implementation of Systembot as a shell
 #   script, suitable for deployment on embedded devices running OpenWRT,
