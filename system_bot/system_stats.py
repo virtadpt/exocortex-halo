@@ -10,12 +10,14 @@
 
 # License: GPLv3
 
+# v4.4 - Added some code to skip any file system mounts specified in the config
+#        file.
 # v4.3 - Fixed a bug in Fahrenheit to Centigrade conversion.  Oops.
-#       - Added a utility function get_disk_space(), which returns the amount
-#       of disk space used by a mount point.
-#       - Fixed a bug in which disk space usage alerts didn't get rounded off.
+#      - Added a utility function get_disk_space(), which returns the amount
+#        of disk space used by a mount point.
+#      - Fixed a bug in which disk space usage alerts didn't get rounded off.
 # v4.2 - Added support for getting the local date and time.
-#       - Added OpenWRT support for local date and time.
+#      - Added OpenWRT support for local date and time.
 # v4.1 - Added support for OpenWRT with a separate module.
 # v4.0 - Ported to Python 3.
 # v3.3 - Added a Centigrade-to-Fahrenheit utility function.
@@ -26,7 +28,7 @@
 #      - Renamed disk_usage() to get_disk_usage() because it conflicted
 #        with a variable name elsewhere.
 #      - Made check_memory_utilization() configurable.
-# v3.2 - Changed "disk free" to "disk used," so it's more like the output of.
+# v3.2 - Changed "disk free" to "disk used," so it's more like the output of
 #        `df`.
 # v3.1 - Added function to get the local IP address of the host.
 # v3.0 - Added real statistics support.
@@ -232,6 +234,21 @@ def get_disk_usage():
     disk_partitions = psutil.disk_partitions()
     for i in disk_partitions:
         disk_used[i.mountpoint] = ""
+
+    # Now delete every mountpoint that matches the ignore list from the hash
+    # table.  We put this inside an if-conditional because it may not be
+    # configured.
+    if globals.ignored_mountpoints:
+        for i in globals.ignored_mountpoints:
+            logging.debug("Looking for ignored mountpoint %s in disk mounts." % i)
+            # We iterate through the hash table as a list here because
+            # otherwise we might change the hash table as we're iterating over
+            # it, and that throws a runtime error.  By looking at a list we
+            # can edit the original hash without trouble.
+            for j in list(disk_used):
+                if i in j:
+                    logging.debug("Mountpoint to ignore %s matched %s.  Deleting." % (i, j))
+                    del disk_used[j]
 
     # Calculate the maximum and free bytes of each disk device.
     for i in list(disk_used.keys()):

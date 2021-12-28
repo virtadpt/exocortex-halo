@@ -11,15 +11,20 @@
 
 # License: GPLv3
 
+# v4.6 - Added a check and some code to pull file mounts to ignore from the
+#        config file.  I added this because Certbot has to be installed as a
+#        Snap to be supported on Ubuntu now, but by their nature they're
+#        always at 100% of capacity, which means I get paged a few times an
+#        hour.
 # v4.5 - Made disk space usage messages easier to read by adding space used
-#       and total space available.
-#        - Made memory usage messages easier to understand, too.
+#        and total space available.
+#      - Made memory usage messages easier to understand, too.
 # v4.4 - Added support for local date/time requests.
 # v4.3 - Added support for remotely monitoring OpenWRT devices.
 # v4.2 - Reworked the startup logic so that being unable to immediately
-#       connect to either the message bus or the intended service is a
-#       terminal state.  Instead, it loops and sleeps until it connects and
-#       alerts the user appropriately.
+#        connect to either the message bus or the intended service is a
+#        terminal state.  Instead, it loops and sleeps until it connects and
+#        alerts the user appropriately.
 # v4.1 - Added a command to query the busiest processes in the system (in
 #       terms of CPU utilization).
 # v4.0 - Ported to Python 3.
@@ -55,8 +60,6 @@
 # - Add an "alert acknowledged" command that stops the bot from sending the
 #   same alert every couple of seconds.  When the system state changes back to
 #   normal, automatically flip the "alert acknowledged" flag back.
-# - Make the delay in between warning messages (which is currently polling_time
-#   x20) configurable in the config file.
 
 # Load modules.
 import argparse
@@ -296,6 +299,13 @@ time_between_alerts = int(config.get("DEFAULT", "time_between_alerts"))
 # Get the percentage of critical disk usage from the config file.
 disk_usage = float(config.get("DEFAULT", "disk_usage"))
 
+# See if there's a list of file system mounts to ignore in the configuration
+# file, and if so read it in.
+if config.has_section("file systems to ignore"):
+    for i in config.options("file systems to ignore"):
+        if "mount" in i:
+            globals.ignored_mountpoints.append(config.get("file systems to ignore", i))
+
 # Get the percentage of critical memory remaining from the config file.
 memory_remaining = float(config.get("DEFAULT", "memory_remaining"))
 
@@ -383,6 +393,8 @@ if len(processes_to_monitor):
 if globals.openwrt_url:
     logging.debug("OpenWRT remote monitoring mode active.")
     logger.debug("URL of OpenWRT remote monitoring server: " + globals.openwrt_url)
+if globals.ignored_mountpoints:
+    logging.debug("File systems to ignore: %s" % globals.ignored_mountpoints)
 
 # Try to contact the XMPP bridge.  Keep trying until you reach it or the
 # system shuts down.

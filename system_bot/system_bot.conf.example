@@ -51,6 +51,14 @@ ip_addr_site = https://api.ipify.org/
 #process1 = test_bot.py --loglevel,python2 /home/user/exocortex-halo/test_bot/test_bot.py --loglevel debug
 #process2 = test_bot.py --name AnotherTestBot,python2 /home/user/exocortex-halo/test_bot/test_bot.py --name AnotherTestBot
 
+# If there are any file systems that you want to ignore, like Ubuntu's /snap
+# mounts, list them here.  The intended use case is, you can ignore always
+# mounted read-only file systems that are always at 100% of capacity without
+# getting paged every hour or so.
+#[file systems to ignore]
+# mount1 = /snap
+# mount2 = /foo/bar
+
 # Due to the fact that most OpenWRT devices are resource constrained devices
 # and it's often impractical to do a full install of Halo to them,
 #[openwrt]

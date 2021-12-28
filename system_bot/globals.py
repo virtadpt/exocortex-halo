@@ -9,6 +9,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v1.1 - Added a list holding file mounts to ignore.
 # v1.0 - Initial release.
 
 # TODO:
@@ -22,6 +23,9 @@
 # This holds the URL of the system stats service running on an OpenWRT node
 # that Systembot will poll.
 openwrt_url = ""
+
+# A list of file system mountpoints to ignore.
+ignored_mountpoints = []
 
 if "__name__" == "__main__":
     print("No self tests yet.")
