@@ -15,6 +15,8 @@
 
 # License: GPLv3
 
+# v5.7 - Fixed some help and error text that's been annoying me for a while.
+#      - Changed some comment alignment.
 # v5.6 - Fixed a bug where Searx crashing could take the bot down with it.
 #      - Minor edits to the message text that reflect how I'm changing shortcode
 #        use.
@@ -22,33 +24,33 @@
 #   this when I pulled the comand parser into a separate file.
 # v5.4 - Pulled out search category code.  It never worked right.
 # v5.3 - Added some new commands to the parser to implement searching in
-#       specific Searx categories.
-#       - Added code to pull the list of known categories from Searx.
-#       - Split the command parser out into a separate module.
-#       - Moved the stuff queried from the Searx /config document into a
-#       separate global module.
-#       - Broke the send_message_to_user() function out into the globals
-#       module.  Had to rework it a bit.
-#       - Broke some of the local config stuff out into the globals module
-#       to neaten things up a bit.
-#       - How the hell did I not put the "query Searx" bit inside a
-#       try..except? Note to self: Never assume that the configured Searx
-#       instance is responsive.
+#        specific Searx categories.
+#      - Added code to pull the list of known categories from Searx.
+#      - Split the command parser out into a separate module.
+#      - Moved the stuff queried from the Searx /config document into a
+#        separate global module.
+#      - Broke the send_message_to_user() function out into the globals
+#        module.  Had to rework it a bit.
+#      - Broke some of the local config stuff out into the globals module
+#        to neaten things up a bit.
+#      - How the hell did I not put the "query Searx" bit inside a
+#        try..except? Note to self: Never assume that the configured Searx
+#        instance is responsive.
 # v5.2 - Reworked the startup logic so that being unable to immediately
-#       connect to either the message bus or the intended service is a
-#       terminal state.  Instead, it loops and sleeps until it connects and
-#       alerts the user appropriately.
+#        connect to either the message bus or the intended service is a
+#        terminal state.  Instead, it loops and sleeps until it connects and
+#        alerts the user appropriately.
 # v5.1 - Made it possible to optionally define additional user text to add to
 #        the bot's online help.  My use case for this is when you run multiple
 #        instances of this bot and you want to keep them all straight by
 #        customizing their personae a bit.
-#       - Made it possible to optionally define the "I'm doing stuff" text the
-#       bot sends when it's executing commands.
-#       - Changed the default polling time to 10 seconds, because this bot
+#      - Made it possible to optionally define the "I'm doing stuff" text the
+#        bot sends when it's executing commands.
+#      - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...
-#       - Broke online help out into a separate function.
-#       - Updated the comments for the function declarations to match other
-#         bots in the suite.
+#      - Broke online help out into a separate function.
+#      - Updated the comments for the function declarations to match other
+#        bots in the suite.
 # v5.0 - Ported to Python 3.
 #      - Deleted the regex matcher because it's not used.
 # v4.0 - Added the ability to tell the bot to run a search on a particular
@@ -187,8 +189,9 @@ def online_help():
     reply = reply + "I can list the search engines I know about:\n\n"
     reply = reply + globals.bot_name + ", (list (search)) engines\n\n"
     reply = reply + "I can run searches using specific search engines:\n\n"
-    reply = reply + globals.bot_name + ", search !<search engine shortcode> for <search request...>\n"
-    reply = reply + "Yes, an exclamation point goes in front of the shortcode.\n\n"
+    reply = reply + globals.bot_name + ", (get) top <number> hits for !shortcode <search request...>\n\n"
+    reply = reply + "Yes, an exclamation point goes in front of the shortcode, and otherwise the\n\n"
+    reply = reply + "search request is the same.\n\n"
     globals.send_message_to_user(globals.server, reply)
     return
 
@@ -460,12 +463,12 @@ while True:
             globals.send_message_to_user(globals.server, "Running web search.  Please stand by.")
         search_results = get_search_results(search)
 
-        # Catch the case where Searx freaked out and returned something... I don't
-        # know exactly what it returns if it throws a fatal exception, but Web
-        # Search Bot sees an object of NoneType.
+        # Catch the case where Searx freaked out and returned something... I
+        # don't know exactly what it returns if it throws a fatal exception,
+        # but Web Search Bot sees an object of NoneType.
         if not search_results:
-            message = "Searx freaked out and returned something I don't know how to parse."
-            message = message + "I'm pretty sure that it threw an exception on its end, and"
+            message = "Searx freaked out and returned something I don't know how to parse.  "
+            message = message + "I'm pretty sure that it threw an exception on its end, and "
             message = message + "probably crashed."
             globals.send_message_to_user(globals.server, message)
             time.sleep(float(polling_time))

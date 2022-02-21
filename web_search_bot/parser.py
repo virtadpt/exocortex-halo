@@ -13,6 +13,12 @@
 
 # License: GPLv3
 
+# v1.3 - Finally sat down to work out how to make !codes work.  Of course, it
+#        was bloody trivial.
+#      - Got rid of the specific code for !searchcode searches, because all it
+#        did was mess with things.  It makes much more sense to fold it into
+#        the regular search case than it does to make it a special search
+#        case.
 # v1.2 - Modified the parser to reflect the user having to put a ! in front of
 #        a search engine's shortcode.
 # v1.1 - Fixed a bug in which mailing search results was broken.  This
@@ -57,7 +63,7 @@ top_command = pp.CaselessLiteral("top")
 results_count = (pp.Word(pp.nums) |
                  pp.Word(pp.alphas + "-")).setResultsName("count")
 hitsfor_command = pp.CaselessLiteral("hits for")
-search_term = pp.Word(pp.alphanums + "_,'-")
+search_term = pp.Word(pp.alphanums + "_,'-!")
 search_terms = pp.OneOrMore(search_term)
 send_command = (pp.CaselessLiteral("send") | pp.CaselessLiteral("e-mail") |
                 pp.CaselessLiteral("email") | pp.CaselessLiteral("mail"))
@@ -67,7 +73,6 @@ destination = pp.Optional(me) + pp.Optional(email).setResultsName("dest")
 
 # search <engine or shortcut> (for) <search terms>
 search_command = pp.CaselessLiteral("search")
-shortcut_command = "!" + pp.Word(pp.alphanums).setResultsName("shortcode")
 for_command = pp.Optional(pp.CaselessLiteral("for"))
 
 # (list) (search) engines
@@ -186,46 +191,6 @@ def parse_and_email_results(request):
         logging.info("No match: {0}".format(str(x)))
         return (None, None, None)
 
-# parse_specific_search(): Function that matches on commands of the form
-#   "search <shortcode> for <search terms>".  Returns a default number of
-#   search results (10) until I can make the parser more sophisticated, a URL
-#   encoded search string which includes the shortcode for the search engine
-#   ("!foo"), and "XMPP", because this is really only useful for mobile
-#   requests.
-def parse_specific_search(request):
-    logging.debug("Entered function parse_specific_search().")
-    command = search_command + shortcut_command + for_command
-    command = command + pp.Group(search_terms).setResultsName("searchterms")
-
-    number_of_search_results = 10
-    engine = ""
-    searchterms = []
-
-    try:
-        parsed_command = command.parseString(request)
-        engine = parsed_command["shortcode"]
-        searchterms = parsed_command["searchterms"]
-        logging.debug("Value of engine: %s" % engine)
-        logging.debug("Value of searchterms: %s" % searchterms)
-
-        # Check to see if the search engine is enabled.  We do this in a
-        # circuitous fashion because we want either the shortcode or a failure,
-        # while at the same time making it possible for the user to use the
-        # name of the search engine.
-        engine = is_enabled_engine(engine)
-        if not engine:
-            logging.debug("Engine %s matches but is not enabled." % engine)
-            return(0, "", "")
-
-        # Create a search term that includes the shortcode for the search
-        # engine.
-        searchterms.insert(0, engine)
-        searchterms = make_search_term(searchterms)
-
-    except pp.ParseException as x:
-        logging.info("No match: {0}".format(str(x)))
-        return (None, None, None)
-
     logging.debug("Returning number_of_search_results==%d, searchterms==%s, and XMPP." % (number_of_search_results, searchterms))
     return (number_of_search_results, searchterms, "XMPP")
 
@@ -294,14 +259,6 @@ def parse_search_request(search_request):
         if ("@" in email_address) or (email_address == "default_email"):
             logging.info("The user has requested that search results for " + str(search_term) + " be e-mailed to " + email_address + ".")
             return (number_of_search_results, search_term, email_address)
-
-    # Attempt to parse a search for a specific engine.  If it works, prepend
-    # the string "!<search shortcode>" so that Searx knows to search on one
-    # search engine only.
-    (number_of_search_results, search_term, email_address) = parse_specific_search(search_request)
-    if number_of_search_results and (email_address == "XMPP"):
-        logging.info("The user has requested a specific search: " + str(search_term))
-        return (number_of_search_results, search_term, "XMPP")
 
     # Fall-through - this should happen only if nothing at all matches.
     logging.info("Fell all the way through in parse_search_request().  Telling the user I didn't understand what they said.")
