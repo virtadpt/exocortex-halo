@@ -86,6 +86,14 @@
 # v1.0 - Initial release.
 
 # TO-DO:
+# - Add a feature such that Web Search Bot can optionally be configured to
+#   ONLY search a defined subset of the enabled search engines of the Searx
+#   instance it's configured for.  For example, the Searx instance could be
+#   normally configured, but a copy of Web Search Bot could be configured to
+#   only search Google.  This would probably take the form of transparently
+#   prepending the !g bang code to the search term before encoding it to pass
+#   to Searx.  This would also imply some sanity checking code to make sure
+#   those configured !bangs are actually enabled in Searx's /config dump.
 # - Pull the argument vector and config file parsing stuff into their own
 #   functions to neaten up the core code.
 # - Break out the "handle HTTP result code" handler into a function.
