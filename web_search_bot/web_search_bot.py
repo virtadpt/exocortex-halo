@@ -190,7 +190,7 @@ def online_help():
     reply = reply + globals.bot_name + ", (list (search)) engines\n\n"
     reply = reply + "I can run searches using specific search engines:\n\n"
     reply = reply + globals.bot_name + ", (get) top <number> hits for !shortcode <search request...>\n\n"
-    reply = reply + "Yes, an exclamation point goes in front of the shortcode, and otherwise the\n\n"
+    reply = reply + "Yes, an exclamation point goes in front of the shortcode, and otherwise the "
     reply = reply + "search request is the same.\n\n"
     globals.send_message_to_user(globals.server, reply)
     return
