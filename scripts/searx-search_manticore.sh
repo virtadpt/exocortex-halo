@@ -24,34 +24,68 @@
 
 # Configuration variables
 # Edit these as appropriate.
+
+# URL of searchd's HTTP port.
+SEARCHD="http://localhost:9308/search"
+
 # Name of Manticore's index.
 INDEX="articles"
 
 # The search term from the user (by way of Searx).
-QUERY=""
+QUERY="$@"
 
 # Variables
 # JSON template for search requests sent to Manticore's searchd.
-SEARCH_REQUEST=""
+# https://unix.stackexchange.com/questions/312702/bash-variable-substitution-in-a-json-string
+SEARCH_REQUEST=\''
+{
+    "index": "'"$INDEX"'",
+    "query": {
+        "match_phrase": {
+            "title,content": {
+                "query": "'"$QUERY"'",
+                "operator": "and"
+            }
+        }
+    },
+    "limit": 20,
+    "offset": 0
+}
+'\'
 
-SEARCH_RESULT=""
+# JSON of the search result, returned from searchd.
+SEARCH_RESULT=''
 
-ERROR_RESULT=""
+# JSON template that pretends to be a search result but actually returns a
+# customized error.
+ERROR_RESULT=''
+
+# A temporary variable to hold JSON while it's being analyzed.
+TMP=''
 
 # Core code.
 # Test for curl.
-which curl
+which curl 1>/dev/null
 if [ $? -ne 0 ]; then
-    echo "ERROR: curl not installed"
+    echo "ERROR: curl not installed."
     exit 1
 fi
 
 # Test for jq.
-which jq
+which jq 1>/dev/null
 if [ $? -ne 0 ]; then
-    echo "ERROR: jq not installed"
+    echo "ERROR: jq not installed."
     exit 1
 fi
+
+# Test the number of command line arguments passed to the script.
+if [ $# -eq 0 ]; then
+    echo "ERROR: No command line arguments found."
+    exit 2
+fi
+
+# Send a search request to searchd.
+curl -X POST "$SEARCHD" -d "$SEARCH_REQUEST"
 
 # Clean up.
 exit 0
