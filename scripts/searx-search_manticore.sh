@@ -63,9 +63,6 @@ CURL_EXIT_CODE=0
 # String that holds the meaning of the exit code.
 CURL_EXIT_REASON=""
 
-# A temporary variable to hold JSON while it's being analyzed.
-TMP=''
-
 # Core code.
 # Test for curl.
 which curl 1>/dev/null
@@ -120,9 +117,12 @@ if [ $CURL_EXIT_CODE -gt 0 ]; then
     exit 1
 fi
 
+# If we made it this far, the query worked.  Output the search result so that
+# Searx can pick it up and exit.
+echo $SEARCH_RESULT
+
 # Clean up.
 exit 0
 
 # End of core code.
 
-# Subroutines
