@@ -36,14 +36,15 @@ QUERY="$@"
 
 # Variables
 # JSON template for search requests sent to Manticore's searchd.
-# https://unix.stackexchange.com/questions/312702/bash-variable-substitution-in-a-json-string
-SEARCH_REQUEST=\''
+# I can't say I expected to find a solution here, but any port in a storm.
+# https://github.com/maxrooted/instashell/blob/master/instashell.sh#L140
+SEARCH_REQUEST='
 {
-    "index": "'"$INDEX"'",
+    "index": "'$INDEX'",
     "query": {
         "match_phrase": {
             "title,content": {
-                "query": "'"$QUERY"'",
+                "query": "'$QUERY'",
                 "operator": "and"
             }
         }
@@ -51,14 +52,16 @@ SEARCH_REQUEST=\''
     "limit": 20,
     "offset": 0
 }
-'\'
+'
 
 # JSON of the search result, returned from searchd.
 SEARCH_RESULT=''
 
-# JSON template that pretends to be a search result but actually returns a
-# customized error.
-ERROR_RESULT=''
+# Captures the code curl exits with.
+CURL_EXIT_CODE=0
+
+# String that holds the meaning of the exit code.
+CURL_EXIT_REASON=""
 
 # A temporary variable to hold JSON while it's being analyzed.
 TMP=''
@@ -85,7 +88,37 @@ if [ $# -eq 0 ]; then
 fi
 
 # Send a search request to searchd.
-curl -X POST "$SEARCHD" -d "$SEARCH_REQUEST"
+# -f - Fail silently on server errors.
+# -s - Run silently, no output other than what the server sends back.
+# -X - HTTP POST method.
+# -d - Payload (data) for the POST request.
+SEARCH_RESULT=$(curl -f -s -X POST "$SEARCHD" -d "$SEARCH_REQUEST")
+CURL_EXIT_CODE=$?
+
+# Figure out what happened with curl.
+if [ $CURL_EXIT_CODE -eq 7 ]; then
+    CURL_EXIT_REASON="Unable to connect to searchd at $SEARCHD."
+elif [ $CURL_EXIT_CODE -eq 8 ]; then
+    CURL_EXIT_REASON="I have no idea what searchd returned."
+elif [ $CURL_EXIT_CODE -eq 22 ]; then
+    CURL_EXIT_REASON="HTTP error >=400 returned by searchd."
+elif [ $CURL_EXIT_CODE -eq 28 ]; then
+    CURL_EXIT_REASON="Connection to $SEARCHD timed out."
+fi
+
+# Define the error result now that we have the values that go into it.
+ERROR_RESULT='
+{
+    "error_code": "'$CURL_EXIT_CODE'",
+    "error": "'$CURL_EXIT_REASON'"
+}
+'
+
+# Finally, if the exit code is non-zero, return the error and exit.
+if [ $CURL_EXIT_CODE -gt 0 ]; then
+    echo $ERROR_RESULT
+    exit 1
+fi
 
 # Clean up.
 exit 0
