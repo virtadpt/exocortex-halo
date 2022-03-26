@@ -55,29 +55,9 @@ SEARCH_REQUEST='
 '
 
 # JSON of the search result, returned from searchd.
-SEARCH_RESULT=''
-
-# Captures the code curl exits with.
-CURL_EXIT_CODE=0
-
-# String that holds the meaning of the exit code.
-CURL_EXIT_REASON=""
+SEARCH_RESULTS=''
 
 # Core code.
-# Test for curl.
-which curl 1>/dev/null
-if [ $? -ne 0 ]; then
-    echo "ERROR: curl not installed."
-    exit 1
-fi
-
-# Test for jq.
-which jq 1>/dev/null
-if [ $? -ne 0 ]; then
-    echo "ERROR: jq not installed."
-    exit 1
-fi
-
 # Test the number of command line arguments passed to the script.
 if [ $# -eq 0 ]; then
     echo "ERROR: No command line arguments found."
@@ -89,37 +69,32 @@ fi
 # -s - Run silently, no output other than what the server sends back.
 # -X - HTTP POST method.
 # -d - Payload (data) for the POST request.
-SEARCH_RESULT=$(curl -f -s -X POST "$SEARCHD" -d "$SEARCH_REQUEST")
-CURL_EXIT_CODE=$?
+SEARCH_RESULTS=$(curl -f -s -X POST "$SEARCHD" -d "$SEARCH_REQUEST")
 
-# Figure out what happened with curl.
-if [ $CURL_EXIT_CODE -eq 7 ]; then
-    CURL_EXIT_REASON="Unable to connect to searchd at $SEARCHD."
-elif [ $CURL_EXIT_CODE -eq 8 ]; then
-    CURL_EXIT_REASON="I have no idea what searchd returned."
-elif [ $CURL_EXIT_CODE -eq 22 ]; then
-    CURL_EXIT_REASON="HTTP error >=400 returned by searchd."
-elif [ $CURL_EXIT_CODE -eq 28 ]; then
-    CURL_EXIT_REASON="Connection to $SEARCHD timed out."
-fi
+# Sort the returned search hits by their relative ranking.
+TMP=$(echo $SEARCH_RESULTS | jq '.hits.hits|=sort_by(-._score)')
+SEARCH_RESULTS=$TMP
+TMP=""
 
-# Define the error result now that we have the values that go into it.
-ERROR_RESULT='
-{
-    "error_code": "'$CURL_EXIT_CODE'",
-    "error": "'$CURL_EXIT_REASON'"
-}
-'
+# MOOF MOOF MOOF
+# Emit only X or fewer search results.
+# This will require adding a feature to accept the maximum number of search
+# results as a command line switch.  It also requires figuring out how to
+# use search result paging.
+TMP=$(echo $SEARCH_RESULTS | jq '.hits.hits | .[0:20]')
+SEARCH_RESULTS=$TMP
+TMP=""
 
-# Finally, if the exit code is non-zero, return the error and exit.
-if [ $CURL_EXIT_CODE -gt 0 ]; then
-    echo $ERROR_RESULT
-    exit 1
-fi
+# Format of search results:
+# article_id;;;article_title;;;article_score;;;article_url
+# I wish I could use JSON, but that requires Searx's json_engine.py, and that
+# doesn't do HTTP POSTs.
 
-# If we made it this far, the query worked.  Output the search result so that
-# Searx can pick it up and exit.
-echo $SEARCH_RESULT
+# Loop through the retained search results, extract the bits we want from each
+# one, and build a line of the search result to send back to Searx.
+# jq -c: Every object jq emits is printed as a single line so that it will be
+#   treated as a single item.
+echo $SEARCH_RESULTS | jq '.[] | [(._id | tostring), ._source.title, (._score | tostring), ._source.url] | join(";;;")'
 
 # Clean up.
 exit 0
