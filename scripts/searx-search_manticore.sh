@@ -94,7 +94,7 @@ TMP=""
 # one, and build a line of the search result to send back to Searx.
 # jq -c: Every object jq emits is printed as a single line so that it will be
 #   treated as a single item.
-echo $SEARCH_RESULTS | jq '.[] | [(._id | tostring), ._source.title, (._score | tostring), ._source.url] | join(";;;")'
+echo $SEARCH_RESULTS | jq '.[] | [(._id | tostring), ._source.title, (._score | tostring), ._source.url] | join(";;;")' | sed 's/^"//' | sed 's/"$//'
 
 # Clean up.
 exit 0
