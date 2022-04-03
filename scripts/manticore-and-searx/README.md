@@ -3,3 +3,7 @@ MOOF MOOF MOOF - I need to write an actual readme that explains how to set this 
 
 wallabag.html goes in /path/to/searx/searx/templates/oscar/result_templates/
 
+In searx/searx/settings.yml the following settings are required, otherwise the `command.py` engine will throw a cryptic exception:
+* `default_lang : ""`
+* `prefer_configured_language: False`
+
