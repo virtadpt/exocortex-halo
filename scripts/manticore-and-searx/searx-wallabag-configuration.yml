@@ -1,7 +1,7 @@
 
   - name: search manticore
     engine: command
-    command: [ '/home/pi/exocortex-halo/scripts/searx-search_manticore.sh', '{{QUERY}}' ]
+    command: [ '/home/pi/exocortex-halo/scripts/manticore-and-searx/searx-search_manticore.sh', '{{QUERY}}' ]
     shortcut: wallabag
     tokens: []
     disabled: False
