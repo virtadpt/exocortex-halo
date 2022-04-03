@@ -1,32 +1,32 @@
 {% from 'oscar/macros.html' import result_footer, result_footer_rtl with context %}
 <div class="result result-default">
 <table class="table table-responsive table-bordered table-condensed">
-	<tr>
-	<td>
+    <tr>
+    <td>
     {% for key, value in result.items() %}
-    	{% if key == "article_id" %}
-        	<b>Archive URL</b>: <a href="https://archive.drwho.virtadpt.net/view/{{ value }}">https://archive.drwho.virtadpt.net/view/{{ value }}</a><br />
-	    {% endif %}
+        {% if key == "article_id" %}
+            <b>Archive URL</b>: <a href="https://archive.drwho.virtadpt.net/view/{{ value }}">https://archive.drwho.virtadpt.net/view/{{ value }}</a><br />
+        {% endif %}
 
-	    {% if key == "article_title" %}
-    	    <b>Title</b>: {{ value | striptags | title }}<br />
-	    {% endif %}
+        {% if key == "article_title" %}
+            <b>Title</b>: {{ value | striptags | title }}<br />
+        {% endif %}
 
- 		{% if key == "article_url" %}
-        	<b>Original URL</b>: <a href="{{ value }}">{{ value }}</a><br />
-    	{% endif %}
+        {% if key == "article_url" %}
+            <b>Original URL</b>: <a href="{{ value }}">{{ value }}</a><br />
+        {% endif %}
 
-	    {% if key == "article_score" %}
-    	    <b>Search rank</b>: {{ value | striptags }}<br />
-	    {% endif %}
+        {% if key == "article_score" %}
+            <b>Search rank</b>: {{ value | striptags }}<br />
+        {% endif %}
     {% endfor %}
-	</td>
-	<tr>
+    </td>
+    <tr>
 </table>
 
 {% if rtl %}
-{{ result_footer_rtl(result) }}
+    {{ result_footer_rtl(result) }}
 {% else %}
-{{ result_footer(result) }}
+    {{ result_footer(result) }}
 {% endif %}
 </div>
