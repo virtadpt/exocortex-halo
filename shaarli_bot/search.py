@@ -60,8 +60,8 @@ def search(search_term, url, secret, searchtype):
     # Build a JWT token.
     jwt_token = jwt.encode(payload, secret, algorithm="HS512",
         headers=jwt_headers)
-    logging.debug("Value of jwt_token: " + jwt_token.decode())
-    http_headers["Authorization"] = "Bearer " + jwt_token.decode()
+    logging.debug("Value of jwt_token: " + jwt_token)
+    http_headers["Authorization"] = "Bearer " + jwt_token
 
     # Build request parameters.
     parameters[searchtype] = search_term
