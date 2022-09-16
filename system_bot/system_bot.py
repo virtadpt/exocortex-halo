@@ -547,7 +547,7 @@ while True:
                 # a GB / y GB (b%)  free.
                 message = message + system_stats.convert_bytes(info.free + info.buffers + info.cached)
                 message = message + " / " + system_stats.convert_bytes(info.total)
-                message = message + " (" + str(round(100.0 - info.percent), 2) + "%) free."
+                message = message + " (" + str(round(100.0 - info.percent, 2)) + "%) free."
                 logging.debug("Value of message: " + str(message))
                 send_message_to_user(message)
 
