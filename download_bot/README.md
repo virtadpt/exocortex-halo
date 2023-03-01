@@ -11,12 +11,12 @@ This bot at a minimum requires the [requests](http://docs.python-requests.org/en
 
 You'll have to run `source env/bin/activate` every time you want to start Download Bot.  I've included a shell script called `run.sh` which does this automatically for you.
 
-If you have [youtube-dl](https://github.com/rg3/youtube-dl) for Python installed, you can use this bot to download any media stream Youtube-DL can download.  Here's how I did it:
+If you have [yt-dlp](https://github.com/yt-dlp/yt-dlp) installed you can also use this bot to download any media stream that yt-dlp can download.  Here's how I did it:
 
 * `cd exocortex_halo/download_bot`
 * `python3 -m venv env` (if you haven't done this already)
 * . env/bin/activate
-* pip install youtube-dl
+* pip install yt-dlp
 * python ./download_bot.py
 
 As always, `./download_bot.py --help` will display the most current online help.

@@ -14,19 +14,21 @@
 
 # License: GPLv3
 
+# v2.3 - Cleaned up a little formatting.
+#      - Added yt-dlp support because youtube-dl is dead.
 # v2.2 - Reworked the startup logic so that being unable to immediately
-#       connect to either the message bus or the intended service is a
-#       terminal state.  Instead, it loops and sleeps until it connects and
-#       alerts the user appropriately.
-#       - Changed some print()ed output to logging.fatal().
-#       - Changed logger.warn() to logger.warning().
-#       - Changed how errors are reported to the user so they're more
-#         transparent (though still fatal (which may not be optimal)).
+#        connect to either the message bus or the intended service is a
+#        terminal state.  Instead, it loops and sleeps until it connects and
+#        alerts the user appropriately.
+#      - Changed some print()ed output to logging.fatal().
+#      - Changed logger.warn() to logger.warning().
+#      - Changed how errors are reported to the user so they're more
+#        transparent (though still fatal (which may not be optimal)).
 # v2.1 - Added user-definable text to the help and about-to-do-stuff parts.
-#       - Changed the default polling time to 10 seconds, because this bot
+#      - Changed the default polling time to 10 seconds, because this bot
 #        won't be run on a Commodore 64...
-#       - Broke the online help out into a separate function.
-#       - Got tired of unescaped spaces in filenames, added HTML unescaping.
+#      - Broke the online help out into a separate function.
+#      - Got tired of unescaped spaces in filenames, added HTML unescaping.
 # v2.0 - Ported to Python 3.
 # v1.2 - Added "download this as an MP3" support.
 # v1.1 - Added youtube-dl support.
@@ -78,7 +80,7 @@ download_directory = ""
 # Handle to an download request from the user.
 download_request = None
 
-# Flag that determines if youtube-dl is available as a module.
+# Flag that determines if yt-dlp is available as a module.
 video_enabled = False
 
 # Flag that determines if ffmpeg is enabled, which will enable audio-only
@@ -158,7 +160,7 @@ def parse_download_request(download_request):
         logger.info("Got a token that suggests that this is a download request.")
     del words[0]
 
-    # User asked the construct to download a media stream with youtube-dl.
+    # User asked the construct to download a media stream with yt-dlp.
     if (words[0] == "stream") or (words[0] == "video"):
         logger.info("Got a token that suggests that this is a media download request.")
         if video_enabled:
@@ -169,7 +171,7 @@ def parse_download_request(download_request):
             logger.error("User wants to download a media stream but that capability isn't enabled.")
             return None
 
-    # User asked the construct to download an audio stream with youtube-dl.
+    # User asked the construct to download an audio stream with yt-dlp.
     if (words[0] == "mp3") or (words[0] == "audio"):
         logger.info("Got a token that suggests that this is an audio download request.")
         if ffmpeg_enabled:
@@ -228,7 +230,7 @@ def download_file(download_directory, url):
     # Return the result.
     return result
 
-# mp3_download_hook(): Function that takes a youtube-dl status object as an
+# mp3_download_hook(): Function that takes a yt-dlp status object as an
 #   argument.  Doesn't return anything but does send the user a message.
 # Keys possessed by status:
 #   status, downloaded_bytes, filename, elapsed, total_bytes
@@ -249,10 +251,10 @@ def download_media(download_directory, url):
     # Generic flag that determines whether or not the process worked.
     result = False
 
-    # Hash contianing options used by youtube_dl.
+    # Hash contianing options used by yt-dlp.
     options = {}
 
-    # youtube-dl has an unusual way of specifying the destination
+    # yt-dlp has an unusual way of specifying the destination
     # directory: It has to go in a template specifying what the filename
     # will look like when the download is complete.  I've hardcoded the
     # template here because it's basically the default anyway.
@@ -276,7 +278,7 @@ def download_media(download_directory, url):
 
     # This is kinda clunky but it's in the official docs...
     try:
-        with youtube_dl.YoutubeDL(options) as ydl:
+        with yt_dlp.YoutubeDL(options) as ydl:
             ydl.download(download)
         result = True
         send_message_to_user("Successfully downloaded media stream: " + str(url))
@@ -321,7 +323,7 @@ def online_help():
     reply = reply + "I will download files into: " + download_directory + "\n"
     send_message_to_user(reply)
     if video_enabled:
-        reply = "I am youtube-dl enabled, and so can download any media stream this module is capable of.  To download a supported media, stream, send me a message that looks like this:\n\n"
+        reply = "I am yt-dlp enabled, and so can download any media stream this module is capable of.  To download a supported media, stream, send me a message that looks like this:\n\n"
         reply = reply + bot_name + ", [download,get] [stream,video] https://youtube.com/foo\n"
         send_message_to_user(reply)
     if ffmpeg_enabled:
@@ -381,9 +383,9 @@ except:
     # Nothing to do here, it's an optional configuration setting.
     pass
 
-# Get the path to the ffmpeg executable.  If it's present, AND if youtube-dl
-# support is present, the bot will be able to download and store audio tracks
-# from video streams upon request.
+# Get the path to the ffmpeg executable.  If it's present, AND if yt-dlp is
+# installed, the bot will be able to download and store audio tracks from video
+# streams upon request.
 ffmpeg_enabled = config.get("DEFAULT", "ffmpeg")
 
 # Get the directory to store files in.
@@ -418,9 +420,9 @@ logger = logging.getLogger(__name__)
 if args.polling:
     polling_time = args.polling
 
-# Try to import youtube_dl if it's available.
+# Try to import yt-dlp if it's available.
 try:
-    import youtube_dl
+    import yt_dlp
     video_enabled = True
 except:
     pass
@@ -436,7 +438,7 @@ logger.debug("Time in seconds for polling the message queue: " +
     str(polling_time))
 logger.debug("Download directory: " + download_directory)
 if video_enabled:
-    logger.debug("This instance of download_bot.py is youtube-dl enabled.")
+    logger.debug("This instance of download_bot.py is yt-dlp enabled.")
 if ffmpeg_enabled:
     logger.debug("This instance of download_bot.py can save MP3s.")
 if user_text:
