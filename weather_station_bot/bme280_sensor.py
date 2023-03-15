@@ -8,7 +8,7 @@
 
 # By: The Doctor <drwho at virtadpt dot net>
 
-# License: GPLv2
+# License: GPLv3
 
 # v1.0 - Initial release.
 
