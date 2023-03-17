@@ -19,11 +19,12 @@
 # - Find a way to memoize the calculations that don't change (such as the
 #   circumfrence of the anemometer).
 # - Make the anemometer factor configurable but default to 1.18.
-# - Turn this into an actual Python module.
 
 # Load modules.
 import gpiozero
 import math
+import statistics
+import sys
 import time
 
 # Constants.
@@ -49,6 +50,25 @@ sensor = None
 
 # Calculated wind speed.
 speed = 0.0
+
+# Average wind speed.
+# I know, this is supposed to be velocity because it's not calculated out of
+# metric.
+wind_speed = 0.0
+
+# List of wind velocity samples and maximum length of the array for calculating
+# gusts of wind.
+wind_speeds = []
+# MOOF MOOF MOOF - Make this configurable.
+wind_speeds_length = 10
+
+# Holds a wind velocity used to determine whether or not there's been a spike
+# (i.e., a gust of wind kicked up).
+wind_gust = 0.0
+
+# Used to store a time_t timestamp for calculating the length of time of a
+# wind velocity sample.
+start_time = 0.0
 
 # Functions.
 # spin(): Callback function.  Every time the anemometer rotates once, a reed
@@ -114,45 +134,84 @@ def reset_counter():
     counter = 0
 
 # Core code...
-# Set up the GPIO object.
-sensor = gpiozero.Button(gpio_pin)
+# get_wind_speed(): The function that does everything by calling everything
+#   else.  Here so that it can be called from Weather Station Bot's central
+#   module, as well as __main__ for testing.  Returns a hash table containing
+#   the sample data.
+def get_wind_speed():
 
-# Set a callback that increments the number of rotations counted every time the
-# GPIO pin is toggled.
-sensor.when_pressed = spin
+    # Holds the data gathered and computed from the anemometer.
+    sample = {}
 
-# Do the thing.
-while True:
-    counter = 0
-    velocity = 0
-    speed = 0
-    time.sleep(interval)
+    # Set up the GPIO object.
+    sensor = gpiozero.Button(gpio_pin)
 
-    # Calculate the speed in cm/s.
-    velocity = calculate_speed(interval)
-    print("Velocity: %s cm/h" % round(velocity, ndigits=2))
+    # Set a callback that increments the number of rotations counted every time
+    # the GPIO pin is toggled.
+    sensor.when_pressed = spin
 
-    # Convert to km/h.
-    velocity = cm_to_km(velocity)
-    print("Velocity: %s km/h" % round(velocity, ndigits=4))
+    # Do the thing.
+    # Store the time at which the samples are taken.
+    start_time = time.time()
+    while (time.time() - start_time) <= interval:
+        reset_counter()
+        velocity = 0
+        speed = 0
+        time.sleep(interval)
 
-    # Convert km/h to mph.
-    speed = km_to_mi(velocity)
-    print("Speed: %s mph" % round(speed, ndigits=4))
+        # Calculate the speed in cm/s.
+        velocity = calculate_speed(interval)
+        sample["velocity_cm_h"] = velocity
+        wind_speeds.append(velocity)
 
-    # Why do I have the more conventional measurements rounded out to four
-    # decimal places?  If I use only two I keep getting answers of 0.0 when
-    # I bench test.
-    print()
+        # If the array of wind speed samples is greater than the configured
+        # maximum length, delete the oldest.
+        if len(wind_speeds) > wind_speeds_length:
+            wind_speeds.pop(0)
 
-# Return calculated values in (what else) a hash table so that the user can
-# choose the units they want in a config file without needing to do any
-# conversion on their end of things.
+        # Convert to km/h.
+        velocity = cm_to_km(velocity)
+        sample["velocity_km_h"] = velocity
+
+        # Convert km/h to mph.
+        speed = km_to_mi(velocity)
+        sample["speed"] = speed
+
+        # Why do I have the more conventional measurements rounded out to four
+        # decimal places?  If I use only two I keep getting answers of 0.0 when
+        # I bench test.
+
+    # Calculate whether or not a gust of wind kicked up.
+    # This is probably best done by calculating the number of standard
+    # deviations over the mean.
+    sample["wind_gust"] = max(wind_speeds)
+    sample["wind_speed"] = statistics.mean(wind_speeds)
+
+    return(sample)
 
 # Do other stuff.
 # Sample wind speed for <mumble> seconds.
 # Calculate the wind speed.
 # Report the wind speed.
 # Go do other stuff.
+
+# Exercise my code.
+if __name__ == "__main__":
+    print("Starting test run of 10 samples.")
+    for i in range(1, 10):
+        print("Running test cycle %s." % i)
+        data = get_wind_speed()
+
+        # Print the test output.
+        print("Velocity: %s cm/h" % round(data["velocity_cm_h"], ndigits=2))
+        print("Velocity: %s km/h" % round(data["velocity_km_h"], ndigits=2))
+        print("Speed: %s mph" % round(data["speed"], ndigits=4))
+        print("Wind gust? %s cm/h" % round(data["wind_gust"], ndigits=2))
+        print("Average wind speed: %s cm/h" % round(data["wind_gust"],
+            ndigits=2))
+        print()
+
+    print("End of test run.")
+    sys.exit(0)
 
 # Fin.
