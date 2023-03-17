@@ -341,5 +341,6 @@ def parse_command(command):
     # Fall-through: Nothing matched.
     return "unknown"
 
-if "__name__" == "__main__":
+if __name__ == "__main__":
+    print("No tests yet.")
     pass

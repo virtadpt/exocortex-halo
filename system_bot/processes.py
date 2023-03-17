@@ -127,7 +127,7 @@ def get_top_processes(number_of_processes=5):
     logging.debug("Top processes on the system: " + str(top_processes))
     return(top_processes)
 
-if "__name__" == "__main__":
+if __name__ == "__main__":
     print("List of system processes:")
     print(get_process_list())
 
@@ -137,3 +137,4 @@ if "__name__" == "__main__":
     print("Processes that should never be running:")
     print(check_process_list(["nomatch", "this should never match"]))
     sys.exit(0)
+

@@ -27,6 +27,6 @@ openwrt_url = ""
 # A list of file system mountpoints to ignore.
 ignored_mountpoints = []
 
-if "__name__" == "__main__":
+if __name__ == "__main__":
     print("No self tests yet.")
-    sys.exit(0)
+    pass

@@ -372,5 +372,6 @@ def local_datetime(openwrt_host):
     logging.debug("The remote node's system time is: " + system_time)
     return system_time
 
-if "__name__" == "__main__":
+if __name__ == "__main__":
+    print("No tests yet.")
     pass
