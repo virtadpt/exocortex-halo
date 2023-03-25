@@ -14,11 +14,12 @@
 # v1.0 - Initial release.
 
 # TO-DO:
-# - Make the GPIO pin the weather vane is connected to configurable.
 # - Make the channel of the ADC chip configurable.
 # - Use real logger code rather than a bunch of print()s.
 # - The table of values-to-directions should probably be configurable, but I'm
 #   not sure yet how to do that.
+# - Add a utility that helps a user calculate their own table of direction/
+#   values?
 
 # Load modules.
 import gpiozero
@@ -26,9 +27,6 @@ import sys
 import time
 
 # Constants.
-# GPIO pin (not header pin) the anemometer is connected to.
-gpio_pin = 6
-
 # Channel (pin) of the ADC the weather vane is connected to.
 channel = 0
 
@@ -40,20 +38,33 @@ reference_voltage = 3.3
 # Handle to the device on the GPIO bus.
 sensor = None
 
-# Mappings of compass directions to values from the ADC.
+# Technically this falls under global constants, but I derived these values
+# experimentally so they might change from station to station.
 directions = {
-    "N": {"low": 0.004836345872007541, "high": 0.03385442110405499},
-    "NE": {"low": 0.011284807034684995, "high": 0.030630190522715893},
-    "E": {"low": 0.004836345872007541, "high": 0.09833903273082586},
-    "SE": {"low": 0.004836345872007541, "high": 0.03385442110405499},
-    "S": {"low": 0.004836345872007541, "high": 0.040302882266731704},
-    "SW": {"low": 0.004836345872007541, "high": 0.02418172936003917},
-    "W": {"low": 0.011284807034684995, "high": 0.027405959941377532},
-    "NW": {"low": 0.004836345872007541, "high": 0.040302882266731704}
+    "2.1": "north",
+    "1.8": "northeast",
+    "3.0": "east",
+    "2.7": "southeast",
+    "2.4": "south",
+    "1.3": "southwest",
+    "0.2": "west",
+    "1.0": "northwest"
     }
 
-# Functions.
-
+# Here is the research code I used to generate those values:
+#
+# import gpiozero
+# import time
+# adc = gpiozero.MCP3008(channel=0)
+# values = []
+# while True:
+#   wind = round(adc.value * 3.3, 1)
+#   if not wind in values:
+#       values.append(wind)
+#       print("Got new value: %s" % wind)
+#       print()
+#   time.sleep(5)
+#
 
 # Core code...
 # get_direction(): The function that does everything by calling everything
@@ -62,22 +73,35 @@ directions = {
 #   the sample data.
 def get_direction():
 
-    # Holds the data gathered and computed from the anemometer.
-    sample = {}
+    # Voltage from the weather vane.
+    value = 0.0
 
     # Set up the GPIO object.
     sensor = gpiozero.MCP3008(channel=channel)
 
-    print(round(sensor.value * reference_voltage, 3))
+    # Get a sample from the weather vane.
+    value = round(sensor.value * reference_voltage, 1)
+    print("Value: %s" % value)
 
-    return(sample)
+    # Look up the value from the sensor in the direction table.  If it's in
+    # there return the direction, else return None.
+    try:
+        return(directions[value])
+    except:
+        return None
 
 # Exercise my code.
 if __name__ == "__main__":
     print("Starting test run.")
 
-    while True:
-        get_direction()
+    sensor = gpiozero.MCP3008(channel=channel)
+    for i in range(10):
+        temp = None
+        temp = get_direction()
+        if temp:
+            print("The weather vane is pointing %s." % temp)
+        else:
+            print("The weather vane returned a spurious value.")
         time.sleep(5)
 
     print("End of test run.")
