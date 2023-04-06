@@ -27,8 +27,6 @@
 # - Make the online help module dynamic; when the user asks for help, the list
 #   of sensors that are active is printed.  This list needs to reflect the
 #   enabled sensors.
-# - Make it possible to run the bot with an argument like --list-sensors and
-#   get a list of all of the configured sensors the bot knows about.
 
 # Load modules.
 import argparse
@@ -97,6 +95,18 @@ command = ""
 # Multiple of polling_time that must pass between sending alerts.  Defaults to
 # 3600 seconds (one hour).
 time_between_alerts = 3600
+
+# Possible sensors comprising the weather station.
+anemometer = False
+bme280 = False
+raingauge = False
+weathervane = False
+
+# Data from the sensors.
+anemometer_data = {}
+bme280_data = {}
+raingauge_data = {}
+weathervane_data = {}
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -169,7 +179,11 @@ argparser.add_argument("--polling", action="store", help="Default: 60 seconds")
 
 # Time (in seconds) in between sending warnings to the user.
 argparser.add_argument("--time-between-alerts", action="store",
-    help="Time in seconds in between sending warnings to the user.  This is to prevent getting flooded with alerts when a big job runs.")
+    help="Time in seconds in between sending warnings to the user.  This is to prevent getting flooded with alerts.")
+
+# Whether or not to list the configured sensors and exit.
+argparser.add_argument("--list-sensors", action="store_true",
+    help="Print the list of sensors the bot recognized from the config file and exit.")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -210,7 +224,47 @@ except:
 # Get the time between alerts (in seconds) from the config file.
 time_between_alerts = int(config.get("DEFAULT", "time_between_alerts"))
 
-# Here is where the config file options that specify the sensors to use go.
+# Anemometer
+try:
+    # If this is not boolean-False, it will be replaced by the module
+    # import.
+    anemometer = config.get("DEFAULT", "anemometer")
+    import anemometer
+except:
+    logging.debug("Anemometer not enabled in config file.")
+    pass
+
+# BME280 multi-sensor
+try:
+    # If this is not boolean-False, it will be replaced by the module
+    # import.
+    bme280 = config.get("DEFAULT", "bme280")
+    import bme280_sensor as bme280
+except:
+    logging.debug("BME280 sensor not enabled in config file.")
+    pass
+
+# Rain gauge
+try:
+    # If this is not boolean-False, it will be replaced by the module
+    # import.
+    raingauge = config.get("DEFAULT", "raingauge")
+    import rainfall_gauge as raingauge
+except:
+    logging.debug("Raingauge not enabled in config file.")
+    pass
+
+# Weather vane
+try:
+    # If this is not boolean-False, it will be replaced by the module
+    # import.
+    weathervane = config.get("DEFAULT", "weathervane")
+    import weathervane
+except:
+    logging.debug("Weather vane not enabled in config file.")
+    pass
+
+# MOOF MOOF MOOF - modules for additional sensors go here.
 
 # Get the number of standard deviations from the config file.
 standard_deviations = config.get("DEFAULT", "standard_deviations")
@@ -241,22 +295,45 @@ if args.time_between_alerts:
 # main loop runs.
 status_polling = int(polling_time) / 4
 
-# In debugging mode, dump the bot'd configuration.
+# print a list of sensors the bot recognizes from the config file.
+if args.list_sensors:
+    print("These are the sensors the bot recognizes from the config file:")
+    if anemometer:
+        print("    * Anemometer")
+    if bme280:
+        print("    * BME280 multi-sensor")
+    if raingauge:
+        print("    * Rain gauge")
+    if weathervane:
+        print("    * Weather vane")
+    # MOOF MOOF MOOF - additional modules will be referenced here
+    sys.exit(1)
+
+# In debugging mode, dump the bot's configuration.
 logger.info("Everything is configured.")
 logger.debug("Values of configuration variables as of right now:")
-logger.debug("Configuration file: " + config_file)
-logger.debug("Server to report to: " + server)
-logger.debug("Message queue to report to: " + message_queue)
-logger.debug("Bot name to respond to search requests with: " + bot_name)
-logger.debug("Number of standard deviations: " + str(standard_deviations))
-logger.debug("Minimum stat queue length: " + str(minimum_length))
-logger.debug("Maximum stat queue length: " + str(maximum_length))
-logger.debug("Value of polling_time (in seconds): " + str(polling_time))
+logger.debug("Configuration file: %s" % config_file)
+logger.debug("Server to report to: %s" % server)
+logger.debug("Message queue to report to: %s" % message_queue)
+logger.debug("Bot name to respond to search requests with: %s" % bot_name)
+logger.debug("Number of standard deviations: %s" % standard_deviations)
+logger.debug("Minimum stat queue length: %s" % minimum_length)
+logger.debug("Maximum stat queue length: %s" % maximum_length)
+logger.debug("Value of polling_time (in seconds): %s" % polling_time)
 if time_between_alerts == 0:
     logger.info("time_between_alerts is set to 0 - system alerting disabled!")
 else:
-    logger.debug("Value of time_between_alerts (in seconds): " + str(time_between_alerts))
-logger.debug("Value of loop_counter (in seconds): " + str(status_polling))
+    logger.debug("Value of time_between_alerts (in seconds): %s" % time_between_alerts)
+logger.debug("Value of loop_counter (in seconds): %s" % status_polling)
+logger.debug("Sensors enabled:")
+if anemometer:
+    logger.debug("    * Anemometer")
+if bme280:
+    logger.debug("    * BME280 multi-sensor")
+if raingauge:
+    logger.debug("    * Rain gauge")
+if weathervane:
+    logger.debug("    * Weather vane")
 
 # Try to contact the XMPP bridge.  Keep trying until you reach it or the
 # system shuts down.
@@ -279,24 +356,61 @@ while True:
 
     # Start checking the weather sensors.  If anything is too far out of
     # whack, send an alert via the XMPP bridge's response queue.
-    # MOOF MOOF MOOF - I'm leaving the System Bot code in place as a reminder
-    # of what this will look like, at least until I start writing actual
-    # methods for the sensors I have right now.
+    if anemometer:
+        logging.debug("Polling anemometer.")
+        anemometer_data = anemometer.get_wind_speed()
+        logging.debug(str(anemometer_data))
+        # Process the data...
 
+    if bme280:
+        logging.debug("Polling BME280 sensor.")
+        bme280_data = bme280.get_reading()
+        logging.debug(str(bme280_data))
+        # Process the data...
 
-    sysload_counter = system_stats.check_sysload(sysload_counter,
-        time_between_alerts, status_polling, standard_deviations,
-        minimum_length, maximum_length, send_message_to_user)
-    cpu_idle_time_counter = system_stats.check_cpu_idle_time(
-        cpu_idle_time_counter, time_between_alerts, status_polling,
-        send_message_to_user)
-    memory_free_counter = system_stats.check_memory_utilization(
-        memory_free_counter, time_between_alerts, status_polling,
-        memory_remaining, send_message_to_user)
-    temperature_counter = system_stats.check_hardware_temperatures(
-        temperature_counter, time_between_alerts, status_polling,
-        standard_deviations, minimum_length, maximum_length,
-        send_message_to_user)
+    if raingauge:
+        logging.debug("Polling rain gauge.")
+        raingauge_data = raingauge.get_precip()
+        logging.debug(str(raingauge_data))
+        # Process the data...
+
+    if weathervane:
+        logging.debug("Polling weather vane.")
+        weathervane_data = weathervane.get_direction()
+        logging.debug(str(weathervane_data))
+        # Process the data...
+
+    # MOOF MOOF MOOF
+    # As a proof of concept, send a single sample of data from each sensor
+    # and exit.
+    msg = "Testing data from sensors.  Please stand by."
+    send_message_to_user(msg)
+
+    msg = "Anemometer reading:\n"
+    msg = msg + "Speed: " + str(anemometer_data["speed"]) + "\n"
+    msg = msg + "Wind gust: " + str(anemometer_data["wind_gust"]) + "\n"
+    msg = msg + "Average wind speed: " + str(anemometer_data["average_wind_speed"])
+    send_message_to_user(msg)
+
+    msg = "BME280 multisensor data:\n"
+    msg = msg + "Temperature (C): " + str(bme280_data["temp_c"]) + " C\n"
+    msg = msg + "Temperature (F): " + str(bme280_data["temp_f"]) + " F\n"
+    msg = msg + "Barometric pressure: " + str(bme280_data["pressure"]) + " kPa\n"
+    msg = msg + "Humidity: " + str(bme280_data["humidity"]) + " %"
+    send_message_to_user(msg)
+
+    msg = "Rainfall gauge:\n"
+    msg = msg + "Precipitation in mm: " + str(raingauge_data["mm"]) + " mm\n"
+    msg = msg + "Precipitation in in: " + str(raingauge_data["in"]) + " in\n"
+    send_message_to_user(msg)
+
+    if weathervane_data:
+        msg = "The wind is blowing " + weathervane_data + "ward.\n"
+    else:
+        msg = "I don't think the wind is blowing, the weather vane isn't returning anything."
+    send_message_to_user(msg)
+    sys.exit(1)
+    # MOOF MOOF MOOF
 
     # Increment loop_counter by status_polling.
     loop_counter = loop_counter + status_polling
@@ -339,10 +453,10 @@ while True:
 
             # If the user is requesting system load...
             # MOOF MOOF MOOF - this is how to handle a specific command.
-            if command == "load":
-                load = system_stats.sysload()
-                message = "The current system load is " + str(load["one_minute"]) + " on the one minute average and " + str(load["five_minute"]) + " on the five minute average."
-                send_message_to_user(message)
+            #if command == "load":
+            #    load = system_stats.sysload()
+            #    message = "The current system load is " + str(load["one_minute"]) + " on the one minute average and " + str(load["five_minute"]) + " on the five minute average."
+            #    send_message_to_user(message)
 
             # Fall-through.
             if command == "unknown":

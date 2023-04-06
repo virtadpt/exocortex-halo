@@ -181,11 +181,13 @@ def get_wind_speed():
         # decimal places?  If I use only two I keep getting answers of 0.0 when
         # I bench test.
 
+        print("Value of counter: %s" % counter)
+
     # Calculate whether or not a gust of wind kicked up.
     # This is probably best done by calculating the number of standard
     # deviations over the mean.
     sample["wind_gust"] = max(wind_speeds)
-    sample["wind_speed"] = statistics.mean(wind_speeds)
+    sample["average_wind_speed"] = statistics.mean(wind_speeds)
 
     return(sample)
 
