@@ -1,0 +1,51 @@
+[DEFAULT]
+
+# URL of the message queue to contact.
+queue = http://localhost:8003/
+
+# Name of the bot.
+bot_name = Weatherbot
+
+# Default logging level.
+# Valid settings: critical, error, warning, info, debug, notset
+loglevel = debug
+
+# Time in seconds between contacting the message queue for commands.
+polling_time = 60
+
+# Time in seconds between sending alerts to the message queue.
+# Setting this value to 0 disables realtime alerting.
+time_between_alerts = 3600
+
+# The number of standard deviations of any set of data points we care about.
+standard_deviations = 2
+
+# The minimum and maximum lengths of the sample sets that we use to calculate
+# standard deviations.
+minimum_length = 10
+maximum_length = 25
+
+# Here is where the individual sensors connected to the computer are
+# configured.  Every weather station can have different devices connected to
+# it doing different things.  The defaults in this file reflect what I have
+# on my particular weather station.
+
+# A basic anemometer that uses a set of reed switches and a magnetic set of
+# cups to count rotations.
+# module: anemometer.py
+anemometer = True
+
+# A BME280 multi-sensor communicating with I2C.
+# module: bme280_sensor.py
+bme280 = True
+
+# A basic rain gauge that uses a reed switch count the number of times the
+# collection basin tips.
+# module: rainfall_gauge.py
+raingauge = True
+
+# A weathervane that uses a series of reed switches to detect the direction
+# the wind is blowing.
+# module: weathervane.py
+weathervane = True
+
