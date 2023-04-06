@@ -28,6 +28,15 @@ port = 1
 address = 0x77
 
 # Functions.
+# c_to_f(): Converts centigrade to fahrenheit.
+def c_to_f(centigrade):
+    # Sure, I could one-line this but I can never remember how to do the
+    # conversion and this makes it easy to refer back to.
+    fahrenheit = centigrade * 9
+    fahrenheit = fahrenheit / 5
+    fahrenheit = fahrenheit + 32
+    return(fahrenheit)
+
 # get_reading() - Get a data sample from the sensor.  Data will not be
 #   rounded, converted, or anything else.  That needs to happen elsewhere.
 def get_reading():
@@ -61,9 +70,10 @@ def get_reading():
 
     # Populate the sample.
     data["timestamp"] = bme280_data.timestamp
-    data["temperature"] = bme280_data.temperature
-    data["pressure"] = bme280_data.pressure
-    data["humidity"] = bme280_data.humidity
+    data["temp_c"] = round(bme280_data.temperature, 2)
+    data["temp_f"] = round(c_to_f(bme280_data.temperature), 2)
+    data["pressure"] = round(bme280_data.pressure, 2)
+    data["humidity"] = round(bme280_data.humidity, 2)
 
     return(data)
 
