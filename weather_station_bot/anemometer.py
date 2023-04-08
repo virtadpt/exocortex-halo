@@ -23,7 +23,6 @@
 # Load modules.
 import gpiozero
 import math
-import statistics
 import sys
 import time
 
@@ -55,16 +54,6 @@ speed = 0.0
 # I know, this is supposed to be velocity because it's not calculated out of
 # metric.
 wind_speed = 0.0
-
-# List of wind velocity samples and maximum length of the array for calculating
-# gusts of wind.
-wind_speeds = []
-# MOOF MOOF MOOF - Make this configurable.
-wind_speeds_length = 10
-
-# Holds a wind velocity used to determine whether or not there's been a spike
-# (i.e., a gust of wind kicked up).
-wind_gust = 0.0
 
 # Used to store a time_t timestamp for calculating the length of time of a
 # wind velocity sample.
@@ -119,15 +108,6 @@ def cm_to_km(cm):
     # 1000 m / km
     return((cm / 100) / 1000)
 
-# km_to_mi(): Convert velocity in km/h to speed in miles per hour.
-def km_to_mi(km):
-    # You wouldn't believe how difficult this is to look up.  Some pages say
-    # it's a multiplication, some say it's division.  I had to look at a bunch
-    # of different websites, and I basically picked the conversion that
-    # showed up more often (division) than the other.
-    # We USians really can't do anything right, can we?
-    return(km / 1.609)
-
 # reset_counter(): Helper function that resets the rotation counter to 0.
 def reset_counter():
     global counter
@@ -161,21 +141,15 @@ def get_wind_speed():
 
         # Calculate the speed in cm/s.
         velocity = calculate_speed(interval)
-        sample["velocity_cm_h"] = velocity
-        wind_speeds.append(velocity)
-
-        # If the array of wind speed samples is greater than the configured
-        # maximum length, delete the oldest.
-        if len(wind_speeds) > wind_speeds_length:
-            wind_speeds.pop(0)
+        sample["velocity_cm_h"] = round(velocity, 2)
 
         # Convert to km/h.
         velocity = cm_to_km(velocity)
-        sample["velocity_km_h"] = velocity
+        sample["velocity_km_h"] = round(velocity, 2)
 
         # Convert km/h to mph.
         speed = km_to_mi(velocity)
-        sample["speed"] = speed
+        sample["speed"] = round(speed, 2)
 
         # Why do I have the more conventional measurements rounded out to four
         # decimal places?  If I use only two I keep getting answers of 0.0 when
@@ -183,19 +157,7 @@ def get_wind_speed():
 
         print("Value of counter: %s" % counter)
 
-    # Calculate whether or not a gust of wind kicked up.
-    # This is probably best done by calculating the number of standard
-    # deviations over the mean.
-    sample["wind_gust"] = max(wind_speeds)
-    sample["average_wind_speed"] = statistics.mean(wind_speeds)
-
     return(sample)
-
-# Do other stuff.
-# Sample wind speed for <mumble> seconds.
-# Calculate the wind speed.
-# Report the wind speed.
-# Go do other stuff.
 
 # Exercise my code.
 if __name__ == "__main__":
@@ -208,9 +170,6 @@ if __name__ == "__main__":
         print("Velocity: %s cm/h" % round(data["velocity_cm_h"], ndigits=2))
         print("Velocity: %s km/h" % round(data["velocity_km_h"], ndigits=2))
         print("Speed: %s mph" % round(data["speed"], ndigits=4))
-        print("Wind gust? %s cm/h" % round(data["wind_gust"], ndigits=2))
-        print("Average wind speed: %s cm/h" % round(data["wind_gust"],
-            ndigits=2))
         print()
 
     print("End of test run.")

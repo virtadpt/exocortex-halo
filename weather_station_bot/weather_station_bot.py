@@ -24,9 +24,6 @@
 # - Develop a template module that makes it easy for a user to develop new
 #   modules.  Also develop documentation that describes all of the changes
 #   that will have to be made to integrate them.
-# - Make the online help module dynamic; when the user asks for help, the list
-#   of sensors that are active is printed.  This list needs to reflect the
-#   enabled sensors.
 
 # Load modules.
 import argparse
@@ -35,6 +32,7 @@ import json
 import logging
 import os
 import requests
+import statistics
 import sys
 import time
 
@@ -108,6 +106,19 @@ bme280_data = {}
 raingauge_data = {}
 weathervane_data = {}
 
+# Lists of data samples from the sensors.
+anemometer_samples = []
+bme280_temperature_samples = []
+bme280_pressure_samples = []
+bme280_humidity_samples = []
+raingauge_samples = []
+
+# Average readings from the sensors.
+average_wind_velocity = 0.0
+average_temperature = 0.0
+average_air_pressure = 0.0
+average_humidity = 0.0
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -161,6 +172,15 @@ def online_help():
     I am configured for the following sensors at this time: foo bar baz
     """
     return message
+
+# km_to_mi(): Convert velocity in km/h to speed in miles per hour.
+def km_to_mi(km):
+    # You wouldn't believe how difficult this is to look up.  Some pages say
+    # it's a multiplication, some say it's division.  I had to look at a bunch
+    # of different websites, and I basically picked the conversion that
+    # showed up more often (division) than the other.
+    # We USians really can't do anything right, can we?
+    return(km / 1.609)
 
 # Core code...
 # Allocate a command-line argument parser.
@@ -360,7 +380,16 @@ while True:
         logging.debug("Polling anemometer.")
         anemometer_data = anemometer.get_wind_speed()
         logging.debug(str(anemometer_data))
-        # Process the data...
+        anemometer_samples.append(anemometer_data["velocity_km_h"])
+        if len(anemometer_samples) > maximum_length:
+            anemometer_samples.pop(0)
+
+        # Calculate average wind velocity if we have enough samples.
+        if len(anemometer_samples) >= minimum_length:
+            average_wind_velocity = statistics.mean(anemometer_samples)
+            logging.debug("The average wind velocity is %s kph." % average_wind_velocity.)
+
+        # Calculate the standard deviation of the data from the anemometer.
 
     if bme280:
         logging.debug("Polling BME280 sensor.")
@@ -388,8 +417,6 @@ while True:
 
     msg = "Anemometer reading:\n"
     msg = msg + "Speed: " + str(anemometer_data["speed"]) + "\n"
-    msg = msg + "Wind gust: " + str(anemometer_data["wind_gust"]) + "\n"
-    msg = msg + "Average wind speed: " + str(anemometer_data["average_wind_speed"])
     send_message_to_user(msg)
 
     msg = "BME280 multisensor data:\n"
