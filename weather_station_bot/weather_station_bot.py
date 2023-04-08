@@ -74,9 +74,10 @@ status_polling = 0
 # conditions.
 standard_deviations = 0
 
-# Minimum and maximum lengths of the weather condition queues.
-minimum_length = 0
-maximum_length = 0
+# Minimum and maximum lengths of the weather condition queues.  Default to 10
+# unless it's set in the config file.
+minimum_length = 10
+maximum_length = 10
 
 # Configuration for the logger.
 loglevel = None
@@ -93,6 +94,9 @@ command = ""
 # Multiple of polling_time that must pass between sending alerts.  Defaults to
 # 3600 seconds (one hour).
 time_between_alerts = 3600
+
+# Scratch variable that holds a calculated standard deviation.
+std_dev = 0
 
 # Possible sensors comprising the weather station.
 anemometer = False
@@ -287,13 +291,13 @@ except:
 # MOOF MOOF MOOF - modules for additional sensors go here.
 
 # Get the number of standard deviations from the config file.
-standard_deviations = config.get("DEFAULT", "standard_deviations")
+standard_deviations = int(config.get("DEFAULT", "standard_deviations"))
 
 # Get the minimum and maximum lengths of the stat queues from the config file.
 # Used for calculating some sudden changes in weather, such as the temperature
 # falling or the barometric pressure suddenly rising.
-minimum_length = config.get("DEFAULT", "minimum_length")
-maximum_length = config.get("DEFAULT", "maximum_length")
+minimum_length = int(config.get("DEFAULT", "minimum_length"))
+maximum_length = int(config.get("DEFAULT", "maximum_length"))
 
 # Set the loglevel from the override on the command line.
 if args.loglevel:
@@ -380,43 +384,99 @@ while True:
         logging.debug("Polling anemometer.")
         anemometer_data = anemometer.get_wind_speed()
         logging.debug(str(anemometer_data))
+
+        # Save the running tally of wind velocities.
         anemometer_samples.append(anemometer_data["velocity_km_h"])
         if len(anemometer_samples) > maximum_length:
             anemometer_samples.pop(0)
 
         # Calculate average wind velocity if we have enough samples.
         if len(anemometer_samples) >= minimum_length:
-            average_wind_velocity = statistics.mean(anemometer_samples)
-            logging.debug("The average wind velocity is %s kph." % average_wind_velocity.)
+            average_wind_velocity = round(statistics.mean(anemometer_samples), 2)
+            logging.debug("The average wind velocity is %s kph." % average_wind_velocity)
 
-        # Calculate the standard deviation of the data from the anemometer.
+        # Calculate the standard deviation of the data from the anemometer if
+        # we have enough samples.
+        if len(anemometer_samples) >= minimum_length:
+            std_dev = statistics.stdev(anemometer_samples)
+            logging.debug("Calculated standard deviation of wind velocity: %s" % std_dev)
+        if std_dev >= standard_deviations:
+            send_message_to_user("The wind velocity has jumped by %s standard deviations.  The weather might be getting bad." % std_dev)
 
     if bme280:
         logging.debug("Polling BME280 sensor.")
         bme280_data = bme280.get_reading()
         logging.debug(str(bme280_data))
-        # Process the data...
+
+        # Save running tallies of data points.
+        bme280_temperature_samples.append(bme280_data["temp_c"])
+        if len(bme280_temperature_samples) > maximum_length:
+            bme280_temperature_samples.pop(0)
+
+        bme280_pressure_samples.append(bme280_data["pressure"])
+        if len(bme280_pressure_samples) > maximum_length:
+            bme280_pressure_samples.pop(0)
+        # MOOF MOOF MOOF - do trend analysis here to determine rise or fall
+
+        bme280_humidity_samples.append(bme280_data["humidity"])
+        if len(bme280_humidity_samples) > maximum_length:
+            bme280_humidity_samples.pop(0)
+
+        # Calculate averages if we have enough samples.
+        if len(bme280_temperature_samples) >= minimum_length:
+            average_temperature = round(statistics.mean(bme280_temperature_samples), 2)
+            logging.debug("The average temperature is %s degrees C." % average_temperature)
+
+        if len(bme280_pressure_samples) >= minimum_length:
+            average_pressure = round(statistics.mean(bme280_pressure_samples), 2)
+            logging.debug("The average temperature is %s degrees C." % average_temperature)
+
+        if len(bme280_humidity_samples) >= minimum_length:
+            average_humidity = round(statistics.mean(bme280_humidity_samples), 2)
+            logging.debug("The average temperature is %s degrees C." % average_temperature)
+
+        # Calculate standard deviations to see if anything weird is going on.
+        if len(bme280_temperature_samples) >= minimum_length:
+            std_dev = statistics.stdev(bme280_temperature_samples)
+            logging.debug("Calculated standard deviation of temperature: %s" % std_dev)
+        if std_dev >= standard_deviations:
+            send_message_to_user("The temperature has jumped by %s standard deviations.  That doesn't make any sense." % std_dev)
+
+        if len(bme280_pressure_samples) >= minimum_length:
+            std_dev = statistics.stdev(bme280_pressure_samples)
+            logging.debug("Calculated standard deviation of air pressure: %s" % std_dev)
+        if std_dev >= standard_deviations:
+            send_message_to_user("The air pressure has jumped by %s standard deviations.  That's kind of strange." % std_dev)
+
+        if len(bme280_humidity_samples) >= minimum_length:
+            std_dev = statistics.stdev(bme280_humidity_samples)
+            logging.debug("Calculated standard deviation of relative humidity: %s" % std_dev)
+        if std_dev >= standard_deviations:
+            send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
 
     if raingauge:
         logging.debug("Polling rain gauge.")
         raingauge_data = raingauge.get_precip()
         logging.debug(str(raingauge_data))
-        # Process the data...
+
+        # Save the running tally of precipitation measurements.
+        raingauge_samples.append(raingauge_data["mm"])
+        if len(raingauge_samples) > maximum_length:
+            raingauge_samples.pop(0)
+
+        # MOOF MOOF MOOF - do trend analysis to detect when it starts and
+        # stops raining
 
     if weathervane:
         logging.debug("Polling weather vane.")
         weathervane_data = weathervane.get_direction()
         logging.debug(str(weathervane_data))
-        # Process the data...
+        # MOOF MOOF MOOF - This might be a by-request only thing.
 
     # MOOF MOOF MOOF
     # As a proof of concept, send a single sample of data from each sensor
     # and exit.
     msg = "Testing data from sensors.  Please stand by."
-    send_message_to_user(msg)
-
-    msg = "Anemometer reading:\n"
-    msg = msg + "Speed: " + str(anemometer_data["speed"]) + "\n"
     send_message_to_user(msg)
 
     msg = "BME280 multisensor data:\n"

@@ -147,14 +147,6 @@ def get_wind_speed():
         velocity = cm_to_km(velocity)
         sample["velocity_km_h"] = round(velocity, 2)
 
-        # Convert km/h to mph.
-        speed = km_to_mi(velocity)
-        sample["speed"] = round(speed, 2)
-
-        # Why do I have the more conventional measurements rounded out to four
-        # decimal places?  If I use only two I keep getting answers of 0.0 when
-        # I bench test.
-
         print("Value of counter: %s" % counter)
 
     return(sample)
