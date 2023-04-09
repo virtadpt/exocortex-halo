@@ -1,0 +1,14 @@
+[Unit]
+Description=Exocortex weather station bot
+After=xmpp_bridge.service
+Wants=xmpp_bridge.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/exocortex-halo/weather_station_bot/
+ExecStart=%h/exocortex-halo/weather_station_bot/run.sh
+Restart=always
+
+[Install]
+WantedBy=default.target
+
