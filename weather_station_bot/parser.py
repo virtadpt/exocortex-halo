@@ -146,7 +146,7 @@ def parse_command(command):
 
     # Wind speed?
     parsed_command = parse_wind_speed(command)
-    if parsed_command == "wind":
+    if parsed_command == "speed":
         return parsed_command
 
     # Wind direction?

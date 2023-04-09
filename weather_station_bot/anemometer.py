@@ -144,8 +144,6 @@ def get_wind_speed():
         velocity = conversions.cm_to_km(velocity)
         sample["velocity_km_h"] = round(velocity, 2)
 
-        logging.debug("Value of counter: %s" % counter)
-
     return(sample)
 
 # Exercise my code.

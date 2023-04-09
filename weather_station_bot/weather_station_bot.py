@@ -534,12 +534,17 @@ while True:
             if command == "help":
                 send_message_to_user(online_help())
 
-            # If the user is requesting system load...
-            # MOOF MOOF MOOF - this is how to handle a specific command.
-            #if command == "load":
-            #    load = system_stats.sysload()
-            #    message = "The current system load is " + str(load["one_minute"]) + " on the one minute average and " + str(load["five_minute"]) + " on the five minute average."
-            #    send_message_to_user(message)
+            # If the user is requesting wind speed...
+            if command == "speed":
+                wind_speed = anemometer.get_wind_speed()
+                message = ""
+                if measurements == "imperial":
+                    message = "The current wind speed is "
+                    message = message + str(round(conversions.km_to_mi(wind_speed["velocity_km_h"]), 2))
+                    message = message + " miles per hour."
+                if measurements == "metric":
+                    message = "The current wind velocity is " + str(round(wind_speed["velocity_km_h"], 2)) + " kilometers per hour."
+                send_message_to_user(message)
 
             # Fall-through.
             if command == "unknown":
