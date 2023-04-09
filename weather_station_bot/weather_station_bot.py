@@ -169,18 +169,19 @@ def online_help():
     logger.debug("Entered the function online_help().")
     message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
 
-    message = message + "I continually monitor inputs from multiple weather sensors connected to the system I am running on.  I can return specific data points upon request or I can send alerts when weather conditions change significantly.  "
+    message = message + "I continually monitor inputs from multiple weather sensors connected to the system I am running on.  I can return specific data points upon request or I can send alerts when weather conditions change significantly.  The interactive commands I currently support are:\n"
+    message = message + "    help - Display this online help\n"
 
-    # Build the list of sensors plugged into the system.
-    message = message + "I am configured for the following sensors at this time: "
     if anemometer:
-        message = message + "An anemometer, "
+        message = message + "    wind speed\n"
     if bme280:
-        message = message + "a BME280 multisensor, "
+        message = message + "    temperature/temp\n"
+        message = message + "    air pressure/atmospheric pressure/pressure\n"
+        message = message + "    relative humidity/air humidity/humidity\n"
     if raingauge:
-        message = message + "a rain gauge, "
+        message = message + "    rain gauge/raining/is it raining\n"
     if weathervane:
-        message = message + "a weathervane"
+        message = message + "    wind direction/direction"
     return message
 
 # Core code...
@@ -552,6 +553,18 @@ while True:
                 send_message_to_user("The wind is blowing %sward." %
                     wind_direction)
 
+            # If the user is requesting the current temperature...
+            if command == "temp":
+                temp = bme280.get_reading()
+                temp = temp["temp_c"]
+                message = "The current temperature is "
+                if measurements == "imperial":
+                    message = message + str(round(conversions.c_to_f(temp), 2))
+                    message = message + "degrees Fahrenheit."
+                if measurements == "metric":
+                    message = message + str(round(temp, 2))
+                    message = message + "degrees Centigrade."
+                send_message_to_user(message)
 
 
             # Fall-through.
