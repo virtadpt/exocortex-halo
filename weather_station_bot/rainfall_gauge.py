@@ -23,6 +23,8 @@ import gpiozero
 import sys
 import time
 
+import globals
+
 # Constants.
 # GPIO pin (not header pin) the rain gauge is connected to.
 gpio_pin = 6
@@ -39,9 +41,6 @@ rainfall_sample = 0.2794
 # Global variables.
 # Counts the number of times the switch in the anemometer has closed (ticks).
 counter = 0
-
-# Handle to the device on the GPIO bus.
-sensor = None
 
 # Amount of rain fallen so far (in mm).
 rainfall = 0.0
@@ -81,11 +80,12 @@ def get_precip():
     sample = {}
 
     # Set up the GPIO object.
-    sensor = gpiozero.Button(gpio_pin)
+    if not globals.raingauge:
+        globals.raingauge = gpiozero.Button(gpio_pin)
 
     # Set a callback that increments the number of rotations counted every time
     # the GPIO pin is toggled.
-    sensor.when_pressed = rain_gauge_tip
+    globals.raingauge.when_pressed = rain_gauge_tip
 
     # Do the thing.
     # Store the time at which the samples are taken.
