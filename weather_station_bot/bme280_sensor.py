@@ -18,6 +18,7 @@
 
 # Load modules.
 import bme280
+import logging
 import smbus2
 import sys
 
@@ -28,15 +29,6 @@ port = 1
 address = 0x77
 
 # Functions.
-# c_to_f(): Converts centigrade to fahrenheit.
-def c_to_f(centigrade):
-    # Sure, I could one-line this but I can never remember how to do the
-    # conversion and this makes it easy to refer back to.
-    fahrenheit = centigrade * 9
-    fahrenheit = fahrenheit / 5
-    fahrenheit = fahrenheit + 32
-    return(fahrenheit)
-
 # get_reading() - Get a data sample from the sensor.  Data will not be
 #   rounded, converted, or anything else.  That needs to happen elsewhere.
 def get_reading():
@@ -51,11 +43,11 @@ def get_reading():
 
     # Get a handle to the SMbus.
     try:
-        print("Trying to get access to the sensor.")
+        logging.debug("Trying to get access to the sensor.")
         bus = smbus2.SMBus(port)
         bme280.load_calibration_params(bus, address)
     except:
-        print("Unable to get access to the SMbus.")
+        logging.error("Unable to get access to the SMbus.")
         return(None)
 
     # Structure of the data sample returned below:
@@ -71,7 +63,6 @@ def get_reading():
     # Populate the sample.
     data["timestamp"] = bme280_data.timestamp
     data["temp_c"] = round(bme280_data.temperature, 2)
-    data["temp_f"] = round(c_to_f(bme280_data.temperature), 2)
     data["pressure"] = round(bme280_data.pressure, 2)
     data["humidity"] = round(bme280_data.humidity, 2)
 
@@ -86,7 +77,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     print("Time: %s" % sample["timestamp"])
-    print("Temperature: %s degrees C" % round(sample["temperature"], ndigits=2))
+    print("Temperature: %s degrees C" % round(sample["temp_c"], ndigits=2))
     print("Pressure: %s kPa" % round(sample["pressure"], ndigits=2))
     print("Humidity: %s%%" % round(sample["humidity"], ndigits=2))
 
