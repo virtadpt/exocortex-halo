@@ -68,11 +68,6 @@ def reset_rainfall():
     global rainfall
     rainfall = 0.0
 
-# mm_to_in(): Converts mm into inches.
-def mm_to_in(rainfall):
-    # 25.4 mm per inch.
-    return(rainfall / 25.4)
-
 # Core code...
 # get_precip(): The function that does everything by calling everything
 #   else.  Here so that it can be called from Weather Station Bot's central
@@ -103,9 +98,6 @@ def get_precip():
         # Calculate the amount of rainfall in mm.
         rainfall = counter * rainfall_sample
         sample["mm"] = round(rainfall, 2)
-
-        # Convert the amount of rainfall into inches.
-        sample["in"] = round(mm_to_in(rainfall), 2)
 
     return(sample)
 

@@ -36,6 +36,7 @@ import statistics
 import sys
 import time
 
+import conversions
 import globals
 #import parser
 
@@ -123,6 +124,9 @@ average_temperature = 0.0
 average_air_pressure = 0.0
 average_humidity = 0.0
 
+# Imperial or metric? (imperial/metric)
+measurements = "metric"
+
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -177,15 +181,6 @@ def online_help():
     """
     return message
 
-# km_to_mi(): Convert velocity in km/h to speed in miles per hour.
-def km_to_mi(km):
-    # You wouldn't believe how difficult this is to look up.  Some pages say
-    # it's a multiplication, some say it's division.  I had to look at a bunch
-    # of different websites, and I basically picked the conversion that
-    # showed up more often (division) than the other.
-    # We USians really can't do anything right, can we?
-    return(km / 1.609)
-
 # Core code...
 # Allocate a command-line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that monitors weather sensors attached to the system and sends alerts via the XMPP bridge as appropriate.")
@@ -208,6 +203,10 @@ argparser.add_argument("--time-between-alerts", action="store",
 # Whether or not to list the configured sensors and exit.
 argparser.add_argument("--list-sensors", action="store_true",
     help="Print the list of sensors the bot recognized from the config file and exit.")
+
+# Use imperial measurements instead?
+argparser.add_argument("--imperial", action="store_const", const="imperial",
+    help="Use imperial instead of metric.")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -299,9 +298,19 @@ standard_deviations = int(config.get("DEFAULT", "standard_deviations"))
 minimum_length = int(config.get("DEFAULT", "minimum_length"))
 maximum_length = int(config.get("DEFAULT", "maximum_length"))
 
+# Set the measurement system from the config file.
+measurements = config.get("DEFAULT", "measurements")
+if measurements == "amu":
+    print("American meat units mode activated.  Fire up the grill!")
+    measurements = "imperial"
+
 # Set the loglevel from the override on the command line.
 if args.loglevel:
     loglevel = set_loglevel(args.loglevel.lower())
+
+# Set the measurement type from the override on the command line.
+if args.imperial:
+    measurements = "imperial"
 
 # Configure the logger.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
@@ -349,6 +358,7 @@ if time_between_alerts == 0:
 else:
     logger.debug("Value of time_between_alerts (in seconds): %s" % time_between_alerts)
 logger.debug("Value of loop_counter (in seconds): %s" % status_polling)
+logger.debug("Measurement system: %s" % measurements)
 logger.debug("Sensors enabled:")
 if anemometer:
     logger.debug("    * Anemometer")

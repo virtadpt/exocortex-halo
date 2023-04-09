@@ -22,9 +22,12 @@
 
 # Load modules.
 import gpiozero
+import logging
 import math
 import sys
 import time
+
+import conversions
 
 # Constants.
 # GPIO pin (not header pin) the anemometer is connected to.
@@ -102,12 +105,6 @@ def calculate_speed(time):
 
     return(velocity)
 
-# cm_to_km(): Convert velocity in centimeters per second to kilometers per hour.
-def cm_to_km(cm):
-    # 100 cm / m
-    # 1000 m / km
-    return((cm / 100) / 1000)
-
 # reset_counter(): Helper function that resets the rotation counter to 0.
 def reset_counter():
     global counter
@@ -144,10 +141,10 @@ def get_wind_speed():
         sample["velocity_cm_h"] = round(velocity, 2)
 
         # Convert to km/h.
-        velocity = cm_to_km(velocity)
+        velocity = conversions.cm_to_km(velocity)
         sample["velocity_km_h"] = round(velocity, 2)
 
-        print("Value of counter: %s" % counter)
+        logging.debug("Value of counter: %s" % counter)
 
     return(sample)
 
@@ -161,7 +158,6 @@ if __name__ == "__main__":
         # Print the test output.
         print("Velocity: %s cm/h" % round(data["velocity_cm_h"], ndigits=2))
         print("Velocity: %s km/h" % round(data["velocity_km_h"], ndigits=2))
-        print("Speed: %s mph" % round(data["speed"], ndigits=4))
         print()
 
     print("End of test run.")
