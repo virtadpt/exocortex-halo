@@ -37,7 +37,6 @@ import sys
 import time
 
 import conversions
-import globals
 import parser
 
 # Global variables.
