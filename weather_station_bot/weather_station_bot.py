@@ -25,14 +25,8 @@
 #   modules.  Also develop documentation that describes all of the changes
 #   that will have to be made to integrate them.
 # - Add support for configuring the sensors from the config file.
-# - Re-aquaint myself with how the do-stuff loop works so I can figure out why
-#   it takes so long for commands to be responded to.
 # - Add more comments that tell where to add code for new modules.
-# - Add statistical analysis to detect gusts of wind, whether or not it's
-#   raining (and when it stops).
 # - Wind kicks up by 1 sigma + rain == there's a storm?  Add code to do this.
-# - Send notices to the message bus if it starts raining, stops raining, wind
-#   has kicked up, wind has calmed down.
 # - Make it possible to send a report on a schedule.  Build a report all in
 #   one go and then transmit it.
 # - 
@@ -47,6 +41,8 @@ import requests
 import statistics
 import sys
 import time
+
+from linear_regression.lr import lr
 
 import conversions
 import parser
@@ -110,6 +106,11 @@ time_between_alerts = 3600
 # Scratch variable that holds a calculated standard deviation.
 std_dev = 0
 
+# Scratch variables that hold a linear regression object and the slope of a
+# calculated linear regression.
+analysis = None
+slope = 0.0
+
 # Possible sensors comprising the weather station.
 anemometer = False
 bme280 = False
@@ -121,6 +122,10 @@ anemometer_data = {}
 bme280_data = {}
 raingauge_data = {}
 weathervane_data = {}
+
+# Reference array that represents the time axis of a graph.  For statistical
+# analysis elsewhere in the bot core.
+reference_array = []
 
 # Lists of data samples from the sensors.
 anemometer_samples = []
@@ -188,7 +193,7 @@ def online_help():
         message = message + "    wind speed\n"
     if bme280:
         message = message + "    temperature/temp\n"
-        message = message + "    air pressure/atmospheric pressure/pressure\n"
+        message = message + "    air pressure/atmospheric pressure/barometric pressure/pressure\n"
         message = message + "    relative humidity/air humidity/humidity\n"
     if raingauge:
         message = message + "    rain gauge/raining/is it raining\n"
@@ -395,6 +400,12 @@ while True:
         logger.warning("Unable to reach message bus.  Going to try again in %s seconds." % polling_time)
         time.sleep(float(polling_time))
 
+# Build out the reference array for statistical analysis.
+logger.debug("Building out reference_array.")
+for i in range(0, maximum_length):
+    reference_array.append(i)
+logger.debug("Contents of reference_array: %s" % reference_array)
+
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
 logger.debug("Entering main loop to handle requests.")
@@ -438,6 +449,26 @@ while True:
                 msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
             send_message_to_user(msg)
 
+        # Do a trend analysis of wind speed to determine if it's increasing.
+        if len(anemometer_samples) >= minimum_length:
+            logging.debug("Calculating linear regression of wind speed.")
+            analysis = lr(anemometer_samples, reference_array)
+
+            # This is the slope of a line that intercepts the origin (0, 0)
+            # instead of wherever the line would naturally be graphed.  Because
+            # the data points are always rolling forward one array entry per
+            # cycle, and we always start looking from array[0], this gives
+            # us the result we want.
+            slope = analysis.slope00
+
+            # This might not be the right way to do it, but I think for the
+            # moment I can repurpose the number of standard deviations from
+            # the config file to detect a noteworthy upward trend.
+            # MOOF MOOF MOOF - also do a downward trend!
+            if slope >= float(standard_deviations):
+                msg = "The wind appears to be blowing noticeably harder."
+                send_message_to_user(msg)
+
     if bme280:
         logging.debug("Polling BME280 sensor.")
         bme280_data = bme280.get_reading()
@@ -451,7 +482,6 @@ while True:
         bme280_pressure_samples.append(bme280_data["pressure"])
         if len(bme280_pressure_samples) > maximum_length:
             bme280_pressure_samples.pop(0)
-        # MOOF MOOF MOOF - do trend analysis here to determine rise or fall
 
         bme280_humidity_samples.append(bme280_data["humidity"])
         if len(bme280_humidity_samples) > maximum_length:
@@ -489,6 +519,25 @@ while True:
         if std_dev >= standard_deviations:
             send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
 
+        # Do a trend analysis of air pressure to make educated guesses about
+        # where the weather might be going.
+        if len(bme280_pressure_samples) >= minimum_length:
+            logging.debug("Calculating linear regression of air pressure.")
+            msg = ""
+            analysis = lr(bme280_pressure_samples, reference_array)
+            slope = analysis.slope00
+
+            # Air pressure trending up.
+            if slope >= 1.0:
+                msg = "The air pressure is trending upward.  That usually means that the weather's going to be pretty nice."
+
+            # Air pressure trending down (including negatively).
+            if slope < 1.0:
+                msg = "The air pressure is trending downward.  That usually means that the weather's going to get kind of lousy."
+
+            # Send the message.
+            send_message_to_user(msg)
+
     if raingauge:
         logging.debug("Polling rain gauge.")
         raingauge_data = raingauge.get_precip()
@@ -499,8 +548,23 @@ while True:
         if len(raingauge_samples) > maximum_length:
             raingauge_samples.pop(0)
 
-        # MOOF MOOF MOOF - do trend analysis to detect when it starts and
-        # stops raining
+        # Do a trend analysis to detect when it starts and stops raining
+        if len(raingauge_samples) >= minimum_length:
+            logging.debug("Calculating linear regression of rain gauge samples.")
+            msg = ""
+            analysis = lr(raingauge_samples, reference_array)
+            slope = analysis.slope00
+
+            # Precipitation samples trending up.
+            if slope >= 1.0:
+                msg = "The amount of precipitation the raingauge is detecting is trending up.  Is it raining?"
+
+            # Precipitation samples trending down.
+            if slope < 1.0:
+                msg = "The amount of precipitation the raingauge is detecting is trending downward.  I think the rain's slowing down."
+
+            # Send the message.
+            send_message_to_user(msg)
 
     if weathervane:
         logging.debug("Polling weather vane.")
@@ -579,11 +643,11 @@ while True:
                     message = message + " degrees Centigrade."
                 send_message_to_user(message)
 
-            # If the user is requesting the air pressure...
+            # If the user is requesting the barometric pressure...
             if command == "pressure":
                 message = ""
                 pressure = bme280.get_reading()
-                message = "The current air pressure is "
+                message = "The current barometric pressure is "
                 message = message + str(pressure["pressure"])
                 message = message + " kPa."
                 send_message_to_user(message)
@@ -593,7 +657,7 @@ while True:
                 message = ""
                 humidity = bme280.get_reading()
                 message = "The current humidity is "
-                message = message + str(pressure["humidity"])
+                message = message + str(humidity["humidity"])
                 message = message + " %."
                 send_message_to_user(message)
 

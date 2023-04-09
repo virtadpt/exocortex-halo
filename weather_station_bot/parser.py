@@ -38,9 +38,10 @@ temperature = pp.Or([temperature_command, temp_command])
 
 air_pressure_command = pp.CaselessLiteral("air pressure")
 atmospheric_pressure_command = pp.CaselessLiteral("atmospheric pressure")
+barometric_pressure_command = pp.CaselessLiteral("barometric pressure")
 pressure_command = pp.CaselessLiteral("pressure")
 air_pressure = pp.Or([air_pressure_command, atmospheric_pressure_command,
-    pressure_command])
+    barometric_pressure_command, pressure_command])
 
 relative_humidity_command = pp.CaselessLiteral("relative humidity")
 air_humidity_command = pp.CaselessLiteral("air humidity")
@@ -187,6 +188,7 @@ if __name__ == "__main__":
     print(" * temp")
     print(" * air pressure")
     print(" * atmospheric pressure")
+    print(" * barometric pressure")
     print(" * pressure")
     print(" * air humidity")
     print(" * relative humidity")

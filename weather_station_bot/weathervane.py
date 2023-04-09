@@ -83,7 +83,7 @@ def get_direction():
 
     # Get a sample from the weather vane.
     value = round(globals.weathervane.value * reference_voltage, 1)
-    logging.debug("Value from the weather vane:: %s" % value)
+    logging.debug("Value from the weather vane: %s" % value)
 
     # Look up the value from the sensor in the direction table.  If it's in
     # there return the direction, else return None.
