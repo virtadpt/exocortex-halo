@@ -372,7 +372,7 @@ if time_between_alerts == 0:
     logger.info("time_between_alerts is set to 0 - system alerting disabled!")
 else:
     logger.debug("Value of time_between_alerts (in seconds): %s" % time_between_alerts)
-logger.debug("Value of loop_counter (in seconds): %s" % status_polling)
+logger.debug("Value of status_polling (in seconds): %s" % status_polling)
 logger.debug("Measurement system: %s" % measurements)
 logger.debug("Sensors enabled:")
 if anemometer:
@@ -613,7 +613,6 @@ while True:
                     if measurements == "metric":
                         message = message + str(rain["mm"]) + " millimeters "
                     message = message + "of rain."
-
                 send_message_to_user(message)
 
             # Fall-through.
