@@ -110,7 +110,6 @@ if __name__ == "__main__":
 
         # Print the test output.
         print("Rainfall in mm: %s" % round(data["mm"], 2))
-        print("Rainfall in in: %s" % round(data["in"], 2))
         print()
 
     print("ticks: %s" % counter)
