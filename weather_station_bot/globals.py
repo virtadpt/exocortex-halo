@@ -28,6 +28,9 @@ bme280_sensor = None
 # Handle to the GPIO interface to the anemometer.
 anemometer = None
 
+# Handle to the GPIO interface to the weathervane.
+weathervane = None
+
 # Core code.
 if __name__ == "__main__":
     print("No self tests yet.")

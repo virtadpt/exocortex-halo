@@ -23,8 +23,11 @@
 
 # Load modules.
 import gpiozero
+import logging
 import sys
 import time
+
+import globals
 
 # Constants.
 # Channel (pin) of the ADC the weather vane is connected to.
@@ -35,8 +38,6 @@ channel = 0
 reference_voltage = 3.3
 
 # Global variables.
-# Handle to the device on the GPIO bus.
-sensor = None
 
 # Technically this falls under global constants, but I derived these values
 # experimentally so they might change from station to station.
@@ -77,11 +78,12 @@ def get_direction():
     value = 0.0
 
     # Set up the GPIO object.
-    sensor = gpiozero.MCP3008(channel=channel)
+    if not globals.weathervane:
+        globals.weathervane = gpiozero.MCP3008(channel=channel)
 
     # Get a sample from the weather vane.
-    value = round(sensor.value * reference_voltage, 1)
-    print("Value: %s" % value)
+    value = round(globals.weathervane.value * reference_voltage, 1)
+    logging.debug("Value from the weather vane:: %s" % value)
 
     # Look up the value from the sensor in the direction table.  If it's in
     # there return the direction, else return None.
@@ -92,6 +94,10 @@ def get_direction():
 
 # Exercise my code.
 if __name__ == "__main__":
+    # Configure the logger.  DEBUG for interactive testing.
+    logging.basicConfig(level=10, format="%(levelname)s: %(message)s")
+    logger = logging.getLogger(__name__)
+
     print("Starting test run.")
 
     sensor = gpiozero.MCP3008(channel=channel)
@@ -101,7 +107,7 @@ if __name__ == "__main__":
         if temp:
             print("The weather vane is pointing %s." % temp)
         else:
-            print("The weather vane returned a spurious value.")
+            print("The weather vane returned a spurious value.  I saw: %s" % temp)
         time.sleep(5)
 
     print("End of test run.")
