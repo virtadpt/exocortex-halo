@@ -451,11 +451,11 @@ while True:
 
         if len(bme280_pressure_samples) >= minimum_length:
             average_pressure = round(statistics.mean(bme280_pressure_samples), 2)
-            logging.debug("The average temperature is %s degrees C." % average_temperature)
+            logging.debug("The average air pressure is %s kPa." % average_pressure)
 
         if len(bme280_humidity_samples) >= minimum_length:
             average_humidity = round(statistics.mean(bme280_humidity_samples), 2)
-            logging.debug("The average temperature is %s degrees C." % average_temperature)
+            logging.debug("The average humidity is %s %." % average_humidity)
 
         # Calculate standard deviations to see if anything weird is going on.
         if len(bme280_temperature_samples) >= minimum_length:
@@ -545,6 +545,14 @@ while True:
                 if measurements == "metric":
                     message = "The current wind velocity is " + str(round(wind_speed["velocity_km_h"], 2)) + " kilometers per hour."
                 send_message_to_user(message)
+
+            # If the user is requesting wind direction...
+            if command == "direction":
+                wind_direction = weathervane.get_direction()
+                send_message_to_user("The wind is blowing %sward." %
+                    wind_direction)
+
+
 
             # Fall-through.
             if command == "unknown":
