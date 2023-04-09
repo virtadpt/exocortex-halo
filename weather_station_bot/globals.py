@@ -22,9 +22,13 @@
 import sys
 
 # Variables
+# Handle to an SMbus for the BME280.
+bme280_sensor = None
 
-# Core code
+# Handle to the GPIO interface to the anemometer.
+anemometer = None
 
+# Core code.
 if __name__ == "__main__":
     print("No self tests yet.")
     sys.exit(0)

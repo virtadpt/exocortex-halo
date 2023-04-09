@@ -28,6 +28,7 @@ import sys
 import time
 
 import conversions
+import globals
 
 # Constants.
 # GPIO pin (not header pin) the anemometer is connected to.
@@ -46,9 +47,6 @@ anemometer_factor = 1.18
 # Global variables.
 # Counts the number of times the switch in the anemometer has closed (ticks).
 counter = 0
-
-# Handle to the device on the GPIO bus.
-sensor = None
 
 # Calculated wind speed.
 speed = 0.0
@@ -121,11 +119,13 @@ def get_wind_speed():
     sample = {}
 
     # Set up the GPIO object.
-    sensor = gpiozero.Button(gpio_pin)
+    if not globals.anemometer:
+        globals.anemometer = gpiozero.Button(gpio_pin)
+        logging.info("Initialized GPIO interface to the anemometer.")
 
     # Set a callback that increments the number of rotations counted every time
     # the GPIO pin is toggled.
-    sensor.when_pressed = spin
+    globals.anemometer.when_pressed = spin
 
     # Do the thing.
     # Store the time at which the samples are taken.

@@ -22,6 +22,8 @@ import logging
 import smbus2
 import sys
 
+import globals
+
 # Constants.
 port = 1
 
@@ -32,8 +34,6 @@ address = 0x77
 # get_reading() - Get a data sample from the sensor.  Data will not be
 #   rounded, converted, or anything else.  That needs to happen elsewhere.
 def get_reading():
-    # Handle to an SMbus object.
-    bus = None
 
     # Handle to a sensor sample.
     bme280_data = None
@@ -42,13 +42,14 @@ def get_reading():
     data = {}
 
     # Get a handle to the SMbus.
-    try:
-        logging.debug("Trying to get access to the sensor.")
-        bus = smbus2.SMBus(port)
-        bme280.load_calibration_params(bus, address)
-    except:
-        logging.error("Unable to get access to the SMbus.")
-        return(None)
+    if not globals.bme280_sensor:
+        try:
+            logging.debug("Trying to get access to the sensor.")
+            globals.bme280_sensor = smbus2.SMBus(port)
+            bme280.load_calibration_params(globals.bme280_sensor, address)
+        except:
+            logging.error("Unable to get access to the BME280 SMbus.")
+            return(None)
 
     # Structure of the data sample returned below:
     #   .id - A GUID.  String.
@@ -58,7 +59,7 @@ def get_reading():
     #       Standard pressure at sea level is 1013 hPa.
     #   .humidity - Relative humidity.  Float.
     # Get a sample from the sensor.
-    bme280_data = bme280.sample(bus, address)
+    bme280_data = bme280.sample(globals.bme280_sensor, address)
 
     # Populate the sample.
     data["timestamp"] = bme280_data.timestamp
