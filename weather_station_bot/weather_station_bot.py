@@ -403,7 +403,12 @@ while True:
         # Calculate average wind velocity if we have enough samples.
         if len(anemometer_samples) >= minimum_length:
             average_wind_velocity = round(statistics.mean(anemometer_samples), 2)
-            logging.debug("The average wind velocity is %s kph." % average_wind_velocity)
+            if measurements == "metric":
+                logging.debug("The average wind velocity is %s kph." %
+                    average_wind_velocity)
+            if measurements == "imperial":
+                logging.debug("The average wind speed is %s mph." %
+                    conversions.km_to_mi(average_wind_velocity))
 
         # Calculate the standard deviation of the data from the anemometer if
         # we have enough samples.
@@ -411,7 +416,12 @@ while True:
             std_dev = statistics.stdev(anemometer_samples)
             logging.debug("Calculated standard deviation of wind velocity: %s" % std_dev)
         if std_dev >= standard_deviations:
-            send_message_to_user("The wind velocity has jumped by %s standard deviations.  The weather might be getting bad." % std_dev)
+            msg = ""
+            if measurements == "metric":
+                msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
+            if measurements == "imperial":
+                msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
+            send_message_to_user(msg)
 
     if bme280:
         logging.debug("Polling BME280 sensor.")
@@ -491,14 +501,12 @@ while True:
 
     msg = "BME280 multisensor data:\n"
     msg = msg + "Temperature (C): " + str(bme280_data["temp_c"]) + " C\n"
-    msg = msg + "Temperature (F): " + str(bme280_data["temp_f"]) + " F\n"
     msg = msg + "Barometric pressure: " + str(bme280_data["pressure"]) + " kPa\n"
     msg = msg + "Humidity: " + str(bme280_data["humidity"]) + " %"
     send_message_to_user(msg)
 
     msg = "Rainfall gauge:\n"
     msg = msg + "Precipitation in mm: " + str(raingauge_data["mm"]) + " mm\n"
-    msg = msg + "Precipitation in in: " + str(raingauge_data["in"]) + " in\n"
     send_message_to_user(msg)
 
     if weathervane_data:
