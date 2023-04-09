@@ -30,6 +30,12 @@
 # - Add more comments that tell where to add code for new modules.
 # - Add statistical analysis to detect gusts of wind, whether or not it's
 #   raining (and when it stops).
+# - Wind kicks up by 1 sigma + rain == there's a storm?  Add code to do this.
+# - Send notices to the message bus if it starts raining, stops raining, wind
+#   has kicked up, wind has calmed down.
+# - Make it possible to send a report on a schedule.  Build a report all in
+#   one go and then transmit it.
+# - 
 
 # Load modules.
 import argparse
