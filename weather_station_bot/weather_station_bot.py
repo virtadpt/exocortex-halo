@@ -38,7 +38,7 @@ import time
 
 import conversions
 import globals
-#import parser
+import parser
 
 # Global variables.
 # Handle to an argument parser object.
@@ -170,15 +170,18 @@ def online_help():
     logger.debug("Entered the function online_help().")
     message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
 
-    message = message + """
-    I continually monitor inputs from multiple weather sensors physically attached to the system I am running on.  I can return specific data points upon request or I can send alerts when weather conditions change significantly.
-    """
+    message = message + "I continually monitor inputs from multiple weather sensors connected to the system I am running on.  I can return specific data points upon request or I can send alerts when weather conditions change significantly.  "
 
-    # Continue building the help message.
-    # MOOF MOOF MOOF - this needs to be dynamically generated.
-    message = message + """
-    I am configured for the following sensors at this time: foo bar baz
-    """
+    # Build the list of sensors plugged into the system.
+    message = message + "I am configured for the following sensors at this time: "
+    if anemometer:
+        message = message + "An anemometer, "
+    if bme280:
+        message = message + "a BME280 multisensor, "
+    if raingauge:
+        message = message + "a rain gauge, "
+    if weathervane:
+        message = message + "a weathervane"
     return message
 
 # Core code...
@@ -493,30 +496,6 @@ while True:
         logging.debug(str(weathervane_data))
         # MOOF MOOF MOOF - This might be a by-request only thing.
 
-    # MOOF MOOF MOOF
-    # As a proof of concept, send a single sample of data from each sensor
-    # and exit.
-    msg = "Testing data from sensors.  Please stand by."
-    send_message_to_user(msg)
-
-    msg = "BME280 multisensor data:\n"
-    msg = msg + "Temperature (C): " + str(bme280_data["temp_c"]) + " C\n"
-    msg = msg + "Barometric pressure: " + str(bme280_data["pressure"]) + " kPa\n"
-    msg = msg + "Humidity: " + str(bme280_data["humidity"]) + " %"
-    send_message_to_user(msg)
-
-    msg = "Rainfall gauge:\n"
-    msg = msg + "Precipitation in mm: " + str(raingauge_data["mm"]) + " mm\n"
-    send_message_to_user(msg)
-
-    if weathervane_data:
-        msg = "The wind is blowing " + weathervane_data + "ward.\n"
-    else:
-        msg = "I don't think the wind is blowing, the weather vane isn't returning anything."
-    send_message_to_user(msg)
-    sys.exit(1)
-    # MOOF MOOF MOOF
-
     # Increment loop_counter by status_polling.
     loop_counter = loop_counter + status_polling
 
@@ -549,12 +528,12 @@ while True:
                 continue
 
             # Parse the command.
-            #command = parser.parse_command(command)
-            #logger.debug("Parsed command: " + str(command))
+            command = parser.parse_command(command)
+            logger.debug("Parsed command: " + str(command))
 
             # If the user is requesting online help...
-            #if command == "help":
-            #    send_message_to_user(online_help())
+            if command == "help":
+                send_message_to_user(online_help())
 
             # If the user is requesting system load...
             # MOOF MOOF MOOF - this is how to handle a specific command.
