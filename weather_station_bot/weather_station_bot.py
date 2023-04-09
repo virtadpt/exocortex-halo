@@ -24,6 +24,12 @@
 # - Develop a template module that makes it easy for a user to develop new
 #   modules.  Also develop documentation that describes all of the changes
 #   that will have to be made to integrate them.
+# - Add support for configuring the sensors from the config file.
+# - Re-aquaint myself with how the do-stuff loop works so I can figure out why
+#   it takes so long for commands to be responded to.
+# - Add more comments that tell where to add code for new modules.
+# - Add statistical analysis to detect gusts of wind, whether or not it's
+#   raining (and when it stops).
 
 # Load modules.
 import argparse
@@ -456,7 +462,7 @@ while True:
 
         if len(bme280_humidity_samples) >= minimum_length:
             average_humidity = round(statistics.mean(bme280_humidity_samples), 2)
-            logging.debug("The average humidity is %s %." % average_humidity)
+            logging.debug("The average humidity is %s percent." % average_humidity)
 
         # Calculate standard deviations to see if anything weird is going on.
         if len(bme280_temperature_samples) >= minimum_length:
@@ -541,7 +547,7 @@ while True:
                 message = ""
                 if measurements == "imperial":
                     message = "The current wind speed is "
-                    message = message + str(round(conversions.km_to_mi(wind_speed["velocity_km_h"]), 2))
+                    message = message + str(conversions.km_to_mi(wind_speed["velocity_km_h"]))
                     message = message + " miles per hour."
                 if measurements == "metric":
                     message = "The current wind velocity is " + str(round(wind_speed["velocity_km_h"], 2)) + " kilometers per hour."
@@ -555,17 +561,54 @@ while True:
 
             # If the user is requesting the current temperature...
             if command == "temp":
+                message = ""
                 temp = bme280.get_reading()
                 temp = temp["temp_c"]
                 message = "The current temperature is "
                 if measurements == "imperial":
-                    message = message + str(round(conversions.c_to_f(temp), 2))
-                    message = message + "degrees Fahrenheit."
+                    message = message + str(conversions.c_to_f(temp))
+                    message = message + " degrees Fahrenheit."
                 if measurements == "metric":
-                    message = message + str(round(temp, 2))
-                    message = message + "degrees Centigrade."
+                    message = message + str(temp)
+                    message = message + " degrees Centigrade."
                 send_message_to_user(message)
 
+            # If the user is requesting the air pressure...
+            if command == "pressure":
+                message = ""
+                pressure = bme280.get_reading()
+                message = "The current air pressure is "
+                message = message + str(pressure["pressure"])
+                message = message + " kPa."
+                send_message_to_user(message)
+
+            # If the user is requesting the humidity...
+            if command == "humidity":
+                message = ""
+                humidity = bme280.get_reading()
+                message = "The current humidity is "
+                message = message + str(pressure["humidity"])
+                message = message + " %."
+                send_message_to_user(message)
+
+            # If the user is requesting the state of the rain gauge...
+            if command == "rain":
+                message = ""
+                rain = raingauge.get_precip()
+
+                # If it's not raining, or if there is so little precipitation
+                # that rounding the sensor sample is 0.0, account for that.
+                if not rain["mm"]:
+                    message = "If it's raining, it's so light that the sensor isn't picking it up."
+                else:
+                    message = "The measurement the rain gauge took during the last sample period was "
+                    if measurements == "imperial":
+                        message = message + str(conversions.mm_to_in(rain["mm"])) + " inches "
+                    if measurements == "metric":
+                        message = message + str(rain["mm"]) + " millimeters "
+                    message = message + "of rain."
+
+                send_message_to_user(message)
 
             # Fall-through.
             if command == "unknown":
