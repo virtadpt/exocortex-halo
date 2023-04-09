@@ -25,6 +25,9 @@ standard_deviations = 2
 minimum_length = 10
 maximum_length = 25
 
+# Imperial or metric?  Default: metric
+measurements = imperial
+
 # Here is where the individual sensors connected to the computer are
 # configured.  Every weather station can have different devices connected to
 # it doing different things.  The defaults in this file reflect what I have
