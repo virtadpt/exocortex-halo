@@ -29,6 +29,7 @@
 # - Wind kicks up by 1 sigma + rain == there's a storm?  Add code to do this.
 # - Make it possible to send a report on a schedule.  Build a report all in
 #   one go and then transmit it.
+# - Refactor the do-stuff loop.  It's getting pretty hairy.
 # - 
 
 # Load modules.
@@ -142,6 +143,11 @@ average_humidity = 0.0
 
 # Imperial or metric? (imperial/metric)
 measurements = "metric"
+
+# Counters used to keep track of when notices are sent to the bot's owner.
+anemometer_counter = 0
+bme280_counter = 0
+raingauge_counter = 0
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -447,10 +453,14 @@ while True:
                 msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
             if measurements == "imperial":
                 msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
-            send_message_to_user(msg)
+
+            # If time_between_alerts is 0, alerting is disabled.
+            if time_between_alerts:
+                if anemometer_counter >= time_between_alerts:
+                    send_message_to_user(msg)
 
         # Do a trend analysis of wind speed to determine if it's increasing.
-        if len(anemometer_samples) >= minimum_length:
+        if len(anemometer_samples) >= maximum_length:
             logging.debug("Calculating linear regression of wind speed.")
             analysis = lr(anemometer_samples, reference_array)
 
@@ -467,7 +477,17 @@ while True:
             # MOOF MOOF MOOF - also do a downward trend!
             if slope >= float(standard_deviations):
                 msg = "The wind appears to be blowing noticeably harder."
-                send_message_to_user(msg)
+
+                # If time_between_alerts is 0, alerting is disabled.
+                if time_between_alerts:
+                    if anemometer_counter >= time_between_alerts:
+                        send_message_to_user(msg)
+
+        # Housekeeping: Update the "don't spam the user" counters.
+        if anemometer_counter >= time_between_alerts:
+            anemometer_counter = 0
+        else:
+            anemometer_counter = anemometer_counter + status_polling
 
     if bme280:
         logging.debug("Polling BME280 sensor.")
@@ -517,11 +537,14 @@ while True:
             std_dev = statistics.stdev(bme280_humidity_samples)
             logging.debug("Calculated standard deviation of relative humidity: %s" % std_dev)
         if std_dev >= standard_deviations:
-            send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
+            # If time_between_alerts is 0, alerting is disabled.
+            if time_between_alerts:
+                if bme280_counter >= time_between_alerts:
+                    send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
 
         # Do a trend analysis of air pressure to make educated guesses about
         # where the weather might be going.
-        if len(bme280_pressure_samples) >= minimum_length:
+        if len(bme280_pressure_samples) >= maximum_length:
             logging.debug("Calculating linear regression of air pressure.")
             msg = ""
             analysis = lr(bme280_pressure_samples, reference_array)
@@ -535,8 +558,17 @@ while True:
             if slope < 1.0:
                 msg = "The air pressure is trending downward.  That usually means that the weather's going to get kind of lousy."
 
+            # If time_between_alerts is 0, alerting is disabled.
             # Send the message.
-            send_message_to_user(msg)
+            if time_between_alerts:
+                if bme280_counter >= time_between_alerts:
+                    send_message_to_user(msg)
+
+        # Housekeeping: Update the "don't spam the user" counters.
+        if bme280_counter >= time_between_alerts:
+           bme280_counter = 0
+        else:
+            bme280_counter = bme280_counter + status_polling
 
     if raingauge:
         logging.debug("Polling rain gauge.")
@@ -549,7 +581,7 @@ while True:
             raingauge_samples.pop(0)
 
         # Do a trend analysis to detect when it starts and stops raining
-        if len(raingauge_samples) >= minimum_length:
+        if len(raingauge_samples) >= maximum_length:
             logging.debug("Calculating linear regression of rain gauge samples.")
             msg = ""
             analysis = lr(raingauge_samples, reference_array)
@@ -563,8 +595,17 @@ while True:
             if slope < 1.0:
                 msg = "The amount of precipitation the raingauge is detecting is trending downward.  I think the rain's slowing down."
 
+            # If time_between_alerts is 0, alerting is disabled.
             # Send the message.
-            send_message_to_user(msg)
+            if time_between_alerts:
+                if raingauge_counter >= time_between_alerts:
+                    send_message_to_user(msg)
+
+        # Housekeeping: Update the "don't spam the user" counters.
+        if raingauge_counter >= time_between_alerts:
+           raingauge_counter = 0
+        else:
+            raingauge_counter = raingauge_counter + status_polling
 
     if weathervane:
         logging.debug("Polling weather vane.")
