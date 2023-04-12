@@ -104,9 +104,6 @@ command = ""
 # 3600 seconds (one hour).
 time_between_alerts = 3600
 
-# Scratch variable that holds a calculated standard deviation.
-std_dev = 0
-
 # Scratch variables that hold a linear regression object and the slope of a
 # calculated linear regression.
 analysis = None
@@ -206,6 +203,224 @@ def online_help():
     if weathervane:
         message = message + "    wind direction/direction"
     return message
+
+# poll_anemometer(): Breakout function for sampling data from the anemometer.
+def poll_anemometer():
+    logging.debug("Entered poll_anemometer().")
+
+    std_dev = 0
+    global anemometer_samples
+    global anemometer_counter
+
+    anemometer_data = anemometer.get_wind_speed()
+    logging.debug(str(anemometer_data))
+
+    # Save the running tally of wind velocities.
+    anemometer_samples.append(anemometer_data["velocity_km_h"])
+    if len(anemometer_samples) > maximum_length:
+        anemometer_samples.pop(0)
+
+    # Calculate average wind velocity if we have enough samples.
+    if len(anemometer_samples) >= minimum_length:
+        average_wind_velocity = statistics.mean(anemometer_samples)
+        average_wind_velocity = round(average_wind_velocity, 2)
+        logging.debug("The average wind velocity is %s kph." %
+            average_wind_velocity)
+
+    # Calculate the standard deviation of the data from the anemometer if
+    # we have enough samples.
+    if len(anemometer_samples) >= minimum_length:
+        std_dev = statistics.stdev(anemometer_samples)
+        logging.debug("Calculated standard deviation of wind velocity: %s" %
+            std_dev)
+
+        if std_dev >= standard_deviations:
+            msg = ""
+            if measurements == "metric":
+                msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
+            if measurements == "imperial":
+                msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
+
+        # If time_between_alerts is 0, alerting is disabled.
+        if time_between_alerts:
+            if anemometer_counter >= time_between_alerts:
+                send_message_to_user(msg)
+
+    # Do a trend analysis of wind speed to determine if it's increasing.
+    if len(anemometer_samples) >= maximum_length:
+        logging.debug("Calculating linear regression of wind speed.")
+        analysis = lr(anemometer_samples, reference_array)
+        msg = ""
+
+        # This is the slope of a line that intercepts the origin (0, 0)
+        # instead of wherever the line would naturally be graphed.  Because
+        # the data points are always rolling forward one array entry per
+        # cycle, and we always start looking from array[0], this gives
+        # us the result we want.
+        slope = analysis.slope00
+
+        # This might not be the right way to do it, but I think for the
+        # moment I can repurpose the number of standard deviations from
+        # the config file to detect a noteworthy upward trend.
+        # MOOF MOOF MOOF - also do a downward trend!
+        if slope >= float(standard_deviations):
+            msg = "The wind appears to be blowing noticeably harder."
+
+        # If time_between_alerts is 0, alerting is disabled.
+        if time_between_alerts:
+            if anemometer_counter >= time_between_alerts:
+                send_message_to_user(msg)
+
+    # Housekeeping: Update the "don't spam the user" counters.
+    if anemometer_counter >= time_between_alerts:
+        anemometer_counter = 0
+    else:
+        anemometer_counter = anemometer_counter + status_polling
+    return
+
+# poll_bme280(): Breakout function for sampling data from the BME280 multi-
+#   sensor.
+def poll_bme280():
+    logging.debug("Entered poll_bme280().")
+
+    std_dev = 0
+    global bme280_temperature_samples
+    global bme280_pressure_samples
+    global bme280_humidity_samples
+    global bme280_counter
+
+    bme280_data = bme280.get_reading()
+    logging.debug(str(bme280_data))
+
+    # Save running tallies of data points.
+    bme280_temperature_samples.append(bme280_data["temp_c"])
+    if len(bme280_temperature_samples) > maximum_length:
+        bme280_temperature_samples.pop(0)
+
+    bme280_pressure_samples.append(bme280_data["pressure"])
+    if len(bme280_pressure_samples) > maximum_length:
+        bme280_pressure_samples.pop(0)
+
+    bme280_humidity_samples.append(bme280_data["humidity"])
+    if len(bme280_humidity_samples) > maximum_length:
+        bme280_humidity_samples.pop(0)
+
+    # Calculate averages if we have enough samples.
+    if len(bme280_temperature_samples) >= minimum_length:
+        average_temperature = statistics.mean(bme280_temperature_samples)
+        average_temperature = round(average_temperature, 2)
+        logging.debug("The average temperature is %s degrees C." %
+            average_temperature)
+
+    if len(bme280_pressure_samples) >= minimum_length:
+        average_pressure = statistics.mean(bme280_pressure_samples)
+        average_pressure = round(average_pressure, 2)
+        logging.debug("The average barometric pressure is %s kPa." %
+            average_pressure)
+
+    if len(bme280_humidity_samples) >= minimum_length:
+        average_humidity = statistics.mean(bme280_humidity_samples)
+        average_humidity = round(average_humidity, 2)
+        logging.debug("The average humidity is %s percent." %
+            average_humidity)
+
+    # Calculate standard deviations to see if anything weird is going on.
+    if len(bme280_temperature_samples) >= minimum_length:
+        std_dev = statistics.stdev(bme280_temperature_samples)
+        logging.debug("Calculated standard deviation of temperature: %s" %
+            std_dev)
+        if std_dev >= standard_deviations:
+            send_message_to_user("The temperature has jumped by %s standard deviations.  That doesn't make any sense." % std_dev)
+
+    if len(bme280_pressure_samples) >= minimum_length:
+        std_dev = statistics.stdev(bme280_pressure_samples)
+        logging.debug("Calculated standard deviation of barometric pressure: %s" % std_dev)
+        if std_dev >= standard_deviations:
+            send_message_to_user("The air pressure has jumped by %s standard deviations.  That's kind of strange." % std_dev)
+
+    if len(bme280_humidity_samples) >= minimum_length:
+        std_dev = statistics.stdev(bme280_humidity_samples)
+        logging.debug("Calculated standard deviation of relative humidity: %s"
+            % std_dev)
+
+    if std_dev >= standard_deviations:
+        # If time_between_alerts is 0, alerting is disabled.
+        if time_between_alerts:
+            if bme280_counter >= time_between_alerts:
+                send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
+
+    # Do a trend analysis of air pressure to make educated guesses about
+    # where the weather might be going.
+    if len(bme280_pressure_samples) >= maximum_length:
+        logging.debug("Calculating linear regression of barometric pressure.")
+        msg = ""
+        analysis = lr(bme280_pressure_samples, reference_array)
+        slope = analysis.slope00
+
+        # Barometric pressure trending up (positive slope).
+        if slope >= 1.0:
+            msg = "The barometric pressure is trending upward.  That usually means that the weather's going to be pretty nice."
+
+        # Air pressure trending down (negative slope).
+        if slope < 1.0:
+            msg = "The barometric pressure is trending downward.  That usually means that the weather's going to get kind of lousy."
+
+        # If time_between_alerts is 0, alerting is disabled.
+        # Send the message.
+        if time_between_alerts:
+            if bme280_counter >= time_between_alerts:
+                send_message_to_user(msg)
+
+    # Housekeeping: Update the "don't spam the user" counters.
+    if bme280_counter >= time_between_alerts:
+        bme280_counter = 0
+    else:
+        bme280_counter = bme280_counter + status_polling
+    return
+
+# poll_raingauge(): Breakout function for sampling data from the raingauge.
+def poll_raingauge():
+    logging.debug("Entered poll_raingauge().")
+
+    stddev = 0
+    global raingauge_samples
+    global raingauge_counter
+
+    raingauge_data = raingauge.get_precip()
+    logging.debug(str(raingauge_data))
+
+    # Save the running tally of precipitation measurements.
+    raingauge_samples.append(raingauge_data["mm"])
+    if len(raingauge_samples) > maximum_length:
+        raingauge_samples.pop(0)
+
+    # Do a trend analysis to detect when it starts and stops raining
+    if len(raingauge_samples) >= maximum_length:
+        logging.debug("Calculating linear regression of rain gauge samples.")
+        msg = ""
+        analysis = lr(raingauge_samples, reference_array)
+        slope = analysis.slope00
+
+        # Precipitation samples trending up.
+        if slope >= 1.0:
+            msg = "The amount of precipitation the raingauge is detecting is trending up.  Is it raining?"
+
+        # Precipitation samples trending down.
+        if slope < 1.0:
+            msg = "The amount of precipitation the raingauge is detecting is trending downward.  I think the rain's slowing down."
+
+        # If time_between_alerts is 0, alerting is disabled.
+        # Send the message.
+        if time_between_alerts:
+            if raingauge_counter >= time_between_alerts:
+                send_message_to_user(msg)
+
+    # Housekeeping: Update the "don't spam the user" counters.
+    if raingauge_counter >= time_between_alerts:
+        raingauge_counter = 0
+    else:
+        raingauge_counter = raingauge_counter + status_polling
+    return()
 
 # Core code...
 # Allocate a command-line argument parser.
@@ -410,7 +625,6 @@ while True:
 logger.debug("Building out reference_array.")
 for i in range(0, maximum_length):
     reference_array.append(i)
-logger.debug("Contents of reference_array: %s" % reference_array)
 
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
@@ -423,189 +637,13 @@ while True:
     # Start checking the weather sensors.  If anything is too far out of
     # whack, send an alert via the XMPP bridge's response queue.
     if anemometer:
-        logging.debug("Polling anemometer.")
-        anemometer_data = anemometer.get_wind_speed()
-        logging.debug(str(anemometer_data))
-
-        # Save the running tally of wind velocities.
-        anemometer_samples.append(anemometer_data["velocity_km_h"])
-        if len(anemometer_samples) > maximum_length:
-            anemometer_samples.pop(0)
-
-        # Calculate average wind velocity if we have enough samples.
-        if len(anemometer_samples) >= minimum_length:
-            average_wind_velocity = round(statistics.mean(anemometer_samples), 2)
-            if measurements == "metric":
-                logging.debug("The average wind velocity is %s kph." %
-                    average_wind_velocity)
-            if measurements == "imperial":
-                logging.debug("The average wind speed is %s mph." %
-                    conversions.km_to_mi(average_wind_velocity))
-
-        # Calculate the standard deviation of the data from the anemometer if
-        # we have enough samples.
-        if len(anemometer_samples) >= minimum_length:
-            std_dev = statistics.stdev(anemometer_samples)
-            logging.debug("Calculated standard deviation of wind velocity: %s" % std_dev)
-        if std_dev >= standard_deviations:
-            msg = ""
-            if measurements == "metric":
-                msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
-            if measurements == "imperial":
-                msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
-
-            # If time_between_alerts is 0, alerting is disabled.
-            if time_between_alerts:
-                if anemometer_counter >= time_between_alerts:
-                    send_message_to_user(msg)
-
-        # Do a trend analysis of wind speed to determine if it's increasing.
-        if len(anemometer_samples) >= maximum_length:
-            logging.debug("Calculating linear regression of wind speed.")
-            analysis = lr(anemometer_samples, reference_array)
-
-            # This is the slope of a line that intercepts the origin (0, 0)
-            # instead of wherever the line would naturally be graphed.  Because
-            # the data points are always rolling forward one array entry per
-            # cycle, and we always start looking from array[0], this gives
-            # us the result we want.
-            slope = analysis.slope00
-
-            # This might not be the right way to do it, but I think for the
-            # moment I can repurpose the number of standard deviations from
-            # the config file to detect a noteworthy upward trend.
-            # MOOF MOOF MOOF - also do a downward trend!
-            if slope >= float(standard_deviations):
-                msg = "The wind appears to be blowing noticeably harder."
-
-                # If time_between_alerts is 0, alerting is disabled.
-                if time_between_alerts:
-                    if anemometer_counter >= time_between_alerts:
-                        send_message_to_user(msg)
-
-        # Housekeeping: Update the "don't spam the user" counters.
-        if anemometer_counter >= time_between_alerts:
-            anemometer_counter = 0
-        else:
-            anemometer_counter = anemometer_counter + status_polling
+        poll_anemometer()
 
     if bme280:
-        logging.debug("Polling BME280 sensor.")
-        bme280_data = bme280.get_reading()
-        logging.debug(str(bme280_data))
-
-        # Save running tallies of data points.
-        bme280_temperature_samples.append(bme280_data["temp_c"])
-        if len(bme280_temperature_samples) > maximum_length:
-            bme280_temperature_samples.pop(0)
-
-        bme280_pressure_samples.append(bme280_data["pressure"])
-        if len(bme280_pressure_samples) > maximum_length:
-            bme280_pressure_samples.pop(0)
-
-        bme280_humidity_samples.append(bme280_data["humidity"])
-        if len(bme280_humidity_samples) > maximum_length:
-            bme280_humidity_samples.pop(0)
-
-        # Calculate averages if we have enough samples.
-        if len(bme280_temperature_samples) >= minimum_length:
-            average_temperature = round(statistics.mean(bme280_temperature_samples), 2)
-            logging.debug("The average temperature is %s degrees C." % average_temperature)
-
-        if len(bme280_pressure_samples) >= minimum_length:
-            average_pressure = round(statistics.mean(bme280_pressure_samples), 2)
-            logging.debug("The average air pressure is %s kPa." % average_pressure)
-
-        if len(bme280_humidity_samples) >= minimum_length:
-            average_humidity = round(statistics.mean(bme280_humidity_samples), 2)
-            logging.debug("The average humidity is %s percent." % average_humidity)
-
-        # Calculate standard deviations to see if anything weird is going on.
-        if len(bme280_temperature_samples) >= minimum_length:
-            std_dev = statistics.stdev(bme280_temperature_samples)
-            logging.debug("Calculated standard deviation of temperature: %s" % std_dev)
-        if std_dev >= standard_deviations:
-            send_message_to_user("The temperature has jumped by %s standard deviations.  That doesn't make any sense." % std_dev)
-
-        if len(bme280_pressure_samples) >= minimum_length:
-            std_dev = statistics.stdev(bme280_pressure_samples)
-            logging.debug("Calculated standard deviation of air pressure: %s" % std_dev)
-        if std_dev >= standard_deviations:
-            send_message_to_user("The air pressure has jumped by %s standard deviations.  That's kind of strange." % std_dev)
-
-        if len(bme280_humidity_samples) >= minimum_length:
-            std_dev = statistics.stdev(bme280_humidity_samples)
-            logging.debug("Calculated standard deviation of relative humidity: %s" % std_dev)
-        if std_dev >= standard_deviations:
-            # If time_between_alerts is 0, alerting is disabled.
-            if time_between_alerts:
-                if bme280_counter >= time_between_alerts:
-                    send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
-
-        # Do a trend analysis of air pressure to make educated guesses about
-        # where the weather might be going.
-        if len(bme280_pressure_samples) >= maximum_length:
-            logging.debug("Calculating linear regression of air pressure.")
-            msg = ""
-            analysis = lr(bme280_pressure_samples, reference_array)
-            slope = analysis.slope00
-
-            # Air pressure trending up.
-            if slope >= 1.0:
-                msg = "The air pressure is trending upward.  That usually means that the weather's going to be pretty nice."
-
-            # Air pressure trending down (including negatively).
-            if slope < 1.0:
-                msg = "The air pressure is trending downward.  That usually means that the weather's going to get kind of lousy."
-
-            # If time_between_alerts is 0, alerting is disabled.
-            # Send the message.
-            if time_between_alerts:
-                if bme280_counter >= time_between_alerts:
-                    send_message_to_user(msg)
-
-        # Housekeeping: Update the "don't spam the user" counters.
-        if bme280_counter >= time_between_alerts:
-           bme280_counter = 0
-        else:
-            bme280_counter = bme280_counter + status_polling
+        poll_bme280()
 
     if raingauge:
-        logging.debug("Polling rain gauge.")
-        raingauge_data = raingauge.get_precip()
-        logging.debug(str(raingauge_data))
-
-        # Save the running tally of precipitation measurements.
-        raingauge_samples.append(raingauge_data["mm"])
-        if len(raingauge_samples) > maximum_length:
-            raingauge_samples.pop(0)
-
-        # Do a trend analysis to detect when it starts and stops raining
-        if len(raingauge_samples) >= maximum_length:
-            logging.debug("Calculating linear regression of rain gauge samples.")
-            msg = ""
-            analysis = lr(raingauge_samples, reference_array)
-            slope = analysis.slope00
-
-            # Precipitation samples trending up.
-            if slope >= 1.0:
-                msg = "The amount of precipitation the raingauge is detecting is trending up.  Is it raining?"
-
-            # Precipitation samples trending down.
-            if slope < 1.0:
-                msg = "The amount of precipitation the raingauge is detecting is trending downward.  I think the rain's slowing down."
-
-            # If time_between_alerts is 0, alerting is disabled.
-            # Send the message.
-            if time_between_alerts:
-                if raingauge_counter >= time_between_alerts:
-                    send_message_to_user(msg)
-
-        # Housekeeping: Update the "don't spam the user" counters.
-        if raingauge_counter >= time_between_alerts:
-           raingauge_counter = 0
-        else:
-            raingauge_counter = raingauge_counter + status_polling
+        poll_raingauge()
 
     if weathervane:
         logging.debug("Polling weather vane.")
@@ -618,6 +656,8 @@ while True:
 
     # If loop_counter is equal to polling_time, check the message queue for
     # commands.
+    logger.debug("Value of loop_counter: %s" % loop_counter)
+    logger.debug("Value of polling_time : %s" % polling_time)
     if int(loop_counter) >= int(polling_time):
         try:
             logger.debug("Contacting message queue: " + message_queue)
@@ -641,7 +681,6 @@ while True:
                 logger.debug("Empty command.")
                 logger.debug("Resetting loop_counter.")
                 loop_counter = 0
-                time.sleep(float(polling_time))
                 continue
 
             # Parse the command.
