@@ -49,11 +49,16 @@ def cm_to_km(cm):
     # 1000 m / km
     return((cm / 100) / 1000)
 
+# kpa_to_mmhg(): Convert pressure in kilopascals to mm of Mercury.
+def kpa_to_mmhg(kpa):
+    return(kpa * 7.50062)
+
 if __name__ == "__main__":
     print("Utility functions in this module:")
     print(" * c_to_f(centigrade) - convert degrees Celsius to Fahrenheit")
     print(" * km_to_mi(km) - convert kilometers to miles")
     print(" * mm_to_in(mm) - convert millimeters to inches")
     print(" * cm_to_km(cm) - convert centimeters to kilometers")
+    print(" * kpa_to_mmhg(kpa) - convert kilopascals to millimeters of mercury")
     sys.exit(0)
 
