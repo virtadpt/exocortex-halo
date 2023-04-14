@@ -371,7 +371,7 @@ def poll_bme280():
             msg = "The barometric pressure is trending upward.  That usually means that the weather's going to be pretty nice."
 
         # Air pressure trending down (negative slope).
-        if slope < 1.0:
+        if slope < 0.0:
             msg = "The barometric pressure is trending downward.  That usually means that the weather's going to get kind of lousy."
 
         # If time_between_alerts is 0, alerting is disabled.
@@ -415,7 +415,7 @@ def poll_raingauge():
             msg = "The amount of precipitation the raingauge is detecting is trending up.  Is it raining?"
 
         # Precipitation samples trending down.
-        if slope < 1.0:
+        if slope < 0.0:
             msg = "The amount of precipitation the raingauge is detecting is trending downward.  I think the rain's slowing down."
 
         # If time_between_alerts is 0, alerting is disabled.
@@ -703,14 +703,14 @@ while True:
             # If the user is requesting wind speed...
             if command == "speed":
                 wind_speed = anemometer.get_wind_speed()
-                message = ""
+                msg = ""
                 if measurements == "imperial":
-                    message = "The current wind speed is "
-                    message = message + str(conversions.km_to_mi(wind_speed["velocity_km_h"]))
-                    message = message + " miles per hour."
+                    msg = "The current wind speed is "
+                    msg = msg + str(conversions.km_to_mi(wind_speed["velocity_km_h"]))
+                    msg = msg + " miles per hour."
                 if measurements == "metric":
-                    message = "The current wind velocity is " + str(round(wind_speed["velocity_km_h"], 2)) + " kilometers per hour."
-                send_message_to_user(message)
+                    msg = "The current wind velocity is " + str(round(wind_speed["velocity_km_h"], 2)) + " kilometers per hour."
+                send_message_to_user(msg)
 
             # If the user is requesting wind direction...
             if command == "direction":
@@ -720,58 +720,55 @@ while True:
 
             # If the user is requesting the current temperature...
             if command == "temp":
-                message = ""
                 temp = bme280.get_reading()
                 temp = temp["temp_c"]
-                message = "The current temperature is "
+                msg = "The current temperature is "
                 if measurements == "imperial":
-                    message = message + str(conversions.c_to_f(temp))
-                    message = message + " degrees Fahrenheit."
+                    msg = msg + str(conversions.c_to_f(temp))
+                    msg = msg + " degrees Fahrenheit."
                 if measurements == "metric":
-                    message = message + str(temp)
-                    message = message + " degrees Centigrade."
-                send_message_to_user(message)
+                    msg = msg + str(temp)
+                    msg = msg + " degrees Centigrade."
+                send_message_to_user(msg)
 
             # If the user is requesting the barometric pressure...
             if command == "pressure":
-                message = ""
                 pressure = bme280.get_reading()
-                message = "The current barometric pressure is "
-                message = message + str(pressure["pressure"])
-                message = message + " kPa."
-                send_message_to_user(message)
+                msg = "The current barometric pressure is "
+                msg = msg + str(pressure["pressure"])
+                msg = msg + " kPa."
+                send_message_to_user(msg)
 
             # If the user is requesting the humidity...
             if command == "humidity":
-                message = ""
                 humidity = bme280.get_reading()
-                message = "The current humidity is "
-                message = message + str(humidity["humidity"])
-                message = message + " %."
-                send_message_to_user(message)
+                msg = "The current humidity is "
+                msg = msg + str(humidity["humidity"])
+                msg = msg + " %."
+                send_message_to_user(msg)
 
             # If the user is requesting the state of the rain gauge...
             if command == "rain":
-                message = ""
                 rain = raingauge.get_precip()
+                msg = ""
 
                 # If it's not raining, or if there is so little precipitation
                 # that rounding the sensor sample is 0.0, account for that.
                 if not rain["mm"]:
-                    message = "If it's raining, it's so light that the sensor isn't picking it up."
+                    msg = "If it's raining, it's so light that the sensor isn't picking it up."
                 else:
-                    message = "The measurement the rain gauge took during the last sample period was "
+                    msg = "The measurement the rain gauge took during the last sample period was "
                     if measurements == "imperial":
-                        message = message + str(conversions.mm_to_in(rain["mm"])) + " inches "
+                        msg = msg + str(conversions.mm_to_in(rain["mm"])) + " inches "
                     if measurements == "metric":
-                        message = message + str(rain["mm"]) + " millimeters "
-                    message = message + "of rain."
-                send_message_to_user(message)
+                        msg = msg + str(rain["mm"]) + " millimeters "
+                    msg = msg + "of rain."
+                send_message_to_user(msg)
 
             # Fall-through.
             if command == "unknown":
-                message = "I didn't recognize that command."
-                send_message_to_user(message)
+                msg = "I didn't recognize that command."
+                send_message_to_user(msg)
 
         # NOTE: We don't short-circuit all of the above checks with the
         # continue statement because we want the loop to fall down here every
