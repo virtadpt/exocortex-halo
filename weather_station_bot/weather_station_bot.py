@@ -236,15 +236,19 @@ def poll_anemometer():
 
         if std_dev >= standard_deviations:
             msg = ""
+
+            # Round it to make it look nice.
+            std_dev = round(std_dev, 1)
+
             if measurements == "metric":
                 msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
             if measurements == "imperial":
                 msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
 
-        # If time_between_alerts is 0, alerting is disabled.
-        if time_between_alerts:
-            if anemometer_counter >= time_between_alerts:
-                send_message_to_user(msg)
+            # If time_between_alerts is 0, alerting is disabled.
+            if time_between_alerts:
+                if anemometer_counter >= time_between_alerts:
+                    send_message_to_user(msg)
 
     # Do a trend analysis of wind speed to determine if it's increasing.
     if len(anemometer_samples) >= maximum_length:
@@ -327,27 +331,32 @@ def poll_bme280():
     # Calculate standard deviations to see if anything weird is going on.
     if len(bme280_temperature_samples) >= minimum_length:
         std_dev = statistics.stdev(bme280_temperature_samples)
+        std_dev = round(std_dev, 1)
         logging.debug("Calculated standard deviation of temperature: %s" %
             std_dev)
         if std_dev >= standard_deviations:
-            send_message_to_user("The temperature has jumped by %s standard deviations.  That doesn't make any sense." % std_dev)
+            if time_between_alerts:
+                if bme280_counter >= time_between_alerts:
+                    send_message_to_user("The temperature has jumped by %s standard deviations.  That doesn't make any sense." % std_dev)
 
     if len(bme280_pressure_samples) >= minimum_length:
         std_dev = statistics.stdev(bme280_pressure_samples)
+        std_dev = round(std_dev, 1)
         logging.debug("Calculated standard deviation of barometric pressure: %s" % std_dev)
         if std_dev >= standard_deviations:
-            send_message_to_user("The air pressure has jumped by %s standard deviations.  That's kind of strange." % std_dev)
+            if time_between_alerts:
+                if bme280_counter >= time_between_alerts:
+                    send_message_to_user("The air pressure has jumped by %s standard deviations.  That's kind of strange." % std_dev)
 
     if len(bme280_humidity_samples) >= minimum_length:
         std_dev = statistics.stdev(bme280_humidity_samples)
+        std_dev = round(std_dev, 1)
         logging.debug("Calculated standard deviation of relative humidity: %s"
             % std_dev)
-
-    if std_dev >= standard_deviations:
-        # If time_between_alerts is 0, alerting is disabled.
-        if time_between_alerts:
-            if bme280_counter >= time_between_alerts:
-                send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
+        if std_dev >= standard_deviations:
+            if time_between_alerts:
+                if bme280_counter >= time_between_alerts:
+                    send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
 
     # Do a trend analysis of air pressure to make educated guesses about
     # where the weather might be going.
