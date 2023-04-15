@@ -235,7 +235,7 @@ def poll_anemometer():
             std_dev)
 
         if std_dev >= standard_deviations:
-            msg = ""
+            msg = "poll_anemometer() -> standard deviation of wind velocity"
 
             # Round it to make it look nice.
             std_dev = round(std_dev, 1)
@@ -254,7 +254,7 @@ def poll_anemometer():
     if len(anemometer_samples) >= maximum_length:
         logging.debug("Calculating linear regression of wind speed.")
         analysis = lr(anemometer_samples, reference_array)
-        msg = ""
+        msg = "poll_anemometer() -> trend analysis of wind speed"
 
         # This is the slope of a line that intercepts the origin (0, 0)
         # instead of wherever the line would naturally be graphed.  Because
@@ -362,7 +362,7 @@ def poll_bme280():
     # where the weather might be going.
     if len(bme280_pressure_samples) >= maximum_length:
         logging.debug("Calculating linear regression of barometric pressure.")
-        msg = ""
+        msg = "poll_bme280() -> linear regression of barometric pressure"
         analysis = lr(bme280_pressure_samples, reference_array)
         slope = analysis.slope00
 
@@ -406,7 +406,7 @@ def poll_raingauge():
     # Do a trend analysis to detect when it starts and stops raining
     if len(raingauge_samples) >= maximum_length:
         logging.debug("Calculating linear regression of rain gauge samples.")
-        msg = ""
+        msg = "poll_raingauge() -> linear regression of rain gauge samples"
         analysis = lr(raingauge_samples, reference_array)
         slope = analysis.slope00
 
@@ -576,7 +576,7 @@ if args.time_between_alerts:
 
 # Calculate how often the bot checks the sensors.  This is how often the
 # main loop runs.
-status_polling = int(polling_time) / 4
+status_polling = int(polling_time) / 2
 
 # print a list of sensors the bot recognizes from the config file.
 if args.list_sensors:
@@ -703,7 +703,7 @@ while True:
             # If the user is requesting wind speed...
             if command == "speed":
                 wind_speed = anemometer.get_wind_speed()
-                msg = ""
+                msg = "main() do-stuff loop -> get anemometer wind speed"
                 if measurements == "imperial":
                     msg = "The current wind speed is "
                     msg = msg + str(conversions.km_to_mi(wind_speed["velocity_km_h"]))
@@ -750,7 +750,7 @@ while True:
             # If the user is requesting the state of the rain gauge...
             if command == "rain":
                 rain = raingauge.get_precip()
-                msg = ""
+                msg = "main() do-stuff loop -> get precipitation"
 
                 # If it's not raining, or if there is so little precipitation
                 # that rounding the sensor sample is 0.0, account for that.
