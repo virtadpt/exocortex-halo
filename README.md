@@ -72,6 +72,9 @@ A bot that periodically polls its message queue on the XMPP bridge looking for s
 ## [environment-sensor-raspbian/](environment-sensor-raspbian/)
 A bot that polls a locally attached temperature/humidity sensor like the [AHT20 from Adafruit](https://www.adafruit.com/product/4566) (it's the only one I have right now - pull requests welcome) when requested and tells the user what the temperature or relative humidity are in the vicinity of the sensor.  Not only is this one of my covid-19 projects but I also need to keep an eye on the server rack in my office these days.. eventually I'll build a 'real' embedded one but that'll have to wait a bit.  Please note that this project might require a bit of soldering on your part, and it's only a prototype.  I have plans to add continual monitoring to it but haven't gotten around to it yet.
 
+## [weather_station_bot/](weather_station_bot/)
+A (eventually) (hopefully) modular bot that drives homemade weather stations by polling sensors attached to the system it's running on.  It can do statistical and trend analysis to determine when weather conditions change and send messages to the user over the XMPP bridge.
+
 # HOWTO
 
 ## Get an account on an XMPP server
