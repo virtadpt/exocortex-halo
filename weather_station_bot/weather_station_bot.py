@@ -254,7 +254,8 @@ def poll_anemometer():
     if len(anemometer_samples) >= maximum_length:
         logging.debug("Calculating linear regression of wind speed.")
         analysis = lr(anemometer_samples, reference_array)
-        msg = "poll_anemometer() -> trend analysis of wind speed"
+        #msg = "poll_anemometer() -> trend analysis of wind speed"
+        msg = ""
 
         # This is the slope of a line that intercepts the origin (0, 0)
         # instead of wherever the line would naturally be graphed.  Because
@@ -273,7 +274,8 @@ def poll_anemometer():
         # If time_between_alerts is 0, alerting is disabled.
         if time_between_alerts:
             if anemometer_counter >= time_between_alerts:
-                send_message_to_user(msg)
+                if msg:
+                    send_message_to_user(msg)
 
     # Housekeeping: Update the "don't spam the user" counters.
     if anemometer_counter >= time_between_alerts:
@@ -362,7 +364,8 @@ def poll_bme280():
     # where the weather might be going.
     if len(bme280_pressure_samples) >= maximum_length:
         logging.debug("Calculating linear regression of barometric pressure.")
-        msg = "poll_bme280() -> linear regression of barometric pressure"
+        #msg = "poll_bme280() -> linear regression of barometric pressure"
+        msg = ""
         analysis = lr(bme280_pressure_samples, reference_array)
         slope = analysis.slope00
 
@@ -378,7 +381,8 @@ def poll_bme280():
         # Send the message.
         if time_between_alerts:
             if bme280_counter >= time_between_alerts:
-                send_message_to_user(msg)
+                if msg:
+                    send_message_to_user(msg)
 
     # Housekeeping: Update the "don't spam the user" counters.
     if bme280_counter >= time_between_alerts:
@@ -406,7 +410,8 @@ def poll_raingauge():
     # Do a trend analysis to detect when it starts and stops raining
     if len(raingauge_samples) >= maximum_length:
         logging.debug("Calculating linear regression of rain gauge samples.")
-        msg = "poll_raingauge() -> linear regression of rain gauge samples"
+        #msg = "poll_raingauge() -> linear regression of rain gauge samples"
+        msg = ""
         analysis = lr(raingauge_samples, reference_array)
         slope = analysis.slope00
 
@@ -422,7 +427,8 @@ def poll_raingauge():
         # Send the message.
         if time_between_alerts:
             if raingauge_counter >= time_between_alerts:
-                send_message_to_user(msg)
+                if msg:
+                    send_message_to_user(msg)
 
     # Housekeeping: Update the "don't spam the user" counters.
     if raingauge_counter >= time_between_alerts:

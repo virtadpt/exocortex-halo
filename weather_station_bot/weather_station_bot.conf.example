@@ -11,14 +11,14 @@ bot_name = Weatherbot
 loglevel = debug
 
 # Time in seconds between contacting the message queue for commands.
-polling_time = 60
+polling_time = 15
 
 # Time in seconds between sending alerts to the message queue.
 # Setting this value to 0 disables realtime alerting.
 time_between_alerts = 3600
 
 # The number of standard deviations of any set of data points we care about.
-standard_deviations = 2
+standard_deviations = 1
 
 # The minimum and maximum lengths of the sample sets that we use to calculate
 # standard deviations.
@@ -51,4 +51,9 @@ raingauge = True
 # the wind is blowing.
 # module: weathervane.py
 weathervane = True
+
+# If this value is set to a full path to a file, it will be used as a regular
+# dump for collected values to the file system.
+#write_file = /tmp/hourly_weather_report.txt
+
 

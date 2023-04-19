@@ -3,3 +3,4 @@ linear-regression
 RPi.bme280
 pyparsing
 requests
+schedule
