@@ -29,7 +29,7 @@
 # - Wind kicks up by 1 sigma + rain == there's a storm?  Add code to do this.
 # - Make it possible to send a report on a schedule.  Build a report all in
 #   one go and then transmit it.
-# - Refactor the do-stuff loop.  It's getting pretty hairy.
+# - Rewrite the do-stuff loop to use the schedule module.
 # - 
 
 # Load modules.
@@ -39,6 +39,7 @@ import json
 import logging
 import os
 import requests
+import schedule
 import statistics
 import sys
 import time
@@ -46,6 +47,7 @@ import time
 from linear_regression.lr import lr
 
 import conversions
+import file_writer
 import parser
 
 # Global variables.
@@ -90,6 +92,10 @@ maximum_length = 10
 
 # Configuration for the logger.
 loglevel = None
+
+# Path to a text file and the number of seconds to write values to it.
+write_file = ""
+write_file_seconds = 0
 
 # Used to determine when to poll the message queue.
 loop_counter = 0
@@ -554,6 +560,21 @@ standard_deviations = int(config.get("DEFAULT", "standard_deviations"))
 minimum_length = int(config.get("DEFAULT", "minimum_length"))
 maximum_length = int(config.get("DEFAULT", "maximum_length"))
 
+# See if the file output writer is enabled in the config file.
+try:
+    write_file = config.get("DEFAULT", "write_file")
+except:
+    logging.debug("File writing not enabled in config file.")
+    pass
+
+# Now see if the "write to the file every X seconds" setting is there.
+try:
+    write_file_seconds = int(config.get("DEFAULT", "write_file_seconds"))
+except:
+    logging.debug("write_file_seconds not set.  Disabling file writing.")
+    write_file = ""
+    pass
+
 # Set the measurement system from the config file.
 measurements = config.get("DEFAULT", "measurements")
 if measurements == "amu":
@@ -615,6 +636,10 @@ else:
     logger.debug("Value of time_between_alerts (in seconds): %s" % time_between_alerts)
 logger.debug("Value of status_polling (in seconds): %s" % status_polling)
 logger.debug("Measurement system: %s" % measurements)
+if write_file:
+    logger.debug("Value of write_file: %s" % write_file)
+if write_file_seconds:
+    logger.debug("Value of write_file_seconds: %s" % write_file_seconds)
 logger.debug("Sensors enabled:")
 if anemometer:
     logger.debug("    * Anemometer")

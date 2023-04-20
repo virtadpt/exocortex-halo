@@ -56,4 +56,7 @@ weathervane = True
 # dump for collected values to the file system.
 #write_file = /tmp/hourly_weather_report.txt
 
+# If this value is set to an integer, it is the number of seconds in between
+# writes to write_file.
+#write_file_seconds = 3600
 
