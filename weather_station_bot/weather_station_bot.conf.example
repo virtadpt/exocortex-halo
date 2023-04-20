@@ -26,7 +26,7 @@ minimum_length = 10
 maximum_length = 25
 
 # Imperial or metric?  Default: metric
-measurements = imperial
+units = imperial
 
 # Here is where the individual sensors connected to the computer are
 # configured.  Every weather station can have different devices connected to

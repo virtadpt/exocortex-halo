@@ -22,8 +22,6 @@ import logging
 import os
 import sys
 
-# Variables
-
 # write_values_to_file():  Given a file path, write the key-value pairs (passed
 #   as keyword arguments) to the file.
 def write_values_to_file(output_file, **kwargs):

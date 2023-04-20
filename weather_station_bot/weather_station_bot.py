@@ -27,9 +27,6 @@
 # - Add support for configuring the sensors from the config file.
 # - Add more comments that tell where to add code for new modules.
 # - Wind kicks up by 1 sigma + rain == there's a storm?  Add code to do this.
-# - Make it possible to send a report on a schedule.  Build a report all in
-#   one go and then transmit it.
-# - Rewrite the do-stuff loop to use the schedule module.
 # - 
 
 # Load modules.
@@ -97,15 +94,6 @@ loglevel = None
 write_file = ""
 write_file_seconds = 0
 
-# Used to determine when to poll the message queue.
-loop_counter = 0
-
-# Handle to a requests object.
-request = None
-
-# Command from the message queue.
-command = ""
-
 # Multiple of polling_time that must pass between sending alerts.  Defaults to
 # 3600 seconds (one hour).
 time_between_alerts = 3600
@@ -145,7 +133,7 @@ average_air_pressure = 0.0
 average_humidity = 0.0
 
 # Imperial or metric? (imperial/metric)
-measurements = "metric"
+units = "metric"
 
 # Counters used to keep track of when notices are sent to the bot's owner.
 anemometer_counter = 0
@@ -246,9 +234,9 @@ def poll_anemometer():
             # Round it to make it look nice.
             std_dev = round(std_dev, 1)
 
-            if measurements == "metric":
+            if units == "metric":
                 msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
-            if measurements == "imperial":
+            if units == "imperial":
                 msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
 
             # If time_between_alerts is 0, alerting is disabled.
@@ -443,6 +431,142 @@ def poll_raingauge():
         raingauge_counter = raingauge_counter + status_polling
     return()
 
+# poll_weathervane(): Wrapper function that polls a weather vane attached to
+#   the system.
+def poll_weathervane():
+    logging.debug("Entered poll_weathervane().")
+
+    logging.debug("Polling weather vane.")
+    weathervane_data = weathervane.get_direction()
+    logging.debug("Data from weather vane: %s" % weathervane_data)
+
+    return()
+
+# contact_message_queue(): Function that pings the bot's message queue on the
+#   XMPP bridge, looks for interactive commands, parses them, and handles
+#   them.
+def contact_message_queue():
+    command = ""
+    request = None
+
+    try:
+        logger.debug("Contacting message queue: " + message_queue)
+        request = requests.get(message_queue)
+        logger.debug("Response from server: " + request.text)
+    except:
+        logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
+        return()
+
+    # Test the HTTP response code.
+    # Success.
+    if request.status_code == 200:
+        logger.debug("Message queue " + bot_name + " found.")
+
+        # Extract the command.
+        command = json.loads(request.text)
+        logger.debug("Command from user: " + str(command))
+        command = command["command"]
+        if not command:
+            logger.debug("Empty command.")
+            return()
+
+        # Parse the command.
+        command = parser.parse_command(command)
+        logger.debug("Parsed command: " + str(command))
+
+        # If the user is requesting online help...
+        if command == "help":
+            send_message_to_user(online_help())
+            return()
+
+        # If the user is requesting wind speed...
+        if command == "speed":
+            wind_speed = anemometer.get_wind_speed()
+            msg = "main() do-stuff loop -> get anemometer wind speed"
+            if units == "imperial":
+                msg = "The current wind speed is "
+                msg = msg + str(conversions.km_to_mi(wind_speed["velocity_km_h"]))
+                msg = msg + " miles per hour."
+            if units == "metric":
+                msg = "The current wind velocity is " + str(round(wind_speed["velocity_km_h"], 2)) + " kilometers per hour."
+            send_message_to_user(msg)
+            return()
+
+        # If the user is requesting wind direction...
+        if command == "direction":
+            wind_direction = weathervane.get_direction()
+            send_message_to_user("The wind is blowing %sward." % wind_direction)
+            return()
+
+        # If the user is requesting the current temperature...
+        if command == "temp":
+            temp = bme280.get_reading()
+            temp = temp["temp_c"]
+            msg = "The current temperature is "
+            if units == "imperial":
+                msg = msg + str(conversions.c_to_f(temp))
+                msg = msg + " degrees Fahrenheit."
+            if units == "metric":
+                msg = msg + str(temp)
+                msg = msg + " degrees Centigrade."
+            send_message_to_user(msg)
+            return()
+
+        # If the user is requesting the barometric pressure...
+        if command == "pressure":
+            pressure = bme280.get_reading()
+            msg = "The current barometric pressure is "
+            msg = msg + str(pressure["pressure"])
+            msg = msg + " kPa."
+            send_message_to_user(msg)
+            return()
+
+        # If the user is requesting the humidity...
+        if command == "humidity":
+            humidity = bme280.get_reading()
+            msg = "The current humidity is "
+            msg = msg + str(humidity["humidity"])
+            msg = msg + " %."
+            send_message_to_user(msg)
+            return()
+
+        # If the user is requesting the state of the rain gauge...
+        if command == "rain":
+            rain = raingauge.get_precip()
+            msg = "main() do-stuff loop -> get precipitation"
+
+            # If it's not raining, or if there is so little precipitation
+            # that rounding the sensor sample is 0.0, account for that.
+            if not rain["mm"]:
+                msg = "If it's raining, it's so light that the sensor isn't picking it up."
+            else:
+                msg = "The measurement the rain gauge took during the last sample period was "
+                if units == "imperial":
+                    msg = msg + str(conversions.mm_to_in(rain["mm"])) + " inches "
+                if units == "metric":
+                    msg = msg + str(rain["mm"]) + " millimeters "
+                msg = msg + "of rain."
+            send_message_to_user(msg)
+            return()
+
+        # Fall-through.
+        if command == "unknown":
+            msg = "I didn't recognize that command."
+            send_message_to_user(msg)
+            return()
+
+# write_file_handler(): This is a wrapper function that calls file_writer to
+#   store readings in a text file.
+def write_file_handler():
+    logging.debug("Entered write_file_handler().")
+    file_writer.write_values_to_file(write_file,
+        anemometer=anemometer_samples[-1],
+        temperature=bme280_temperature_samples[-1],
+        pressure=bme280_pressure_samples[-1],
+        humidity=bme280_humidity_samples[-1],
+        rain=raingauge_samples[-1])
+    return()
+
 # Core code...
 # Allocate a command-line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that monitors weather sensors attached to the system and sends alerts via the XMPP bridge as appropriate.")
@@ -466,9 +590,9 @@ argparser.add_argument("--time-between-alerts", action="store",
 argparser.add_argument("--list-sensors", action="store_true",
     help="Print the list of sensors the bot recognized from the config file and exit.")
 
-# Use imperial measurements instead?
+# Use imperial units instead?
 argparser.add_argument("--imperial", action="store_const", const="imperial",
-    help="Use imperial instead of metric.")
+    help="Use imperial units instead of metric.")
 
 # Parse the command line arguments.
 args = argparser.parse_args()
@@ -501,7 +625,7 @@ if config_log:
 # Set the number of seconds to wait in between polling runs on the message
 # queues.
 try:
-    polling_time = config.get("DEFAULT", "polling_time")
+    polling_time = int(config.get("DEFAULT", "polling_time"))
 except:
     # Nothing to do here, it's an optional configuration setting.
     pass
@@ -576,10 +700,10 @@ except:
     pass
 
 # Set the measurement system from the config file.
-measurements = config.get("DEFAULT", "measurements")
-if measurements == "amu":
+units = config.get("DEFAULT", "units")
+if units == "amu":
     print("American meat units mode activated.  Fire up the grill!")
-    measurements = "imperial"
+    units = "imperial"
 
 # Set the loglevel from the override on the command line.
 if args.loglevel:
@@ -587,7 +711,7 @@ if args.loglevel:
 
 # Set the measurement type from the override on the command line.
 if args.imperial:
-    measurements = "imperial"
+    units = "imperial"
 
 # Configure the logger.
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
@@ -603,7 +727,7 @@ if args.time_between_alerts:
 
 # Calculate how often the bot checks the sensors.  This is how often the
 # main loop runs.
-status_polling = int(polling_time) / 2
+status_polling = polling_time / 2
 
 # print a list of sensors the bot recognizes from the config file.
 if args.list_sensors:
@@ -635,7 +759,7 @@ if time_between_alerts == 0:
 else:
     logger.debug("Value of time_between_alerts (in seconds): %s" % time_between_alerts)
 logger.debug("Value of status_polling (in seconds): %s" % status_polling)
-logger.debug("Measurement system: %s" % measurements)
+logger.debug("Measurement units: %s" % units )
 if write_file:
     logger.debug("Value of write_file: %s" % write_file)
 if write_file_seconds:
@@ -666,150 +790,25 @@ logger.debug("Building out reference_array.")
 for i in range(0, maximum_length):
     reference_array.append(i)
 
+# Line up the schedule of functions to run and when.
+if anemometer:
+    schedule.every(status_polling).seconds.do(poll_anemometer)
+if bme280:
+    schedule.every(status_polling).seconds.do(poll_bme280)
+if raingauge:
+    schedule.every(status_polling).seconds.do(poll_raingauge)
+if weathervane:
+    schedule.every(status_polling).seconds.do(poll_weathervane)
+if write_file:
+    schedule.every(write_file_seconds).seconds.do(write_file_handler)
+schedule.every(polling_time).seconds.do(contact_message_queue)
+
 # Go into a loop in which the bot polls the configured message queue to see
 # if it has any HTTP requests waiting for it.
-logger.debug("Entering main loop to handle requests.")
+logger.debug("Entering main loop and running the scheduler.")
 while True:
-
-    # Reset the command from the message bus, just in case.
-    command = ""
-
-    # Start checking the weather sensors.  If anything is too far out of
-    # whack, send an alert via the XMPP bridge's response queue.
-    if anemometer:
-        poll_anemometer()
-
-    if bme280:
-        poll_bme280()
-
-    if raingauge:
-        poll_raingauge()
-
-    if weathervane:
-        logging.debug("Polling weather vane.")
-        weathervane_data = weathervane.get_direction()
-        logging.debug(str(weathervane_data))
-        # MOOF MOOF MOOF - This might be a by-request only thing.
-
-    # Increment loop_counter by status_polling.
-    loop_counter = loop_counter + status_polling
-
-    # If loop_counter is equal to polling_time, check the message queue for
-    # commands.
-    logger.debug("Value of loop_counter: %s" % loop_counter)
-    logger.debug("Value of polling_time : %s" % polling_time)
-    if int(loop_counter) >= int(polling_time):
-        try:
-            logger.debug("Contacting message queue: " + message_queue)
-            request = requests.get(message_queue)
-            logger.debug("Response from server: " + request.text)
-        except:
-            logger.warn("Connection attempt to message queue timed out or failed.  Going back to sleep to try again later.")
-            time.sleep(float(status_polling))
-            continue
-
-        # Test the HTTP response code.
-        # Success.
-        if request.status_code == 200:
-            logger.debug("Message queue " + bot_name + " found.")
-
-            # Extract the command.
-            command = json.loads(request.text)
-            logger.debug("Command from user: " + str(command))
-            command = command["command"]
-            if not command:
-                logger.debug("Empty command.")
-                logger.debug("Resetting loop_counter.")
-                loop_counter = 0
-                continue
-
-            # Parse the command.
-            command = parser.parse_command(command)
-            logger.debug("Parsed command: " + str(command))
-
-            # If the user is requesting online help...
-            if command == "help":
-                send_message_to_user(online_help())
-
-            # If the user is requesting wind speed...
-            if command == "speed":
-                wind_speed = anemometer.get_wind_speed()
-                msg = "main() do-stuff loop -> get anemometer wind speed"
-                if measurements == "imperial":
-                    msg = "The current wind speed is "
-                    msg = msg + str(conversions.km_to_mi(wind_speed["velocity_km_h"]))
-                    msg = msg + " miles per hour."
-                if measurements == "metric":
-                    msg = "The current wind velocity is " + str(round(wind_speed["velocity_km_h"], 2)) + " kilometers per hour."
-                send_message_to_user(msg)
-
-            # If the user is requesting wind direction...
-            if command == "direction":
-                wind_direction = weathervane.get_direction()
-                send_message_to_user("The wind is blowing %sward." %
-                    wind_direction)
-
-            # If the user is requesting the current temperature...
-            if command == "temp":
-                temp = bme280.get_reading()
-                temp = temp["temp_c"]
-                msg = "The current temperature is "
-                if measurements == "imperial":
-                    msg = msg + str(conversions.c_to_f(temp))
-                    msg = msg + " degrees Fahrenheit."
-                if measurements == "metric":
-                    msg = msg + str(temp)
-                    msg = msg + " degrees Centigrade."
-                send_message_to_user(msg)
-
-            # If the user is requesting the barometric pressure...
-            if command == "pressure":
-                pressure = bme280.get_reading()
-                msg = "The current barometric pressure is "
-                msg = msg + str(pressure["pressure"])
-                msg = msg + " kPa."
-                send_message_to_user(msg)
-
-            # If the user is requesting the humidity...
-            if command == "humidity":
-                humidity = bme280.get_reading()
-                msg = "The current humidity is "
-                msg = msg + str(humidity["humidity"])
-                msg = msg + " %."
-                send_message_to_user(msg)
-
-            # If the user is requesting the state of the rain gauge...
-            if command == "rain":
-                rain = raingauge.get_precip()
-                msg = "main() do-stuff loop -> get precipitation"
-
-                # If it's not raining, or if there is so little precipitation
-                # that rounding the sensor sample is 0.0, account for that.
-                if not rain["mm"]:
-                    msg = "If it's raining, it's so light that the sensor isn't picking it up."
-                else:
-                    msg = "The measurement the rain gauge took during the last sample period was "
-                    if measurements == "imperial":
-                        msg = msg + str(conversions.mm_to_in(rain["mm"])) + " inches "
-                    if measurements == "metric":
-                        msg = msg + str(rain["mm"]) + " millimeters "
-                    msg = msg + "of rain."
-                send_message_to_user(msg)
-
-            # Fall-through.
-            if command == "unknown":
-                msg = "I didn't recognize that command."
-                send_message_to_user(msg)
-
-        # NOTE: We don't short-circuit all of the above checks with the
-        # continue statement because we want the loop to fall down here every
-        # time it runs to...
-        # Reset loop counter.
-        logger.debug("Resetting loop_counter.")
-        loop_counter = 0
-
-    # Bottom of loop.  Go to sleep for a while before running again.
-    time.sleep(float(status_polling))
+    schedule.run_pending()
+    time.sleep(1)
 
 # Fin.
 sys.exit(0)
