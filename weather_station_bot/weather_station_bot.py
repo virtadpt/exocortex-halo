@@ -18,6 +18,11 @@
 
 # License: GPLv3
 
+# v1.1 - I should have been updating this but I was too busy debugging the
+#        bot and getting used to a new job to remember.  My bad.
+#      - Added the file writer plugin.
+#      - Deleted some debugging output that was commented out anyway.
+#      - Started using the schedule module to run methods periodically.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -196,6 +201,9 @@ def online_help():
         message = message + "    rain gauge/raining/is it raining\n"
     if weathervane:
         message = message + "    wind direction/direction"
+    if write_file:
+        message = message + "\n"
+        message = message + "The file writer plugin is enabled, and writes data points to " + write_file + " every " + str(write_file_seconds) + " seconds."
     return message
 
 # poll_anemometer(): Breakout function for sampling data from the anemometer.
@@ -248,7 +256,6 @@ def poll_anemometer():
     if len(anemometer_samples) >= maximum_length:
         logging.debug("Calculating linear regression of wind speed.")
         analysis = lr(anemometer_samples, reference_array)
-        #msg = "poll_anemometer() -> trend analysis of wind speed"
         msg = ""
 
         # This is the slope of a line that intercepts the origin (0, 0)
@@ -358,7 +365,6 @@ def poll_bme280():
     # where the weather might be going.
     if len(bme280_pressure_samples) >= maximum_length:
         logging.debug("Calculating linear regression of barometric pressure.")
-        #msg = "poll_bme280() -> linear regression of barometric pressure"
         msg = ""
         analysis = lr(bme280_pressure_samples, reference_array)
         slope = analysis.slope00
@@ -404,7 +410,6 @@ def poll_raingauge():
     # Do a trend analysis to detect when it starts and stops raining
     if len(raingauge_samples) >= maximum_length:
         logging.debug("Calculating linear regression of rain gauge samples.")
-        #msg = "poll_raingauge() -> linear regression of rain gauge samples"
         msg = ""
         analysis = lr(raingauge_samples, reference_array)
         slope = analysis.slope00
