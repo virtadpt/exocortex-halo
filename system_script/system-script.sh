@@ -24,6 +24,8 @@
 # PLEASE READ THE README.MD FILE BEFORE ATTEMPTING TO USE THIS UTILITY.  THIS
 # IS STILL A WORK IN PROGRESS.
 
+# v0.5 - Removed periodic debugging output.
+#      - Added query of hostname and startup message.
 # v0.4 - Added temperature monitoring.
 # v0.3 - Added memory usage monitoring.
 # v0.2 - Prototype release.
@@ -77,6 +79,10 @@ sensors_available=1
 # undoubtedly worse ways of doing it but there's no reason to make it suck any
 # more than it already does.
 sensor_readings_dir="/tmp/sensors"
+
+# The Busybox binary OpenWRT uses doesn't have a hostname command all the time
+# so get the hostname a different way.
+hostname=$(uname -n)
 
 # Functions
 # Library function which takes a list of numbers and calulates the average.
@@ -467,6 +473,7 @@ if [ $sensors_available -eq 1 ]; then
 fi
 
 # Main loop.
+echo "$hostname now online."
 while true; do
     analyze_system_load
     analyze_storage_space
@@ -476,7 +483,6 @@ while true; do
         check_system_temperature
     fi
 
-    echo "Sleeping..."
     sleep $cycle_time
     echo
 done
