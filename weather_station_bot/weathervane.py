@@ -11,6 +11,9 @@
 
 # License: GPLv3
 
+# v1.1 - Reworked the weather vane signal interpretation code because my unit
+#        isn't stable.  I still hate hardcoding magick numbers but this way
+#        actually makes the 'vane usable.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -39,20 +42,13 @@ reference_voltage = 3.3
 
 # Global variables.
 
-# Technically this falls under global constants, but I derived these values
-# experimentally so they might change from station to station.
-directions = {
-    "2.1": "north",
-    "1.8": "northeast",
-    "3.0": "east",
-    "2.7": "southeast",
-    "2.4": "south",
-    "1.3": "southwest",
-    "0.2": "west",
-    "1.0": "northwest"
-    }
-
-# Here is the research code I used to generate those values:
+# I originally used this research code to generate the values for my weather
+# vane (and you should, too, just to be safe), but I found that even then the
+# values aren't necessarily stable.  There's a noticeable variation in the
+# signal even though it's coming from a static resistor.  So, I hardcoded a
+# heuristic (+/- 0.1) in the core code to make it work somewhat more reliably.
+# I need to make the values and the heuristics configurable so that more folks
+# can use this code without having to hand-hack my code.
 #
 # import gpiozero
 # import time
@@ -85,12 +81,26 @@ def get_direction():
     value = round(globals.weathervane.value * reference_voltage, 1)
     logging.debug("Value from the weather vane: %s" % value)
 
-    # Look up the value from the sensor in the direction table.  If it's in
-    # there return the direction, else return None.
-    try:
-        return(directions[value])
-    except:
-        return None
+    # Interpret the value from the weather vane.
+    if (value >= 2.0) and (value <= 2.2):
+        return("north")
+    if (value >= 1.7) and (value <= 1.9):
+        return("northeast")
+    if (value >= 2.9) and (value <= 3.1):
+        return("east")
+    if (value >= 2.6) and (value <= 2.8):
+        return("southeast")
+    if (value >= 2.3) and (value <= 2.5):
+        return("south")
+    if (value >= 1.2) and (value <= 1.4):
+        return("southwest")
+    if (value >= 0.1) and (value <= 0.3):
+        return("west")
+    if (value >= 0.9) and (value <= 1.1):
+        return("northwest")
+
+    # No match.
+    return None
 
 # Exercise my code.
 if __name__ == "__main__":
