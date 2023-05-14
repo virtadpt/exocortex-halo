@@ -23,6 +23,8 @@
 #      - Added the file writer plugin.
 #      - Deleted some debugging output that was commented out anyway.
 #      - Started using the schedule module to run methods periodically.
+#      - Reworked the temperature, pressure, and humidity alerts to tell the
+#        user what they bounced to.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -32,7 +34,7 @@
 # - Add support for configuring the sensors from the config file.
 # - Add more comments that tell where to add code for new modules.
 # - Wind kicks up by 1 sigma + rain == there's a storm?  Add code to do this.
-# - 
+# - Refactor the bme280 code because it's getting pretty out of control.
 
 # Load modules.
 import argparse
@@ -375,14 +377,17 @@ def poll_bme280():
                     send_message_to_user(msg)
 
     if len(bme280_humidity_samples) >= minimum_length:
+        msg = ""
+
         std_dev = statistics.stdev(bme280_humidity_samples)
         std_dev = round(std_dev, 1)
         logging.debug("Calculated standard deviation of relative humidity: %s"
             % std_dev)
         if std_dev >= standard_deviations:
+            msg = "The humidity has jumped by " + str(std_dev) + " standard deviations, to " + str(bme280_humidity_samples[-1]) + "% relative."
             if time_between_alerts:
                 if bme280_counter >= time_between_alerts:
-                    send_message_to_user("The relative humidity has jumped by %s standard deviations.  Is it raining?" % std_dev)
+                    send_message_to_user(msg)
 
     # Do a trend analysis of air pressure to make educated guesses about
     # where the weather might be going.
