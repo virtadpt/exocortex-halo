@@ -35,4 +35,5 @@ pi        9989  0.7  5.1 109720 50928 pts/3    Sl+  16:35   0:35 python3 ./weath
 
 At present, Weather Bot includes the following modules:
 * `file_writer`, which once a cycle writes the last set of readings collected to a text file, set in the configuration file with the option `write_file` and `write_file_seconds`.  Please note that both settings are required to enable this module; if either is not set the module will be disabled.  This is done out of consideration for very small systems.  Also, please note that writes to the file are not cumulative; the file is deleted and rewritten at the bottom of each cycle.
+* `influxdb` - `pip install influxdb-client[ciso]`
 

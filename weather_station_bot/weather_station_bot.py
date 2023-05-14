@@ -243,9 +243,9 @@ def poll_anemometer():
             std_dev = round(std_dev, 1)
 
             if units == "metric":
-                msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
+                msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations to " + str(anemometer_samples[-1]) + " kph.  The weather might be getting bad."
             if units == "imperial":
-                msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations.  The weather might be getting bad."
+                msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations to " + str(anemometer_samples[-1]) + " mph.  The weather might be getting bad."
 
             # If time_between_alerts is 0, alerting is disabled.
             if time_between_alerts:
@@ -270,7 +270,12 @@ def poll_anemometer():
         # the config file to detect a noteworthy upward trend.
         # MOOF MOOF MOOF - also do a downward trend!
         if slope >= float(standard_deviations):
-            msg = "The wind appears to be blowing noticeably harder."
+            msg = "The wind appears to be blowing noticeably harder.  "
+            msg = msg + "It is now blowing at " + str(anemometer_samples[-1])
+            if units == "metric":
+                msg = msg + " kilometers per hour."
+            if units == "imperial":
+                msg = msg + " miles per hour."
 
         # If time_between_alerts is 0, alerting is disabled.
         if time_between_alerts:
