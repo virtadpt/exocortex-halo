@@ -27,6 +27,7 @@
 #        user what they bounced to.
 #      - Added periodic alerting of the wind direction so that it's actually
 #        doing something useful.
+#      - At long last, figured out how to add a crash handler.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -619,6 +620,13 @@ def write_file_handler():
         rain=raingauge_samples[-1])
     return()
 
+# scream_and_die(): A function that is registered with the sys.excepthook()
+#   handler, and fires if and when the bot crashes.
+def scream_and_die(type, value, traceback):
+    logging.critical("Crash handler executed!")
+    send_message_to_user("AAAAAAHHHH!")
+    send_message_to_user("FC: So much for that robot.  Too bad.")
+
 # Core code...
 # Allocate a command-line argument parser.
 argparser = argparse.ArgumentParser(description="A bot that monitors weather sensors attached to the system and sends alerts via the XMPP bridge as appropriate.")
@@ -825,6 +833,10 @@ if raingauge:
     logger.debug("    * Rain gauge")
 if weathervane:
     logger.debug("    * Weather vane")
+
+# Set the crash handler.
+sys.excepthook = scream_and_die
+logger.debug("scream_and_die() set as sys.excepthook crash handler.")
 
 # Try to contact the XMPP bridge.  Keep trying until you reach it or the
 # system shuts down.
