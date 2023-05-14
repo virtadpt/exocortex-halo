@@ -25,6 +25,8 @@
 #      - Started using the schedule module to run methods periodically.
 #      - Reworked the temperature, pressure, and humidity alerts to tell the
 #        user what they bounced to.
+#      - Added periodic alerting of the wind direction so that it's actually
+#        doing something useful.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -146,6 +148,7 @@ units = "metric"
 anemometer_counter = 0
 bme280_counter = 0
 raingauge_counter = 0
+weathervane_counter = 0
 
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
@@ -469,10 +472,26 @@ def poll_raingauge():
 def poll_weathervane():
     logging.debug("Entered poll_weathervane().")
 
+    global weathervane_counter
+
     logging.debug("Polling weather vane.")
     weathervane_data = weathervane.get_direction()
     logging.debug("Data from weather vane: %s" % weathervane_data)
 
+    # If time_between_alerts is 0, alerting is disabled.
+    # Send the message.
+    if time_between_alerts:
+        msg = ""
+        if weathervane_counter >= time_between_alerts:
+            msg = "The wind is blowing " + str(weathervane_data) + "ward."
+            if msg:
+                send_message_to_user(msg)
+
+    # Housekeeping: Update the "don't spam the user" counters.
+    if weathervane_counter >= time_between_alerts:
+        weathervane_counter = 0
+    else:
+        weathervane_counter = weathervane_counter + status_polling
     return()
 
 # contact_message_queue(): Function that pings the bot's message queue on the
