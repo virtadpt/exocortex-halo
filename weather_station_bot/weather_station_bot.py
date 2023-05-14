@@ -338,23 +338,41 @@ def poll_bme280():
 
     # Calculate standard deviations to see if anything weird is going on.
     if len(bme280_temperature_samples) >= minimum_length:
+        msg = ""
+
         std_dev = statistics.stdev(bme280_temperature_samples)
         std_dev = round(std_dev, 1)
         logging.debug("Calculated standard deviation of temperature: %s" %
             std_dev)
         if std_dev >= standard_deviations:
+            msg = "The temperature has jumped by " + str(std_dev) + " standard deviations, to " + str(bme280_temperature_samples[-1]) + " degrees "
+
+            if units == "metric":
+                msg = msg + " centigrade."
+            if units == "imperial":
+                msg = msg + " fahrenheit."
+
             if time_between_alerts:
                 if bme280_counter >= time_between_alerts:
-                    send_message_to_user("The temperature has jumped by %s standard deviations.  That doesn't make any sense." % std_dev)
+                    send_message_to_user(msg)
 
     if len(bme280_pressure_samples) >= minimum_length:
+        msg = ""
+
         std_dev = statistics.stdev(bme280_pressure_samples)
         std_dev = round(std_dev, 1)
         logging.debug("Calculated standard deviation of barometric pressure: %s" % std_dev)
         if std_dev >= standard_deviations:
+            msg = "The air pressure has jumped by " + str(std_dev) + " standard deviations, to " + str(bme280_pressure_samples[-1])
+
+            if units == "metric":
+                msg = msg + " kPa."
+            if units == "imperial":
+                msg = msg + " mmHg."
+
             if time_between_alerts:
                 if bme280_counter >= time_between_alerts:
-                    send_message_to_user("The air pressure has jumped by %s standard deviations.  That's kind of strange." % std_dev)
+                    send_message_to_user(msg)
 
     if len(bme280_humidity_samples) >= minimum_length:
         std_dev = statistics.stdev(bme280_humidity_samples)
