@@ -484,7 +484,6 @@ while true; do
     fi
 
     sleep $cycle_time
-    echo
 done
 
 # Fin.
