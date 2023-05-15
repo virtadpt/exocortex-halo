@@ -565,10 +565,10 @@ def contact_message_queue():
             temp = temp["temp_c"]
             msg = "The current temperature is "
             if units == "imperial":
-                msg = msg + str(conversions.c_to_f(temp))
+                msg = msg + str(round(conversions.c_to_f(temp), 1))
                 msg = msg + " degrees Fahrenheit."
             if units == "metric":
-                msg = msg + str(temp)
+                msg = msg + str(round(temp, 1))
                 msg = msg + " degrees Centigrade."
             send_message_to_user(msg)
             return()
