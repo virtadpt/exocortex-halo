@@ -553,7 +553,10 @@ def contact_message_queue():
         # If the user is requesting wind direction...
         if command == "direction":
             wind_direction = weathervane.get_direction()
-            send_message_to_user("The wind is blowing %sward." % wind_direction)
+            if wind_direction:
+                send_message_to_user("The wind is blowing %sward." % wind_direction)
+            else:
+                send_message_to_user("The wind doesn't seem to be blowing.")
             return()
 
         # If the user is requesting the current temperature...
