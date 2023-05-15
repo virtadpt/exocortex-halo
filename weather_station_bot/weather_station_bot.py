@@ -351,12 +351,14 @@ def poll_bme280():
         logging.debug("Calculated standard deviation of temperature: %s" %
             std_dev)
         if std_dev >= standard_deviations:
-            msg = "The temperature has jumped by " + str(std_dev) + " standard deviations, to " + str(bme280_temperature_samples[-1]) + " degrees "
-
-            if units == "metric":
-                msg = msg + " centigrade."
+            msg = "The temperature has jumped by " + str(std_dev) + " standard deviations, to "
+            temp = bme280_temperature_samples[-1]
             if units == "imperial":
-                msg = msg + " fahrenheit."
+                msg = msg + str(conversions.c_to_f(temp))
+                msg = msg + " degrees Fahrenheit."
+            if units == "metric":
+                msg = msg + str(temp)
+                msg = msg + " degrees Centigrade."
 
             if time_between_alerts:
                 if bme280_counter >= time_between_alerts:
