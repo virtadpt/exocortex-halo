@@ -486,7 +486,10 @@ def poll_weathervane():
     if time_between_alerts:
         msg = ""
         if weathervane_counter >= time_between_alerts:
-            msg = "The wind is blowing " + str(weathervane_data) + "ward."
+
+            # Catch the odd value of None for weathervane_data.
+            if weathervane_data:
+                msg = "The wind is blowing " + str(weathervane_data) + "ward."
             if msg:
                 send_message_to_user(msg)
 
