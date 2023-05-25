@@ -7,7 +7,7 @@ The computer used as the core of my weather station is a Raspberry Pi 2B+, which
 
 When setting up the venv for the bot on a RasPi you're going to need the `RPi.GPIO` module, which doesn't seem to be easy to find in the Pypi repository but is in the default Raspbian package repositories.  You will need to make Python modules installed at the system level available inside of the venv, like so:
 
-* `sudo apt-get install rpi.gpio-common libatlas3-base`
+* `sudo apt-get install rpi.gpio-common libatlas-base-dev
     * This will probably be a NOP but I've documented it for [anyone looking for answers](https://xkcd.com/979/).
 * `python -mvenv env --system-site-packages`
 * `. env/bin/activate`
