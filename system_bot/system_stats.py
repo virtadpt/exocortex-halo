@@ -10,6 +10,9 @@
 
 # License: GPLv3
 
+# v4.5 - Changed how free and memory are calculated because it wasn't really
+#        cross-platform.  In other words, I finally have a work laptop that
+#        I can mess around with a little.
 # v4.4 - Added some code to skip any file system mounts specified in the config
 #        file.
 # v4.3 - Fixed a bug in Fahrenheit to Centigrade conversion.  Oops.
@@ -338,7 +341,7 @@ def check_memory_utilization(memory_free_counter, time_between_alerts,
         calculated_free_memory = memory_stats["free"] + memory_stats["buffers"] + memory_stats["cached"]
     else:
         memory_stats = memory_utilization()
-        calculated_free_memory = memory_stats.free + memory_stats.buffers + memory_stats.cached
+        calculated_free_memory = memory_stats.available 
     logging.debug("Calculated free memory: %s" % convert_bytes(calculated_free_memory))
 
     # Check the amount of memory free.  If it's below a critical threshold
