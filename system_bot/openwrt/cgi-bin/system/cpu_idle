@@ -1,4 +1,0 @@
-#!/bin/sh
-echo "Content-type: application/json"
-echo
-top -n 1 | grep '^CPU' | awk '{print $8}' | sed 's/%$//'

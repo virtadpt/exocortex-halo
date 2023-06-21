@@ -1,4 +1,0 @@
-#!/bin/sh
-echo "Content-type: text/plain"
-echo
-df | tail -n +2
