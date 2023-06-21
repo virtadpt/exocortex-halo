@@ -59,8 +59,3 @@ ip_addr_site = https://api.ipify.org/
 # mount1 = /snap
 # mount2 = /foo/bar
 
-# Due to the fact that most OpenWRT devices are resource constrained devices
-# and it's often impractical to do a full install of Halo to them,
-#[openwrt]
-#openwrt_host = 192.168.1.1
-#openwrt_port = 10000
