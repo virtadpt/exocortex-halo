@@ -14,6 +14,9 @@
 #        cross-platform.  In other words, I finally have a work laptop that
 #        I can mess around with a little.
 #      - Tore out the OpenWRT stuff because System Script now exists.
+#      - Rounded off the system load values so they're easier to read.
+#      - Rounded off some of the temperature values returned.  I did
+#        Fahrenheit, but forgot Centigrade.
 # v4.4 - Added some code to skip any file system mounts specified in the config
 #        file.
 # v4.3 - Fixed a bug in Fahrenheit to Centigrade conversion.  Oops.
@@ -75,9 +78,9 @@ device_temperatures = {}
 def sysload():
     sysload = {}
     system_load = os.getloadavg()
-    sysload["one_minute"] = system_load[0]
-    sysload["five_minute"] = system_load[1]
-    sysload["fifteen_minute"] = system_load[2]
+    sysload["one_minute"] = round(system_load[0], 2)
+    sysload["five_minute"] = round(system_load[1], 2)
+    sysload["fifteen_minute"] = round(system_load[2], 2)
     return sysload
 
 # check_sysload: Function that pulls the current system load and tests the
@@ -549,7 +552,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
                         logging.debug("System temperature alerting disabled.")
                         continue
                     fahrenheit = centigrade_to_fahrenheit(i[1])
-                    message = "WARNING: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit).  This is alarmingly high!"
+                    message = "WARNING: Temperature sensor " + label + " is now reading " + str(round(i[1], 2)) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit).  This is alarmingly high!"
                     send_message_to_user(message)
                     continue
             else:
@@ -567,7 +570,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
                         continue
 
                     fahrenheit = centigrade_to_fahrenheit(i[1])
-                    message = "DANGER: Temperature sensor " + label + " is now reading " + str(i[1]) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit).  Critical temperature reached!  Investigate immediately!"
+                    message = "DANGER: Temperature sensor " + label + " is now reading " + str(round(i[1], 2)) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit).  Critical temperature reached!  Investigate immediately!"
                     send_message_to_user(message)
                     continue
             else:
@@ -620,7 +623,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
                         continue
 
                     fahrenheit = centigrade_to_fahrenheit(i[1])
-                    message = message + "WARNING: The temperature of sensor " + label + " has spiked to " + str(i[1]) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit)!  Investigate immediately!"
+                    message = message + "WARNING: The temperature of sensor " + label + " has spiked to " + str(round(i[1], 2)) + " degrees Centigrade (" + str(round(fahrenheit, 2)) + " degrees Fahrenheit)!  Investigate immediately!"
             # Bottom of cycle through sensors on this device.
         # Bottom of cycle through temperature sensors on the system.
 
