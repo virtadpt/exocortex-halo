@@ -11,6 +11,8 @@
 
 # License: GPLv3
 
+# v4.7 - Ripped out the OpenWRT stuff because it's obsolete.  Use System
+#        Script instead.
 # v4.6 - Added a check and some code to pull file mounts to ignore from the
 #        config file.  I added this because Certbot has to be installed as a
 #        Snap to be supported on Ubuntu now, but by their nature they're
@@ -158,12 +160,6 @@ dead_processes = None
 # URL of web service that just returns the IP address of the host.
 ip_addr_web_service = ""
 
-# Hostname and port of the web server on the embedded device to monitor.  If
-# there is a constructed openwrt_url, then we know external monitoring mode
-# is on.
-openwrt_host = ""
-openwrt_port = 0
-
 # Functions.
 # set_loglevel(): Turn a string into a numerical value which Python's logging
 #   module can use because.
@@ -207,13 +203,8 @@ def online_help():
     logger.debug("Entered the function online_help().")
     message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
 
-    # Handle the embedded mode case.
-    if globals.openwrt_url:
-        message = message + """
-    I remotely monitor the state of an embedded system I've been configured with, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge.  The URL I use to access these system stats is: """
-        message = message + globals.openwrt_url + "\n\n"
-    else:
-        message = message + """
+    # Start building the help message.
+    message = message + """
     I continually monitor the state of the system I'm running on, and will send alerts any time an aspect deviates too far from normal if I am capable of doing so via the XMPP bridge."""
 
     # Continue building the help message.
@@ -350,23 +341,6 @@ if config.has_section("processes to monitor"):
         if "process" in i:
             processes_to_monitor.append(config.get("processes to monitor", i).split(','))
 
-# See if the bot is configured for remote monitoring mode of embedded devices.
-if config.has_section("openwrt"):
-    logging.debug("Detected remote monitoring of OpenWRT devices mode.")
-    try:
-        openwrt_host = config.get("openwrt", "openwrt_host")
-    except:
-        logging.error("In OpenWRT mode, you need to set a hostname or IP address of the device you want to monitor.")
-        sys.exit(1)
-
-    try:
-        openwrt_port = config.get("openwrt", "openwrt_port")
-    except:
-        logging.error("In OpenWRT mode, you need to set a port number of the monitoring HTTP server on the device you want to monitor.")
-        sys.exit(1)
-
-    globals.openwrt_url = "http://" + openwrt_host + ":" + openwrt_port
-
 # In debugging mode, dump the bot'd configuration.
 logger.info("Everything is configured.")
 logger.debug("Values of configuration variables as of right now:")
@@ -390,9 +364,6 @@ if len(processes_to_monitor):
     logger.debug("There are " + str(len(processes_to_monitor)) + " processes to watch over on the system.")
     for i in processes_to_monitor:
         print("    " + i[0])
-if globals.openwrt_url:
-    logging.debug("OpenWRT remote monitoring mode active.")
-    logger.debug("URL of OpenWRT remote monitoring server: " + globals.openwrt_url)
 if globals.ignored_mountpoints:
     logging.debug("File systems to ignore: %s" % globals.ignored_mountpoints)
 

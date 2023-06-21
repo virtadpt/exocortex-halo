@@ -9,6 +9,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v1.2 - Deleted obsolete OpenWRT stuff.
 # v1.1 - Added a list holding file mounts to ignore.
 # v1.0 - Initial release.
 
@@ -19,10 +20,6 @@
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
 
 # License: GPLv3
-
-# This holds the URL of the system stats service running on an OpenWRT node
-# that Systembot will poll.
-openwrt_url = ""
 
 # A list of file system mountpoints to ignore.
 ignored_mountpoints = []

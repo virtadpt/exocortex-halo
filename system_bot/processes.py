@@ -11,7 +11,7 @@
 # License: GPLv3
 
 # v2.1 - Added the ability to find out the top X running processes on the
-#         system.
+#        system.
 # v2.0 - Ported to Python 3.
 # v1.0 - Initial release.
 
