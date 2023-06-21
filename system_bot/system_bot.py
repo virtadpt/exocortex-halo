@@ -13,6 +13,7 @@
 
 # v4.7 - Ripped out the OpenWRT stuff because it's obsolete.  Use System
 #        Script instead.
+#      - Added some code to round off temperatures when requested by the user.
 # v4.6 - Added a check and some code to pull file mounts to ignore from the
 #        config file.  I added this because Certbot has to be installed as a
 #        Snap to be supported on Ubuntu now, but by their nature they're
@@ -573,7 +574,7 @@ while True:
                             if device[1] <= 0.0:
                                 continue
 
-                            message = message + "Temperature sensor " + label + ": " + str(device[1]) + " degrees Centigrade (" + str(system_stats.centigrade_to_fahrenheit(device[1])) + " degrees Fahrenheit)\n"
+                            message = message + "Temperature sensor " + label + ": " + str(device[1]) + " degrees Centigrade (" + str(round(system_stats.centigrade_to_fahrenheit(device[1]), 2)) + " degrees Fahrenheit)\n"
                 send_message_to_user(message)
 
             # Busiest running processes.
