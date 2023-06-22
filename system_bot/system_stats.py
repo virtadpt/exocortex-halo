@@ -495,7 +495,11 @@ def centigrade_to_fahrenheit(celsius):
 #   containing the data.  Returns None if there are no sensors (i.e., this is a
 #   virtual machine).
 def get_hardware_temperatures():
-    return psutil.sensors_temperatures()
+    try:
+        return psutil.sensors_temperatures()
+    except:
+        logging.debug("Unable to poll temperature sensors.  They might not be supported on this platform.")
+        return None
 
 # check_hardware_temperatures: Function that analyzes the values of the
 #   hardware temperatures and alerts the user if one of them has either reached
@@ -519,7 +523,7 @@ def check_hardware_temperatures(temperature_counter, time_between_alerts,
 
     # If we're running in a virtual machine, we'll get an empty hash table.
     if not temperatures:
-        logging.debug("Running on a virtual machine.  Bouncing.")
+        logging.debug("Running on a virtual machine or not supported on this platform.  Bouncing.")
         return 0
 
     # If we've made it this far, we're probably running on real hardware with
