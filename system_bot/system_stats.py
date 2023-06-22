@@ -17,6 +17,8 @@
 #      - Rounded off the system load values so they're easier to read.
 #      - Rounded off some of the temperature values returned.  I did
 #        Fahrenheit, but forgot Centigrade.
+#      - Made temperature checking conditional.
+#      - Made deletion of the loopback interface conditional.  Also added OSX's lo0.
 # v4.4 - Added some code to skip any file system mounts specified in the config
 #        file.
 # v4.3 - Fixed a bug in Fahrenheit to Centigrade conversion.  Oops.
@@ -363,6 +365,7 @@ def uptime():
         file.close()
     except:
         return None
+
     uptime_string = str(timedelta(seconds = uptime_seconds))
     return uptime_string
 
@@ -403,7 +406,16 @@ def local_ip_address():
 
     # Remove the loopback interface from the hash.  If this results in an
     # empty hash, return None.
-    del nics["lo"]
+    try:
+        del nics["lo"]
+    except:
+        logging.debug("I guess this system doesn't call its loopback interface 'lo'.")
+
+    try:
+        del nics["lo0"]
+    except:
+        logging.debug("I guess this system doesn't call its loopback interface 'lo0'.")
+
     if not nics:
         logging.debug("No network interfaces found.  That's weird.")
         return None
@@ -461,8 +473,16 @@ def network_traffic():
     stats = {}
     nics = psutil.net_io_counters(pernic=True)
 
-    # Get rid of the loopback interface.
-    del nics["lo"]
+    # Remove the loopback interface from the hash.
+    try:
+        del nics["lo"]
+    except:
+        logging.debug("I guess this system doesn't call its loopback interface 'lo'.")
+
+    try:
+        del nics["lo0"]
+    except:
+        logging.debug("I guess this system doesn't call its loopback interface 'lo0'.")
 
     # Prime the network stats hash table with the remaining network interfaces.
     for i in list(nics.keys()):

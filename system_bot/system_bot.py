@@ -14,6 +14,9 @@
 # v4.7 - Ripped out the OpenWRT stuff because it's obsolete.  Use System
 #        Script instead.
 #      - Added some code to round off temperatures when requested by the user.
+#      - Changed how queried memory usage is calculated so that it's more in
+#        line with the supported cross-platform method.
+#      - Uptime isn't as cut and dried as it seems.  Made it conditional.
 # v4.6 - Added a check and some code to pull file mounts to ignore from the
 #        config file.  I added this because Certbot has to be installed as a
 #        Snap to be supported on Ubuntu now, but by their nature they're
@@ -517,7 +520,7 @@ while True:
                 message = message + " (" + str(info.percent) + "%) memory in use.  "
 
                 # a GB / y GB (b%)  free.
-                message = message + system_stats.convert_bytes(info.free + info.buffers + info.cached)
+                message = message + system_stats.convert_bytes(info.free)
                 message = message + " / " + system_stats.convert_bytes(info.total)
                 message = message + " (" + str(round(100.0 - info.percent, 2)) + "%) free."
                 logging.debug("Value of message: " + str(message))
@@ -526,7 +529,10 @@ while True:
             # System uptime.
             if command == "uptime":
                 info = system_stats.uptime()
-                message = "The system has been online for " + info + "."
+                if info:
+                    message = "The system has been online for " + info + "."
+                else:
+                    message = "This system doesn't seem to keep uptime in the same way as Linux.  Please look into it and file a pull request."
                 send_message_to_user(message)
 
             # Public IP address.
