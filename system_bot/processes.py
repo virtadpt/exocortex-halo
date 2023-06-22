@@ -10,6 +10,7 @@
 
 # License: GPLv3
 
+# v2.2 - Fixed a bug where processes that disappear crash the bot.
 # v2.1 - Added the ability to find out the top X running processes on the
 #        system.
 # v2.0 - Ported to Python 3.
@@ -100,17 +101,21 @@ def get_top_processes(number_of_processes=5):
 
     # Built an array of the processes running on the server.
     for process in psutil.process_iter():
-        process_info = process.as_dict(attrs=["cmdline", "name", "cpu_percent",
-            "pid"])
+        try:
+            process_info = process.as_dict(attrs=["cmdline", "name", "cpu_percent",
+                "pid"])
+        except:
+            logging.debug("A process disappeared out from under us.")
+            continue
 
         # Kernel threads have empty cmdline values.  Skip them.
         if not process_info["cmdline"]:
-                continue
+            continue
 
         # Due to the fact that we want actually awake processes, skip running
         # processes that have CPU utilization of 0.0.
         if not process_info["cpu_percent"]:
-                continue
+            continue
         top_processes.append(process_info)
 
     # Catch the case where the process list is empty due to the above CPU

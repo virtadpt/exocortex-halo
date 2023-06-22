@@ -17,6 +17,7 @@
 #      - Changed how queried memory usage is calculated so that it's more in
 #        line with the supported cross-platform method.
 #      - Uptime isn't as cut and dried as it seems.  Made it conditional.
+#      - Added a crash handler.
 # v4.6 - Added a check and some code to pull file mounts to ignore from the
 #        config file.  I added this because Certbot has to be installed as a
 #        Snap to be supported on Ubuntu now, but by their nature they're
@@ -233,6 +234,13 @@ def online_help():
     """
     return message
 
+# scream_and_die(): A function that is registered with the sys.excepthook()
+#   handler, and fires if and when the bot crashes.
+def scream_and_die(type, value, traceback):
+    logging.critical("Crash handler executed!")
+    send_message_to_user("AAAAAAHHHH!")
+    send_message_to_user("FC: So much for that robot.  Too bad.")
+
 # Core code...
 # Allocate a command-line argument parser.
 argparser = argparse.ArgumentParser(description="A construct that monitors system statistics and sends alerts via the XMPP bridge in the event that things get too far out of whack.")
@@ -370,6 +378,10 @@ if len(processes_to_monitor):
         print("    " + i[0])
 if globals.ignored_mountpoints:
     logging.debug("File systems to ignore: %s" % globals.ignored_mountpoints)
+
+# Set the crash handler.
+sys.excepthook = scream_and_die
+logger.debug("scream_and_die() set as sys.excepthook crash handler.")
 
 # Try to contact the XMPP bridge.  Keep trying until you reach it or the
 # system shuts down.
