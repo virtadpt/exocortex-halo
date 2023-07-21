@@ -158,7 +158,10 @@ def parse_download_request(download_request):
     # User asked the construct to download from a URL.
     if (words[0] == "download") or (words[0] == "get") or (words[0] == "pull"):
         logger.info("Got a token that suggests that this is a download request.")
-    del words[0]
+        del words[0]
+    if not len(words):
+        logger.info("I think the request had a URL but not a verb.")
+        return None
 
     # User asked the construct to download a media stream with yt-dlp.
     if (words[0] == "stream") or (words[0] == "video"):
