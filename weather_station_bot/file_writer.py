@@ -8,6 +8,8 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v1.1 - Changed the file format to a more explicit key=value format by adding
+#        an equals sign (=) to the output.
 # v1.0 - Initial release.
 
 # TODO:
@@ -60,7 +62,7 @@ def write_values_to_file(output_file, **kwargs):
         # Write the kwargs out to the file in key-value format, one line at
         # a time.  If it fails, return False.
         for key in kwargs.keys():
-            writer.write("%s %s\n" % (key, kwargs[key]))
+            writer.write("%s=%s\n" % (key, kwargs[key]))
 
     except:
         logging.error("Unable to write to file %s!" % output_file)
