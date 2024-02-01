@@ -1,0 +1,32 @@
+{% from 'simple/macros.html' import result_footer, result_footer_rtl with context %}
+<div class="result result-default">
+<table class="table table-responsive table-bordered table-condensed">
+    <tr>
+    <td>
+    {% for key, value in result.items() %}
+        {% if key == "id" %}
+            <b>Archive URL</b>: <a href="https://archive.drwho.virtadpt.net/view/{{ value }}">https://archive.drwho.virtadpt.net/view/{{ value }}</a><br />
+        {% endif %}
+
+        {% if key == "title" %}
+            <b>Title</b>: {{ value | striptags | title }}<br />
+        {% endif %}
+
+        {% if key == "url" %}
+            <b>Original URL</b>: <a href="{{ value }}">{{ value }}</a><br />
+        {% endif %}
+
+        {% if key == "score" %}
+            <b>Search rank</b>: {{ value | striptags }}<br />
+        {% endif %}
+    {% endfor %}
+    </td>
+    <tr>
+</table>
+
+{% if rtl %}
+    {{ result_footer_rtl(result) }}
+{% else %}
+    {{ result_footer(result) }}
+{% endif %}
+</div>

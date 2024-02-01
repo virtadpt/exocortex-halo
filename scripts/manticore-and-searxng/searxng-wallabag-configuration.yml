@@ -1,0 +1,13 @@
+
+  - name: search manticore
+    engine: command
+    command: [ '/home/pi/exocortex-halo/scripts/manticore-and-searxng/searx-search_manticore.sh', '{{QUERY}}' ]
+    shortcut: wallabag
+    tokens: []
+    disabled: False
+    timeout: 120.0
+    delimiter:
+        chars: ';;;'
+        keys: [ 'id', 'title', 'score', 'url' ]
+    result_template: 'wallabag.html'
+

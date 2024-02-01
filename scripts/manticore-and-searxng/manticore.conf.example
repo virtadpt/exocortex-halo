@@ -1,0 +1,46 @@
+common {
+    plugin_dir = /usr/share/manticore/modules
+}
+
+searchd {
+    listen = 127.0.0.1:9312
+    listen = 127.0.0.1:9306:mysql
+    listen = 127.0.0.1:9308:http
+    log = /var/log/manticore/searchd.log
+    query_log = /var/log/manticore/query.log
+    pid_file = /var/run/manticore/searchd.pid
+    listen_backlog = 20
+    network_timeout = 30s
+    query_log_mode = 644
+    read_buffer_docs = 512k
+    read_buffer_hits = 512k
+    threads = 12
+    client_timeout = 1s
+    net_workers = 12
+    query_log_format = sphinxql
+    sphinxql_timeout = 1s
+}
+
+source wallabag
+{
+    type            = mysql
+    sql_host        = mysql.database.server.example.com
+    sql_user        = manticore
+    sql_pass        = LoveSexSecretGod
+    sql_db          = wallabag
+    sql_port        = 31337
+    sql_query_pre   = SET CHARACTER_SET_RESULTS=utf8
+    sql_query_pre   = SET NAMES utf8
+    sql_query       = SELECT id as article_id, title, url, content, UNIX_TIMESTAMP(archived_at) AS date_added FROM wallabag_entry
+    sql_attr_uint   = article_id
+    sql_attr_timestamp   = date_added
+}
+
+index articles
+{
+    type            = plain
+    source          = wallabag
+    path            = /var/lib/manticore/articles/articles
+    stored_fields   = article_id, title, url, content
+}
+
