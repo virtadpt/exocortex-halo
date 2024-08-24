@@ -8,6 +8,12 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v6.0 - SleekXMPP is dead.  Ported to SliXMPP
+#        (https://codeberg.org/poezio/slixmpp/).  This involved doing a lot of
+#        reworking of the XMPP client stuff, so I figure it's worth a major
+#        version.
+#      - Restructured generated and customized strings to be more pythonic.
+#      - Minor reformatting for readability.
 # v5.0 - Reworking for Python 3.
 # v4.1 - Explicitly setting the stanza type to "chat" makes the bridge work
 #        reliably with more XMPP clients (such as converse.js).
@@ -55,8 +61,6 @@
 # v1.0 - Initial release.
 
 # TODO:
-# - Write a signal handler that makes the agent reload its configuration file
-#   (whether it's the default one or specified on the command line).
 # - Consider adding a SQLite database to serialize the message queues to in
 #   the event the microservice ABENDs or gets shut down.  Don't forget a
 #   scream-and-die error message to not leave the user hanging.
@@ -72,18 +76,18 @@
 
 # License: GPLv3
 
-from sleekxmpp import ClientXMPP
-from sleekxmpp.exceptions import IqError, IqTimeout
-from sleekxmpp.xmlstream import scheduler
+from slixmpp import ClientXMPP
+from slixmpp.exceptions import IqError, IqTimeout
 
+import asyncio
 import logging
-import threading
 
 import message_queue
 
-# XMPPClient: XMPP client class.  Implemented using threading.Thread because
-#   it'll spin out on its own to connect to the XMPP server, while the custom
-#   REST API server handles the distribution of requests to other agents.
+# XMPPClient: XMPP component class.  Implemented as a component because
+#   SliXMPP changed a lot of things and one of them is that it doesn't use
+#   threading at all anymore.  Needless to say this has made life a bit
+#   interesting.
 class XMPPClient(ClientXMPP):
 
     # Bot's friendly nickname.
@@ -101,6 +105,7 @@ class XMPPClient(ClientXMPP):
 
     # Initialize new instances of the class.
     def __init__(self, username, password, owner):
+        logging.debug("Entered xmppclient.XMPPClient.__init__().")
 
         # Store the username, password and nickname as local attributes.
         self.nickname = username.split("@")[0].capitalize()
@@ -108,8 +113,8 @@ class XMPPClient(ClientXMPP):
         # Register the bot's owner.
         self.owner = owner
 
-        logging.debug("Username: " + username)
-        logging.debug("Password: " + password)
+        logging.debug("Username: %s" % username)
+        logging.debug("Password: %s" % password)
         logging.debug("Construct's XMPP nickname: " + self.nickname)
         logging.debug("Construct's owner: " + self.owner)
 
@@ -118,16 +123,16 @@ class XMPPClient(ClientXMPP):
         ClientXMPP.__init__(self, username, password)
 
         # Register event handlers to process different event types.  A single
-        # event can be processed by multiple event handlers...
-        self.add_event_handler("failed_auth", self.failed_auth, threaded=True)
-        self.add_event_handler("no_auth", self.no_auth, threaded=True)
-        self.add_event_handler("session_start", self.session_start,
-            threaded=True)
-        self.add_event_handler("message", self.message, threaded=True)
-        self.add_event_handler("disconnected", self.on_disconnect,
-            threaded=True)
+        # event can be processed by multiple event handlers.  These are
+        # organized (roughly) in the order that they would fire on startup,
+        # beginning with various types of login failure.
+        self.add_event_handler("failed_auth", self.failed_auth)
+        self.add_event_handler("no_auth", self.no_auth)
+        self.add_event_handler("session_start", self.session_start)
+        self.add_event_handler("message", self.message)
+        self.add_event_handler("disconnected", self.on_disconnect)
 
-        # Start the /replies processing thread.
+        # Start the /replies processing task now that we're logged in.
         self.schedule("replies_processor", 1, self.process_replies_queue,
             repeat=True)
 
@@ -139,7 +144,7 @@ class XMPPClient(ClientXMPP):
     # Fires when all authentication methods available to the construct have
     # failed.
     def no_auth(self, event):
-        logging.critical("All authentication methods with the JID " + self.username + " have failed.")
+        logging.critical("All authentication methods for the JID %s have failed." % self.username)
         return
 
     # Fires whenever an XMPP session starts.  Just about anything can go in
@@ -177,14 +182,16 @@ class XMPPClient(ClientXMPP):
     # Event handler that fires whenever an XMPP message is sent to the bot.
     # "received_message" represents a message object from the server.
     def message(self, received_message):
-        message_sender = str(received_message.getFrom()).strip().split("/")[0]
+        message_sender = str(received_message.get_from()).strip().split("/")[0]
         message_body = str(received_message["body"]).strip()
         agent_name = ""
         command = ""
         acknowledgement = ""
 
-        logging.debug("Value of XMPPClient.message().message_sender is: " + str(message_sender))
-        logging.debug("Value of XMPPClient.message().message_body is: " + str(message_body))
+        logging.debug("Value of XMPPClient.message().message_sender is: %s" %
+            message_sender)
+        logging.debug("Value of XMPPClient.message().message_body is: %s" %
+            message_body)
 
         # Potential message types: normal, chat, error, headline, groupchat
         # Only pay attention to "normal" and "chat" messages.
@@ -194,7 +201,8 @@ class XMPPClient(ClientXMPP):
         # If the sender isn't the bot's owner, ignore the message.  We don't
         # owe the send a response for security reasons.
         if message_sender != self.owner:
-            logging.debug("Received a command from invalid bot owner " + message_sender + ".")
+            logging.debug("Received a command from invalid bot owner %s." %
+                message_sender)
             return
 
         # If the message body is empty (which some XMPP clients do just to
@@ -219,11 +227,11 @@ class XMPPClient(ClientXMPP):
             agent_name = message_body.split(",")[0]
         else:
             agent_name = message_body.split(" ")[0]
-        logging.debug("Agent name: " + agent_name)
+        logging.debug("Agent name: %s" % agent_name)
 
         if agent_name not in list(message_queue.message_queue.keys()):
-            logging.debug("Command sent to agent " + agent_name + ", which doesn't exist on this bot.")
             response = "Request sent to agent " + agent_name + ", which doesn't exist on this bot.  Please check your spelling."
+            logging.debug(response)
             self.send_message(mto=self.owner, mbody=response,
                 mtype=self.stanza_type)
             return
@@ -235,16 +243,16 @@ class XMPPClient(ClientXMPP):
             command = " ".join(message_body.split(" ")[1:])
         command = command.strip()
         command = command.strip(".")
-        logging.debug("Received request: " + command)
+        logging.debug("Received request: %s" % command)
 
         # Push the request into the appropriate message queue.
         message_queue.message_queue[agent_name].append(command)
-        logging.debug("Added request to " + agent_name + "'s message queue.")
+        logging.debug("Added request to %s's message queue." % agent_name)
 
         # Tell the bot's owner that the request has been added to the agent's
         # message queue.
-        logging.debug("Sending acknowledgement of request to " + self.owner + ".")
         acknowledgment = "Your request has been added to " + agent_name + "'s request queue."
+        logging.debug(acknowledgement)
         self.send_message(mto=self.owner, mbody=acknowledgement,
             mtype=self.stanza_type)
         return

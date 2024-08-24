@@ -1,4 +1,4 @@
-sleekxmpp==1.3.2
+slixmpp==1.8.5
 dnspython
 pyasn1==0.3.6
 pyasn1_modules==0.1.5

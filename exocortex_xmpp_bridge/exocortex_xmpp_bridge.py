@@ -15,6 +15,17 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v6.0 - Changes to use SliXMPP.  Reworked some stuff to clean it up while I
+#        was at it.  Chief among them, declaring some of the globals rather
+#        than freestyling them later.  This may as well be a major release.
+#      - Replaced xmpp_client.process() with xmpp_client.loop.run_forever()
+#        because .process() is going away in v1.9.0 of SliXMPP due to asyncio
+#        replacing threading.  May as well try to get ahead of the game for
+#        once.
+#      - Made generated and customized strings more pythonic.
+#      - Figured out how to run the HTTP server in a separate thread and
+#        moved it to start before the xmppclient.XMPPClient object because the
+#        latter runs in the foreground.
 # v5.0 - Ported to Python 3.
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
 #      - Made the interface and port the REST API listens on configurable.
@@ -68,8 +79,6 @@
 #   lowercase instead of proper capitalization, or proper capitalization
 #   instead of all caps) match when search requests are pushed into the
 #   message queue.  I think I can do this, I just need to play with it.
-# - When building the list of message queues, run .strip() on each term to
-#   knock out any whitespace that sneaks in.
 
 # By: The Doctor <drwho at virtadpt dot net>
 #     0x807B17C1 / 7960 1CDC 85C9 0B63 8D9F  DD89 3BD8 FF2B 807B 17C1
@@ -77,7 +86,6 @@
 # License: GPLv3
 
 from http.server import HTTPServer
-from http.server import BaseHTTPRequestHandler
 
 import argparse
 import configparser
@@ -85,15 +93,31 @@ import json
 import logging
 import os
 import sys
-import threading
+import _thread
 
 import message_queue
 import rest
 import xmppclient
 
 # Globals.
-# Handle for the XMPP client.
-xmpp_client = None
+# IP/hostname and port the REST API server listens on.  Defaults to localhost
+# and port 8003/tcp.
+listenon_host = "localhost"
+listenon_port = 8003
+
+# JID of the bot's registered owner.
+owner = ""
+
+# Username/JID and password the bot uses to log into an XMPP server.
+username = ""
+password = ""
+
+# Logging for the XMPP bridge.  Defaults to INFO.
+loglevel = None
+
+# An array of strings containing the names of the bots that will take orders
+# through this bot and send responses back.
+agents = []
 
 # Handle for the command line argument parser.
 args = ""
@@ -101,13 +125,8 @@ args = ""
 # Path to and name of the configuration file.
 config_file = ""
 
-# Logging for the XMPP bridge.  Defaults to INFO.
-loglevel = None
-
-# IP/hostname and port the REST API server listens on.  Defaults to localhost
-# and port 8003/tcp.
-listenon_host = "localhost"
-listenon_port = 8003
+# Handle for the XMPP client.
+xmpp_client = None
 
 # Figure out what to set the logging level to.  There isn't a straightforward
 # way of doing this because Python uses constants that are actually integers
@@ -127,6 +146,27 @@ def process_loglevel(loglevel):
         return 10
     if loglevel == "notset":
         return 0
+
+# start_rest_server(): Wrapper function that starts an instance of HTTPServer
+#   in a thread so that it won't block execution.  Takes two args, a hostname
+#   or IP address to listen on, and a TCP port to listen on.  Doesn't return
+#   anything because it hangs off of a thread and runs until the bridge shuts
+#   down.
+def start_rest_server(host, port):
+    logger.debug("Entered start_rest_server().")
+
+    # Handle to an HTTPServer.
+    api_server = None
+
+    # Allocate an instance of HTTPServer that listens on a particular IP and
+    # port, and instantiates my custom REST API object.
+    api_server = HTTPServer((host, port), rest.RESTRequestHandler)
+    logger.debug(api_server)
+    logger.info("REST API server now listening on %s, port %s/tcp." %
+        (host, port))
+
+    logger.debug("Kicking off the API server.")
+    api_server.serve_forever()
 
 # Core code...
 # Set up the command line argument parser.
@@ -148,8 +188,7 @@ if args.config:
 # Read the configuration file.  Then load it into a config file parser object.
 config = configparser.ConfigParser()
 if not os.path.exists(config_file):
-    logging.error("Unable to find or open configuration file " +
-        config_file + ".")
+    logging.error("Unable to find or open configuration file %s." % config_file)
     sys.exit(1)
 config.read(config_file)
 
@@ -179,8 +218,23 @@ if args.loglevel:
 logging.basicConfig(level=loglevel, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
-# Instantiate the XMPP client thread.
-logger.debug("Initializing the XMPP client thread.")
+# In debug mode, output the configuration variables.
+logger.debug("Value of listenon_host: %s" % listenon_host)
+logger.debug("Value of listenon_port: %s" % listenon_port)
+logger.debug("Value of owner: %s" % owner)
+logger.debug("Value of username: %s" % username)
+logger.debug("Value of password: %s" % password)
+logger.debug("Value of agents: %s" % agents)
+
+# Start the REST API server on a low-level thread.  It doesn't need to have
+# full thread functionality, it just has to have an object hanging off of it
+# with a running event loop.  We do this first because slixmpp.xmppclient runs
+# in the foreground, and I haven't figured out how to change that yet.
+# https://docs.python.org/3/library/_thread.html
+_thread.start_new_thread(start_rest_server, (listenon_host, listenon_port))
+
+# Instantiate the XMPP client module.
+logger.debug("Initializing the XMPP client object.")
 xmpp_client = xmppclient.XMPPClient(username, password, owner)
 
 # Register some XEP plugins.
@@ -188,18 +242,9 @@ xmpp_client.register_plugin('xep_0030') # Service discovery
 xmpp_client.register_plugin('xep_0078') # Legacy authentication
 xmpp_client.register_plugin('xep_0199') # XMPP ping
 
-if xmpp_client.connect():
-    logger.info("Logged into XMPP server.")
-    xmpp_client.process(block=False)
-else:
-    logger.critical("Unable to connect to XMPP server!")
-    sys.exit(1)
-
-# Allocate and start the Simple HTTP Server instance.
-api_server = HTTPServer((listenon_host, listenon_port), rest.RESTRequestHandler)
-logger.info("REST API server now listening on " + str(listenon_host) + ", port " + str(listenon_port) + "/tcp.")
-while True:
-    api_server.serve_forever()
+# Connect to the XMPP server and start processing message streams.
+xmpp_client.connect()
+xmpp_client.loop.run_until_complete(xmpp_client.disconnected)
 
 # Fin.
 sys.exit(0)
