@@ -8,6 +8,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v5.1 - Deleted a few things that were irrelevant.
 # v5.0 - Reworking for Python 3.
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
 # v3.0 - Rewriting to use SleekXMPP, because I'm tired of XMPPpy's lack of
@@ -63,7 +64,6 @@
 
 # License: GPLv3
 
-#from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 
 import json

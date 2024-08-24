@@ -4,12 +4,12 @@ exocortex_xmpp_bridge.py is a bot that does two things: It logs into an XMPP ser
 
 This bot requires the following Python modules providing XMPP protocol support which, if you they aren't available in your distro's default package repo (they are in Ubuntu v14.04 Server LTS) you'll have to install on your own.  The modules are:
 
-* [sleekxmpp](https://github.com/fritzy/SleekXMPP)
+* [SliXMPP](https://codeberg.org/poezio/slixmpp)
 * [dnspython](http://www.dnspython.org/)
 * [pyasn1](https://github.com/etingof/pyasn1)
 * pyasn1_modules
 
-If they're not I highly recommend installing them into a [venv](https://docs.python.org/3/tutorial/venv.html) to keep from splattering them all over your file system.  Here's one way to do it (and, in fact, is the recommended and supported method):
+If they're not already I highly recommend installing them into a [venv](https://docs.python.org/3/tutorial/venv.html) to keep from splattering them all over your file system.  Here's one way to do it (and, in fact, is the recommended and supported method):
 
 * `cd exocortex_halo/exocortex_xmpp_bridge`
 * `python3 -m venv env`
