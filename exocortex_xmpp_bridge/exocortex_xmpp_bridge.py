@@ -244,7 +244,7 @@ xmpp_client.register_plugin('xep_0199') # XMPP ping
 
 # Connect to the XMPP server and start processing message streams.
 xmpp_client.connect()
-xmpp_client.loop.run_until_complete(xmpp_client.disconnected)
+xmpp_client.loop.run_forever()
 
 # Fin.
 sys.exit(0)
