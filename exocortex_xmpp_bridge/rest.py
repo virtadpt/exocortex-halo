@@ -8,6 +8,11 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v5.2 - Cleaned up generated strings by making them more pythonic.
+#      - There are some things that I can make more efficient by generating
+#        them once as hash tables and passing them to the methods that get
+#        two copies.  But I've got bigger things to worry about right now, like
+#        making sure the migration to SliXMPP elsewhere in the codebase works.
 # v5.1 - Deleted a few things that were irrelevant.
 # v5.0 - Reworking for Python 3.
 # v4.0 - Refacted bot to break major functional parts out into separate modules.
@@ -103,7 +108,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # pulling requests from this bot.  If not, return a 404.
         agent = self.path.strip('/')
         if agent not in list(message_queue.message_queue.keys()):
-            logging.debug("Message queue for agent " + agent + " not found.")
+            logging.debug("Message queue for agent %s not found." % agent)
             self.send_response(404)
             self.send_header("Content-type:", "application/json")
             self.end_headers()
@@ -113,7 +118,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
 
         # If the message queue is empty, return an error JSON document.
         if not len(message_queue.message_queue[agent]):
-            logging.debug("Message queue for agent " + agent + " is empty.")
+            logging.debug("Message queue for agent %s is empty." % agent)
             self.send_response(200)
             self.send_header("Content-Type:", "application/json")
             self.end_headers()
@@ -127,8 +132,8 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # Assemble a JSON document of the earliest pending command.  Then send
         # the JSON document to the agent.  Multiple hits will be required to
         # empty the queue.
-        logging.debug("Returning earliest command from message queue " + agent
-            + ": " + command)
+        logging.debug("Returning earliest command from message queue %s: %s" %
+            (agent, command))
         self.send_response(200)
         self.send_header("Content-Type:", "application/json")
         self.end_headers()
@@ -158,7 +163,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         # a 404.
         agent = self.path.strip('/')
         if agent != "replies":
-            logging.debug("Something tried to PUT to API rail /" + agent + ".  Better make sure it's not a bug.")
+            logging.debug("Something tried to PUT to API rail /%s.  Better make sure it's not a bug." % agent)
             self.send_response(404)
             self.send_header("Content-Type:", "application/json")
             self.end_headers()
@@ -169,7 +174,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         logging.info("A construct has contacted the /replies API rail.")
         logging.debug("List of headers in the HTTP request:")
         for key in self.headers:
-            logging.debug("    " + key + " - " + self.headers[key])
+            logging.debug("    %s - %s" % (key, self.headers[key]))
 
         # Read the content sent from the client.  If there is no
         # "Content-Length" header something screwy is happening because that
@@ -222,8 +227,14 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
         try:
             content_length = int(self.headers['Content-Length'])
             content = self.rfile.read(content_length)
-            logging.debug("Content sent by client: " + content.decode("ascii"))
+            logging.debug("Content sent by client: %s" %
+                content.decode("ascii"))
         except:
+            # MOOF MOOF MOOF
+            # I can make this more elegant by building the response as a hash
+            # table, sending it to logging.debug() and sending it to
+            # self._send_http_response().  But I have bigger fish to fry right
+            # now.
             logging.debug('{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
             self._send_http_response(500, '{"result": null, "error": "Client sent zero-lenth content.", "id": 500}')
             return None
@@ -257,7 +268,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
     def _normalize_keys(self, arguments):
         for key in list(arguments.keys()):
             arguments[key.lower()] = arguments[key]
-            logging.debug("Normalizing key " + key + " to " + key.lower() + ".")
+            logging.debug("Normalizing key %s to %s." % (key, key.lower()))
         return arguments
 
     # Ensure that all of the keys required for every client access are in the

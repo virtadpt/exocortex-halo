@@ -14,6 +14,12 @@
 #        version.
 #      - Restructured generated and customized strings to be more pythonic.
 #      - Minor reformatting for readability.
+#      - Fixed some incorrect comments because I'm a dumbass who was more
+#        worried about getting things working than keeping the implicit docs
+#        up to date.
+#      - Turned XMPPClient.on_disconnect() into something more than just a
+#        stub.  It should fire whenever the bot loses its link for some reason
+#        and needs to log in again.
 # v5.0 - Reworking for Python 3.
 # v4.1 - Explicitly setting the stanza type to "chat" makes the bridge work
 #        reliably with more XMPP clients (such as converse.js).
@@ -81,13 +87,16 @@ from slixmpp.exceptions import IqError, IqTimeout
 
 import asyncio
 import logging
+import random
+import time
 
 import message_queue
 
-# XMPPClient: XMPP component class.  Implemented as a component because
-#   SliXMPP changed a lot of things and one of them is that it doesn't use
-#   threading at all anymore.  Needless to say this has made life a bit
-#   interesting.
+# XMPPClient: XMPP client class.  Internally, this has changed a great deal
+#   because I migrated the code to SliXMPP, which doesn't use threading anymore
+#   but an asynchronous event system.  For example, the scheduler isn't a
+#   separate object anymore but built in automatically (which eliminated one
+#   import).
 class XMPPClient(ClientXMPP):
 
     # Bot's friendly nickname.
@@ -302,7 +311,63 @@ Individual constructs may have their own online help, so try sending the command
     # Fires whenever the bot's connection dies.  I need to figure out how to
     # make the bot wait for a random period of time and then try to reconnect
     # to the server.
+    # What this is supposed to do is manually tear down the connection if it
+    # dies (which is a belt-and-suspenders kind of thing, to make sure the
+    # internal state is consistent) and then start it up again.
     def on_disconnect(self, event):
+        logging.debug("Entering XMPPClient.on_disconnect().")
+        logging.info("Connection to XMPP server disappeared.  Attempting to reconnect to JID %s." % self.username)
+
+        # This holds the random period of time the bot will sleep during
+        # reconnection attempts.  It's kept in a variable because the value
+        # will be referenced in user output, so it shouldn't change.
+        random_sleep = 0.0
+
+        # Initialize the RNG from the current system time.  We're not
+        # generating a cryptographic key or anything, so we can do this.
+        random.seed()
+
+        # Start a loop in which the bot will attempt to reconnect until it is
+        # either successful or the user gives up and shuts the bot down.
+        while True:
+
+            # Force a disconnection attempt in case the XMPPClient's internal
+            # state needs it.
+            logging.debug("Forcing a disconnection.")
+            self.disconnect(reason="Just woke up, trying again.")
+
+            # Sleep for a random number of seconds (between 1 and 10, at a
+            # guess) to give the network connection(s) a chance to stabilize.
+            # The specific use case I'm thinking of is a laptop that has to
+            # get back on the local wireless network and then re-negotiate a
+            # VPN connection.  This can take a while from the user's (and thus
+            # the bot's) point of view.
+            random_sleep = random.rantint(1, 10)
+            logging.debug("Going to sleep for %s seconds." % random_sleep)
+            time.sleep(random_sleep)
+            logging.debug("Woke up after %s seconds." % random_sleep)
+
+            # Try reconnecting.  Re-use the random sleep as the timeout just
+            # because we can.
+            logging.info("Attempting to reconnect.")
+            self.reconnect(wait=random_sleep, reason="Just woke up.")
+
+            # Test the connection by sending the bot's presence and pulling its
+            # roster.  We have to do this after a login anyway, so it kills
+            # two birds with one stone.
+            try:
+                logging.debug("Pinging the server by sending a presence request and pulling the JID's roster.")
+                self.send_presence()
+                self.get_roster()
+
+                # If the above two calls worked, break out of the loop because
+                # login was successful.
+                logging.info("Re-login successful!")
+                break
+            except:
+                logging.warn("Re-login attempt failed.")
+
+        logging.debug("Bounced out of the re-login attempt loop, exiting XMPPClient.on_disconnect().")
         return
 
 if "__name__" == "__main__":
