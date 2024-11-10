@@ -238,9 +238,15 @@ logger.debug("Initializing the XMPP client object.")
 xmpp_client = xmppclient.XMPPClient(username, password, owner)
 
 # Register some XEP plugins.
-xmpp_client.register_plugin('xep_0030') # Service discovery
-xmpp_client.register_plugin('xep_0078') # Legacy authentication
-xmpp_client.register_plugin('xep_0199') # XMPP ping
+xmpp_client.register_plugin("xep_0030") # Service discovery
+xmpp_client.register_plugin("xep_0078") # Legacy authentication
+xmpp_client.register_plugin("xep_0199") # XMPP ping
+
+# https://github.com/mightyBroccoli/xmpp-chatbot/blob/master/main.py
+# Added for troubleshooting the "won't wake back up" problem.
+xmpp_client.register_plugin("xep_0012") # Last activity
+xmpp_client.register_plugin("xep_0085") # Chat state notifications
+xmpp_client.register_plugin("xep_0128") # Service discovery extensions
 
 # Connect to the XMPP server and start processing message streams.
 xmpp_client.connect()

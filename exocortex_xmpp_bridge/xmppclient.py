@@ -134,12 +134,21 @@ class XMPPClient(ClientXMPP):
         # Register event handlers to process different event types.  A single
         # event can be processed by multiple event handlers.  These are
         # organized (roughly) in the order that they would fire on startup,
-        # beginning with various types of login failure.
+        # beginning with various types of login failure.  Supported events:
+        # https://slixmpp.readthedocs.io/en/latest/event_index.html
         self.add_event_handler("failed_auth", self.failed_auth)
         self.add_event_handler("no_auth", self.no_auth)
         self.add_event_handler("session_start", self.session_start)
         self.add_event_handler("message", self.message)
+
+        # These are ostensibly events that can fire when the link to the server
+        # dies for some reason.  There are so many reasons (and I don't know
+        # which applies to "laptop went into hibernation" that I'm kind of
+        # spitballing here by handling as many that seem appropriate as
+        # possible.
         self.add_event_handler("disconnected", self.on_disconnect)
+        self.add_event_handler("killed", self.on_disconnect)
+        self.add_event_handler("session_resumed", self.on_disconnect)
 
         # Start the /replies processing task now that we're logged in.
         self.schedule("replies_processor", 1, self.process_replies_queue,
@@ -342,7 +351,7 @@ Individual constructs may have their own online help, so try sending the command
             # get back on the local wireless network and then re-negotiate a
             # VPN connection.  This can take a while from the user's (and thus
             # the bot's) point of view.
-            random_sleep = random.rantint(1, 10)
+            random_sleep = random.randint(1, 10)
             logging.debug("Going to sleep for %s seconds." % random_sleep)
             time.sleep(random_sleep)
             logging.debug("Woke up after %s seconds." % random_sleep)
