@@ -5,9 +5,18 @@ It's a process, okay?
 
 The computer used as the core of my weather station is a Raspberry Pi 2B+, which is why it's unavoidably GPIO-centric (with the odd SMI interface).  It may be possible to interface with devices using something like [Adafruit's FT232H breakout board](https://www.adafruit.com/product/2264) but I don't have one and haven't tried.
 
+Be sure that the I2C bus is enabled on your RasPi:
+* `sudo raspi-config`
+* Interface Options
+* Enable i2c
+* Reboot.
+
+You also need to be sure that the account you're going to run `weather_station_bot.py` under (usually "pi" but there are other ways) has access to the I2C devices in /dev.  If the following command doesn't give you any output, you need to add yourself to the "i2c" group, log out, and log back in again: `id | grep i2c`
+
 When setting up the venv for the bot on a RasPi you're going to need the `RPi.GPIO` module, which doesn't seem to be easy to find in the Pypi repository but is in the default Raspbian package repositories.  You will need to make Python modules installed at the system level available inside of the venv, like so:
 
-* `sudo apt-get install rpi.gpio-common libatlas-base-dev
+* `sudo apt-get install rpi.gpio-common libatlas-base-dev python3-smbus i2c-tools libi2c-dev`
+    * Note: There are two packages, python3-smbus and python3-smbus2.  You want python3-smbus, the other one won't work.
     * This will probably be a NOP but I've documented it for [anyone looking for answers](https://xkcd.com/979/).
 * `python -mvenv env --system-site-packages`
 * `. env/bin/activate`
