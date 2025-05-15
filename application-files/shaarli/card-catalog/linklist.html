@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html{if="$language !== 'auto'"} lang="{$language}"{/if}>
+<head>
+  {include="includes"}
+</head>
+<body>
+{include="page.header"}
+
+<div class="linkcount pure-u-0 pure-u-lg-visible">
+  {if="!empty($linkcount)"}
+  <span class="strong">{$linkcount}</span> {function="t('book.', 'books.', $linkcount)"}
+  {if="$privateLinkcount>0"}
+  <br><span class="strong">{$privateLinkcount}</span> {function="t('cataloged book.', 'cataloged books.', $privateLinkcount)"}
+  {/if}
+  {/if}
+</div>
+
+<input type="hidden" name="token" value="{$token}">
+<div id="search-linklist" class="searchform-block search-linklist">
+
+  <form method="GET" class="pure-form searchform" name="searchform">
+    <input type="text" name="searchterm" class="searchterm" aria-label="{'Search text'|t}" placeholder="{'Search text'|t}"
+           {if="!empty($search_term)"}
+           value="{$search_term}"
+           {/if}
+    >
+    <input type="text" name="searchtags" class="searchtags" aria-label="{'Filter by tag'|t}" placeholder="{'Filter by tag'|t}"
+           {if="!empty($search_tags)"}
+           value="{$search_tags}"
+           {/if}
+    autocomplete="off" data-multiple data-autofirst data-minChars="1"
+    data-list="{loop="$tags"}{$key}, {/loop}"
+    >
+    <button type="submit" class="search-button" aria-label="{'Search'|t}"><i class="fa fa-search" aria-hidden="true"></i></button>
+  </form>
+</div>
+
+{loop="$plugins_header.fields_toolbar"}
+  <form
+    {loop="$value.attr"}
+      {$key}="{$value}"
+    {/loop}>
+    <div class="toolbar-plugin pure-u-lg-1">
+      {loop="$value.inputs"}
+        <input
+          {loop="$value"}
+          {$key}="{$value}"
+          {/loop}>
+      {/loop}
+    </div>
+  </form>
+{/loop}
+
+<div id="linklist">
+  <div id="link-count-block" class="pure-g link-count-block">
+    <div class="pure-u-lg-2-24 pure-u-1-24"></div>
+    <div id="link-count-content" class="pure-u-lg-20-24 pure-u-22-24">
+      <div class="linkcount pure-u-lg-0 center">
+        {if="!empty($linkcount)"}
+        <span class="strong">{$linkcount}</span> {function="t('shaare', 'shaares', $linkcount)"}
+        {if="$privateLinkcount>0"}
+        &middot; <span class="strong">{$privateLinkcount}</span> {function="t('private link', 'private links', $privateLinkcount)"}
+        {/if}
+        {/if}
+      </div>
+
+      {include="linklist.paging"}
+
+      <div id="plugin_zone_start_linklist" class="plugin_zone">
+        {loop="$plugin_start_zone"}
+          {$value}
+        {/loop}
+      </div>
+    </div>
+  </div>
+
+  {if="count($links)==0"}
+    <div id="search-result-block" class="pure-g pure-alert pure-alert-error search-result">
+      <div class="pure-u-2-24"></div>
+      <div id="search-result-content" class="pure-u-20-24">
+        <div id="searchcriteria">{'Nothing found.'|t}</div>
+      </div>
+    </div>
+  {elseif="!empty($search_term) or $search_tags !== '' or !empty($visibility) or $untaggedonly"}
+    <div id="search-result-block" class="pure-g pure-alert pure-alert-success search-result">
+      <div class="pure-u-2-24"></div>
+      <div id="search-result-content" class="pure-u-20-24 search-result-main">
+        {function="sprintf(t('%s result', '%s results', $result_count), $result_count)"}
+        {if="!empty($search_term)"}
+          {'for'|t} <em><strong>{$search_term}</strong></em>
+        {/if}
+        {if="!empty($search_tags)"}
+          {$exploded_tags=tags_str2array($search_tags, $tags_separator)}
+          {'tagged'|t}
+          {loop="$exploded_tags"}
+              <span class="label label-tag" title="{'Remove tag'|t}">
+                <a href="{$base_path}/remove-tag/{function="$search_tags_url.$key1"}" aria-label="{'Remove tag'|t}">
+                  {$value}<span class="remove"><i class="fa fa-times" aria-hidden="true"></i></span>
+                </a>
+              </span>
+          {/loop}
+        {/if}
+        {if="!empty($visibility)"}
+          {'with status'|t}
+          <span class="label label-private">
+            {$visibility|t}
+          </span>
+        {/if}
+        {if="$untaggedonly"}
+          <span class="label label-private">
+            {'without any tag'|t}
+          </span>
+        {/if}
+      </div>
+    </div>
+  {/if}
+
+  <div id="linklist-loop-block" class="pure-g">
+    <div class="pure-u-lg-2-24 pure-u-1-24"></div>
+    <div id="linklist-loop-content" class="pure-u-lg-20-24 pure-u-22-24">
+      {ignore}Set translation here, for performances{/ignore}
+      {$strPrivate=t('Private')}
+      {$strEdit=t('Edit')}
+      {$strDelete=t('Delete')}
+      {$strFold=t('Fold')}
+      {$strEdited=t('Edited: ')}
+      {$strPermalink=t('Permalink')}
+      {$strPermalinkLc=t('permalink')}
+      {$strAddTag=t('Add tag')}
+      {$strToggleSticky=t('Toggle sticky')}
+      {$strSticky=t('Sticky')}
+      {$strShaarePrivate=t('Share a private link')}
+      {ignore}End of translations{/ignore}
+      {loop="links"}
+        <div class="anchor" id="{$value.shorturl}"></div>
+
+        <div class="linklist-item linklist-item{if="$value.class"} {$value.class}{/if}" data-id="{$value.id}">
+          <div class="linklist-item-title">
+            {if="$thumbnails_enabled && $value.thumbnail !== false"}
+              <div
+                class="linklist-item-thumbnail {if="$value.thumbnail === null"}hidden{/if}"
+                style="width:{$thumbnails_width}px;height:{$thumbnails_height}px;"
+                {if="$value.thumbnail === null"}data-async-thumbnail="1"{/if}
+              >
+                <div class="thumbnail">
+                  {ignore}RainTPL hack: put the 2 src on two different line to avoid path replace bug{/ignore}
+                  <a href="{$value.real_url}" aria-hidden="true" tabindex="-1">
+                  <img data-src="{$root_path}/{$value.thumbnail}#" class="b-lazy"
+                    src=""
+                    alt="" width="{$thumbnails_width}" height="{$thumbnails_height}" />
+                  </a>
+                </div>
+              </div>
+            {/if}
+
+            <div class="linklist-item-editbuttons">
+              {if="$value.sticky"}
+                <span class="label label-sticky">{$strSticky}</span>
+              {/if}
+              {if="$value.private"}
+                <span class="label label-private">{$strPrivate}</span>
+              {/if}
+            </div>
+
+            <h2>
+              <a href="{$value.real_url}" class="linklist-real-url">
+                {if="strpos($value.url, $value.shorturl) === false"}
+                  <i class="fa fa-external-link" aria-hidden="true"></i>
+                {else}
+                  <i class="fa fa-sticky-note" aria-hidden="true"></i>
+                {/if}
+
+                <span class="linklist-link">{$value.title_html}</span>
+              </a>
+            </h2>
+          </div>
+
+          {if="$value.description"}
+            <div class="linklist-item-description">
+              {$value.description}
+            </div>
+          {/if}
+
+          <div class="linklist-item-infos clear">
+            {if="$value.tags"}
+              <div class="linklist-item-tags">
+                <i class="fa fa-tags" aria-hidden="true"></i>
+                {$tag_counter=count($value.taglist)}
+                {loop="value.taglist"}
+                  <span class="label label-tag" title="{$strAddTag}">
+                    <a href="{$base_path}/add-tag/{$value1.taglist_urlencoded.$key2}">{$value1.taglist_html.$key2}</a>
+                  </span>
+                  {if="$tag_counter - 1 != $counter"}&middot;{/if}
+                {/loop}
+              </div>
+            {/if}
+
+            <div class="linklist-item-infos-date-url-block pure-g">
+              <div class="linklist-item-infos-dateblock pure-u-lg-7-12 pure-u-1">
+                {if="$is_logged_in"}
+                  <div class="linklist-item-infos-controls-group pure-u-0 pure-u-lg-visible">
+                    <span class="linklist-item-infos-controls-item ctrl-checkbox">
+                      <input type="checkbox" class="link-checkbox" value="{$value.id}">
+                    </span>
+                    <span class="linklist-item-infos-controls-item ctrl-edit">
+                      <a href="{$base_path}/admin/shaare/{$value.id}" aria-label="{$strEdit}" title="{$strEdit}"><i class="fa fa-pencil-square-o edit-link" aria-hidden="true"></i></a>
+                    </span>
+                    <span class="linklist-item-infos-controls-item ctrl-delete">
+                      <a href="{$base_path}/admin/shaare/delete?id={$value.id}&amp;token={$token}" aria-label="{$strDelete}"
+                         title="{$strDelete}" class="delete-link pure-u-0 pure-u-lg-visible confirm-delete">
+                        <i class="fa fa-trash" aria-hidden="true"></i>
+                      </a>
+                    </span>
+                    <span class="linklist-item-infos-controls-item ctrl-pin">
+                      <a href="{$base_path}/admin/shaare/{$value.id}/pin?token={$token}"
+                         title="{$strToggleSticky}" aria-label="{$strToggleSticky}" class="pin-link {if="$value.sticky"}pinned-link{/if} pure-u-0 pure-u-lg-visible">
+                        <i class="fa fa-thumb-tack" aria-hidden="true"></i>
+                      </a>
+                    </span>
+                  </div>
+                {else}
+                  {if="$value.sticky"}
+                    <div class="linklist-item-infos-controls-group pure-u-0 pure-u-lg-visible">
+                      <span class="linklist-item-infos-controls-item ctrl-pin">
+                        <span title="{$strSticky}" class="pin-link pinned-link pure-u-0 pure-u-lg-visible">
+                          <i class="fa fa-thumb-tack" aria-hidden="true"></i>
+                        </span>
+                      </span>
+                    </div>
+                  {/if}
+                {/if}
+                <a href="{$base_path}/shaare/{$value.shorturl}" title="{$strPermalink}">
+                  {if="!$hide_timestamps || $is_logged_in"}
+                    {$updated=$value.updated_timestamp ? $strEdited. format_date($value.updated) : $strPermalink}
+                    <span class="linkdate" title="{$updated}">
+                      <i class="fa fa-clock-o" aria-hidden="true"></i>
+                      {$value.created|format_date}
+                      {if="$value.updated_timestamp"}*{/if}
+                      &middot;
+                    </span>
+                  {/if}
+                  {$strPermalinkLc}
+                </a>
+
+                {if="$is_logged_in && $value.private"}
+                  <a href="{$base_path}/admin/shaare/private/{$value.shorturl}?token={$token}" title="{$strShaarePrivate}">
+                    <i class="fa fa-share-alt"></i>
+                  </a>
+                {/if}
+
+                <div class="pure-u-0 pure-u-lg-visible">
+                  {if="isset($value.link_plugin)"}
+                    &middot;
+                    {$link_plugin_counter=count($value.link_plugin)}
+                    {loop="$value.link_plugin"}
+                      {$value}
+                      {if="$link_plugin_counter - 1 != $counter"}&middot;{/if}
+                    {/loop}
+                  {/if}
+                </div>
+              </div><div
+                {ignore}do not add space or line break between these div - Firefox issue{/ignore}
+                class="linklist-item-infos-url pure-u-lg-5-12 pure-u-1">
+                <a href="{$value.real_url}" aria-label="{$value.title}" title="{$value.title}">
+                  <i class="fa fa-link" aria-hidden="true"></i> {$value.url_html}
+                </a>
+                <div class="linklist-item-buttons pure-u-0 pure-u-lg-visible">
+                  <a href="#" aria-label="{$strFold}" title="{$strFold}" class="fold-button"><i class="fa fa-chevron-up" aria-hidden="true"></i></a>
+                </div>
+              </div>
+              <div class="mobile-buttons pure-u-1 pure-u-lg-0">
+                {if="isset($value.link_plugin)"}
+                  {$link_plugin_counter=count($value.link_plugin)}
+                  {loop="$value.link_plugin"}
+                    {$value}
+                    {if="$link_plugin_counter - 1 != $counter"}&middot;{/if}
+                  {/loop}
+                {/if}
+                {if="$is_logged_in"}
+                  &middot;
+                  <a href="{$base_path}/admin/shaare/delete?id={$value.id}&amp;token={$token}" aria-label="{$strDelete}"
+                     title="{$strDelete}" class="delete-link confirm-delete">
+                    <i class="fa fa-trash" aria-hidden="true"></i>
+                  </a>
+                  &middot;
+                  <a href="{$base_path}/admin/shaare/{$value.id}" aria-label="{$strEdit}" title="{$strEdit}">
+                    <i class="fa fa-pencil-square-o edit-link" aria-hidden="true"></i>
+                  </a>
+                  &middot;
+                  <a href="{$base_path}/admin/shaare/{$value.id}/pin?token={$token}"
+                     aria-label="{$strToggleSticky}"
+                     title="{$strToggleSticky}"
+                     class="pin-link {if="$value.sticky"}pinned-link{/if}"
+                  >
+                    <i class="fa fa-thumb-tack" aria-hidden="true"></i>
+                  </a>
+                {/if}
+              </div>
+            </div>
+          </div>
+        </div>
+      {/loop}
+    </div>
+  </div>
+</div>
+
+  <div id="plugin_zone_end_linklist" class="plugin_zone">
+    {loop="$plugin_end_zone"}
+    {$value}
+    {/loop}
+  </div>
+
+<div id="linklist-paging-bottom-block" class="pure-g link-count-block">
+  <div class="pure-u-lg-2-24 pure-u-1-24"></div>
+  <div id="linklist-paging-bottom-content" class="pure-u-lg-20-24 pure-u-22-24">
+    {include="linklist.paging"}
+  </div>
+</div>
+
+{include="page.footer"}
+<script src="{$asset_path}/js/thumbnails.min.js?v={$version_hash}#"></script>
+{if="$is_logged_in && $async_metadata"}<script src="{$asset_path}/js/metadata.min.js?v={$version_hash}#"></script>{/if}
+</body>
+</html>
