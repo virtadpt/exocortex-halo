@@ -8,6 +8,7 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v1.1 - Added hPa to inHg, because the BME280 outputs in hPa. Oops.
 # v1.0 - Initial release.
 
 # TODO:
@@ -49,9 +50,13 @@ def cm_to_km(cm):
     # 1000 m / km
     return((cm / 100) / 1000)
 
-# kpa_to_mmhg(): Convert pressure in kilopascals to mm of Mercury.
+# kpa_to_mmhg(): Convert pressure in kilopascals to mm of mercury.
 def kpa_to_mmhg(kpa):
     return(kpa * 7.50062)
+
+# hpa_to_inhg(): Convert pressure in hectopascals to inches of mercury.
+def hpa_to_inhg(hpa):
+    return(hpa * 0.02953)
 
 if __name__ == "__main__":
     print("Utility functions in this module:")
@@ -60,5 +65,6 @@ if __name__ == "__main__":
     print(" * mm_to_in(mm) - convert millimeters to inches")
     print(" * cm_to_km(cm) - convert centimeters to kilometers")
     print(" * kpa_to_mmhg(kpa) - convert kilopascals to millimeters of mercury")
+    print(" * hpa_to_inhg(hpa) - convert hectopascals to inches of mercury")
     sys.exit(0)
 
