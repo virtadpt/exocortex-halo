@@ -18,6 +18,13 @@
 
 # License: GPLv3
 
+# v1.2 - Added some newlines to the online help to make the online text look
+#        a little nicer.
+#      - Changed kPa to hPa everywhere.
+#      - Added at-need conversions of hPa to inHg where necessary.
+#      - Added imperial/metric conditionals to the air pressure parts, like I
+#        had for temperature and speed.
+#      - Added wind direction to the output file writer.
 # v1.1 - I should have been updating this but I was too busy debugging the
 #        bot and getting used to a new job to remember.  My bad.
 #      - Added the file writer plugin.
@@ -192,9 +199,9 @@ def send_message_to_user(message):
 #   no arguments, returns a complex string.
 def online_help():
     logger.debug("Entered the function online_help().")
-    message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n"
+    message = "My name is " + bot_name + " and I am an instance of " + sys.argv[0] + ".\n\n"
 
-    message = message + "I continually monitor inputs from multiple weather sensors connected to the system I am running on.  I can return specific data points upon request or I can send alerts when weather conditions change significantly.  The interactive commands I currently support are:\n"
+    message = message + "I continually monitor inputs from multiple weather sensors connected to the system I am running on.  I can return specific data points upon request or I can send alerts when weather conditions change significantly.  The interactive commands I currently support are:\n\n"
     message = message + "    help - Display this online help\n"
 
     if anemometer:
@@ -206,7 +213,7 @@ def online_help():
     if raingauge:
         message = message + "    rain gauge/raining/is it raining\n"
     if weathervane:
-        message = message + "    wind direction/direction"
+        message = message + "    wind direction/direction\n"
     if write_file:
         message = message + "\n"
         message = message + "The file writer plugin is enabled, and writes data points to " + write_file + " every " + str(write_file_seconds) + " seconds."
@@ -333,7 +340,7 @@ def poll_bme280():
     if len(bme280_pressure_samples) >= minimum_length:
         average_pressure = statistics.mean(bme280_pressure_samples)
         average_pressure = round(average_pressure, 2)
-        logging.debug("The average barometric pressure is %s kPa." %
+        logging.debug("The average barometric pressure is %s hPa." %
             average_pressure)
 
     if len(bme280_humidity_samples) >= minimum_length:
@@ -371,12 +378,14 @@ def poll_bme280():
         std_dev = round(std_dev, 1)
         logging.debug("Calculated standard deviation of barometric pressure: %s" % std_dev)
         if std_dev >= standard_deviations:
-            msg = "The air pressure has jumped by " + str(std_dev) + " standard deviations, to " + str(bme280_pressure_samples[-1])
+            msg = "The air pressure has jumped by " + str(std_dev) + " standard deviations, to "
 
             if units == "metric":
-                msg = msg + " kPa."
+                msg = msg + str(bme280_pressure_samples[-1])
+                msg = msg + " hPa."
             if units == "imperial":
-                msg = msg + " mmHg."
+                msg = msg + str(conversions.hpa_to_inhg(bme280_pressure_samples[-1]))
+                msg = msg + " inHg."
 
             if time_between_alerts:
                 if bme280_counter >= time_between_alerts:
@@ -577,8 +586,12 @@ def contact_message_queue():
         if command == "pressure":
             pressure = bme280.get_reading()
             msg = "The current barometric pressure is "
-            msg = msg + str(pressure["pressure"])
-            msg = msg + " kPa."
+            if units == "imperial":
+                msg = msg + str(round(conversions.hpa_to_inhg(pressure["pressure"]), 1))
+                msg = msg + " inHg."
+            if units == "metric":
+                msg = msg + str(pressure["pressure"])
+                msg = msg + " hPa."
             send_message_to_user(msg)
             return()
 
@@ -625,7 +638,8 @@ def write_file_handler():
         temperature=bme280_temperature_samples[-1],
         pressure=bme280_pressure_samples[-1],
         humidity=bme280_humidity_samples[-1],
-        rain=raingauge_samples[-1])
+        rain=raingauge_samples[-1],
+        wind_direction=weathervane.get_direction())
     return()
 
 # scream_and_die(): A function that is registered with the sys.excepthook()
