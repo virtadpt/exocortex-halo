@@ -25,6 +25,11 @@
 #      - Added imperial/metric conditionals to the air pressure parts, like I
 #        had for temperature and speed.
 #      - Added wind direction to the output file writer.
+#      - Fixed a bug where km was not being converted to mi in USian mode.
+#      - Added a downward trend analysis to wind speed/velocity.
+#      - Added some measuring units-specific preprocessing code to the file
+#        writer routine.  This includes some rounding to a reasonable number
+#        of decimal places.
 # v1.1 - I should have been updating this but I was too busy debugging the
 #        bot and getting used to a new job to remember.  My bad.
 #      - Added the file writer plugin.
@@ -258,7 +263,7 @@ def poll_anemometer():
             if units == "metric":
                 msg = "The wind velocity has jumped by " + str(std_dev) +  " standard deviations to " + str(anemometer_samples[-1]) + " kph.  The weather might be getting bad."
             if units == "imperial":
-                msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations to " + str(anemometer_samples[-1]) + " mph.  The weather might be getting bad."
+                msg = "The wind speed has jumped by " + str(std_dev) +  " standard deviations to " + str(conversions.km_to_mi(anemometer_samples[-1])) + " mph.  The weather might be getting bad."
 
             # If time_between_alerts is 0, alerting is disabled.
             if time_between_alerts:
@@ -281,9 +286,16 @@ def poll_anemometer():
         # This might not be the right way to do it, but I think for the
         # moment I can repurpose the number of standard deviations from
         # the config file to detect a noteworthy upward trend.
-        # MOOF MOOF MOOF - also do a downward trend!
         if slope >= float(standard_deviations):
             msg = "The wind appears to be blowing noticeably harder.  "
+            msg = msg + "It is now blowing at " + str(anemometer_samples[-1])
+            if units == "metric":
+                msg = msg + " kilometers per hour."
+            if units == "imperial":
+                msg = msg + " miles per hour."
+
+        if slope < float(standard_deviations):
+            msg = "The wind appears to be blowing not quite as hard.  "
             msg = msg + "It is now blowing at " + str(anemometer_samples[-1])
             if units == "metric":
                 msg = msg + " kilometers per hour."
@@ -552,7 +564,7 @@ def contact_message_queue():
             msg = "main() do-stuff loop -> get anemometer wind speed"
             if units == "imperial":
                 msg = "The current wind speed is "
-                msg = msg + str(conversions.km_to_mi(wind_speed["velocity_km_h"]))
+                msg = msg + str(round(conversions.km_to_mi(wind_speed["velocity_km_h"]), 2))
                 msg = msg + " miles per hour."
             if units == "metric":
                 msg = "The current wind velocity is " + str(round(wind_speed["velocity_km_h"], 2)) + " kilometers per hour."
@@ -590,7 +602,7 @@ def contact_message_queue():
                 msg = msg + str(round(conversions.hpa_to_inhg(pressure["pressure"]), 1))
                 msg = msg + " inHg."
             if units == "metric":
-                msg = msg + str(pressure["pressure"])
+                msg = msg + str(round(pressure["pressure"], 1))
                 msg = msg + " hPa."
             send_message_to_user(msg)
             return()
@@ -630,15 +642,64 @@ def contact_message_queue():
             return()
 
 # write_file_handler(): This is a wrapper function that calls file_writer to
-#   store readings in a text file.
+#   store readings in a text file.  Because some external software has specific
+#   requirements (such as USian units only), this is done in two stages.
+#   First, set local variables to appropriate values and units.  Then send them
+#   on to the file writer module.  I could probably do it in a more Pythonic
+#   manner, but this way is more self-documenting and easier to maintain later.
 def write_file_handler():
     logging.debug("Entered write_file_handler().")
+
+    # Local variables are explicitly declared here because otherwise their
+    # scopes are limited to the conditionals in which they appear.
+    anemometer = 0.0
+    temperature = 0.0
+    pressure = 0.0
+    rain = 0.0
+
+    # Wind speed.
+    if units == "imperial":
+        anemometer = conversions.km_to_mi(anemometer_samples[-1])
+    if units == "metric":
+        anemometer = anemometer_samples[-1]
+    anemometer = round(anemometer, 2)
+    logging.debug("Value of anemometer: %s" % anemometer)
+
+    # Temperature.
+    if units == "imperial":
+        temperature = conversions.c_to_f(bme280_temperature_samples[-1])
+    if units == "metric":
+        temperature = bme280_temperature_samples[-1]
+    temperature = round(temperature, 2)
+    logging.debug("Value of temperature: %s" % temperature)
+
+    # Pressure.
+    if units == "imperial":
+        pressure = conversions.hpa_to_inhg(bme280_pressure_samples[-1])
+    if units == "metric":
+        pressure = bme280_pressure_samples[-1]
+    pressure = round(pressure, 2)
+    logging.debug("Value of pressure: %s" % pressure)
+
+    # Humidity is a percentage, that's sorted.
+    logging.debug("Value of humidity: %s" % bme280_humidity_samples[-1])
+
+    # Rain.
+    if units == "imperial":
+        rain = conversions.mm_to_in(raingauge_samples[-1])
+    if units == "metric":
+        rain = raingauge_samples[-1]
+    rain = round(rain, 2)
+    logging.debug("Value of pressure: %s" % pressure)
+
+    # Wind direction is a string, that's sorted.
+
     file_writer.write_values_to_file(write_file,
-        anemometer=anemometer_samples[-1],
-        temperature=bme280_temperature_samples[-1],
-        pressure=bme280_pressure_samples[-1],
+        anemometer=anemometer,
+        temperature=temperature,
+        pressure=pressure,
         humidity=bme280_humidity_samples[-1],
-        rain=raingauge_samples[-1],
+        rain=rain,
         wind_direction=weathervane.get_direction())
     return()
 
