@@ -20,18 +20,20 @@
       {$asyncLoadClass=$link_is_new && $async_metadata && empty($link.title) ? 'loading-input' : ''}
 
       <h2 class="window-title">
-        {if="!$link_is_new"}{'Edit Shaare'|t}{else}{'New Shaare'|t}{/if}
+        {if="!$link_is_new"}{'Edit catalogue entry'|t}{else}{'New catalogue entry'|t}{/if}
       </h2>
       {if="isset($link.id)"}
         <input type="hidden" name="lf_id" value="{$link.id}">
       {/if}
       {if="!$link_is_new"}<div class="created-date">{'Created:'|t} {$link.created|format_date}</div>{/if}
+      <!--
       <div>
         <label for="lf_url">{'URL'|t}</label>
       </div>
       <div>
         <input type="text" name="lf_url" id="lf_url" value="{$link.url}" class="lf_input">
       </div>
+      -->
       <div>
       <label for="lf_title">{'Title'|t}</label>
       </div>
