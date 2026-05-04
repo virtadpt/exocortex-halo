@@ -8,6 +8,10 @@
 #   This is part of the Exocortex Halo project
 #   (https://github.com/virtadpt/exocortex-halo/).
 
+# v6.1 - Fixed the "link drops, can't reconnect, recursion overflow" bug.
+#        Turns out I was being squirrel clever, you don't have to explicitly
+#        disconnect to get things into a known state, you just have to wait a
+#        little while and then use the .connect() method.  Thanks, Tek!
 # v6.0 - SleekXMPP is dead.  Ported to SliXMPP
 #        (https://codeberg.org/poezio/slixmpp/).  This involved doing a lot of
 #        reworking of the XMPP client stuff, so I figure it's worth a major
@@ -85,7 +89,6 @@
 from slixmpp import ClientXMPP
 from slixmpp.exceptions import IqError, IqTimeout
 
-import asyncio
 import logging
 import random
 import time
@@ -317,12 +320,8 @@ Individual constructs may have their own online help, so try sending the command
                 mtype=self.stanza_type)
         return
 
-    # Fires whenever the bot's connection dies.  I need to figure out how to
-    # make the bot wait for a random period of time and then try to reconnect
-    # to the server.
-    # What this is supposed to do is manually tear down the connection if it
-    # dies (which is a belt-and-suspenders kind of thing, to make sure the
-    # internal state is consistent) and then start it up again.
+    # Fires whenever the bot's connection dies.  Sleep a little and then
+    # connect again.
     def on_disconnect(self, event):
         logging.debug("Entering XMPPClient.on_disconnect().")
         logging.info("Connection to XMPP server disappeared.  Attempting to reconnect to JID %s." % self.username)
@@ -340,11 +339,6 @@ Individual constructs may have their own online help, so try sending the command
         # either successful or the user gives up and shuts the bot down.
         while True:
 
-            # Force a disconnection attempt in case the XMPPClient's internal
-            # state needs it.
-            logging.debug("Forcing a disconnection.")
-            self.disconnect(reason="Just woke up, trying again.")
-
             # Sleep for a random number of seconds (between 1 and 10, at a
             # guess) to give the network connection(s) a chance to stabilize.
             # The specific use case I'm thinking of is a laptop that has to
@@ -356,10 +350,9 @@ Individual constructs may have their own online help, so try sending the command
             time.sleep(random_sleep)
             logging.debug("Woke up after %s seconds." % random_sleep)
 
-            # Try reconnecting.  Re-use the random sleep as the timeout just
-            # because we can.
-            logging.info("Attempting to reconnect.")
-            self.reconnect(wait=random_sleep, reason="Just woke up.")
+            # Try to connect again (distinct from reconnecting).
+            logging.info("Firing the XMPPClient.connect() method.")
+            self.connect()
 
             # Test the connection by sending the bot's presence and pulling its
             # roster.  We have to do this after a login anyway, so it kills
