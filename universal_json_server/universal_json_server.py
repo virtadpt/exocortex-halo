@@ -45,14 +45,26 @@
 # By: The Doctor <drwho at virtadpt dot net>
 # License: GPLv3
 
+# v2.1 - Finally fixed the URI parser.  Part of the problem is that, visually,
+#        I was not seeing a salient JSON key when looking in a web browser
+#        (i.e., I thought I was seeing /countries/aruba/communication when it
+#        was actually /countries/aruba/data/communications.
+#                                      ^^^^
+#        Part of it was that I was looking at the names of keys instead of
+#        what the keys were pointing at in the hash tables.  I was also not
+#        handling error cases correctly - if something's not there, return a
+#        404 because it's not there.
+#
+#        Looking over code you haven't touched in seven years is hard.  It's
+#        hard, and nobody understands.
 # v2.0 - Reworked the URI parser into a "do this if" structure instead of a
 #       "do this if not" structure.
-#       - Added support for "is this a list?" and "is this a string?" when
-#       parsing URIs.
-#       - Added CSS styling to the online docs using bits of hello-css
-#       (https://github.com/arp242/hello-css).
-#       - Changed /help to /_help in an attempt to not collide with keys
-#       called "help" in possible other JSON documents one might use.
+#      - Added support for "is this a list?" and "is this a string?" when
+#        parsing URIs.
+#      - Added CSS styling to the online docs using bits of hello-css
+#        (https://github.com/arp242/hello-css).
+#      - Changed /help to /_help in an attempt to not collide with keys
+#        called "help" in possible other JSON documents one might use.
 # v1.0 - Initial release.
 
 # TO-DO:
@@ -127,7 +139,7 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
             # Case: Cursor is pointing at a hash table.
             if isinstance(cursor, dict):
                 logging.debug("Cursor is pointing at a dict.")
-                if key in cursor.keys():
+                if key in cursor:
                     logging.debug("Found key '" + str(key) + "' in URI.")
                     cursor = cursor[key]
                     try:
@@ -136,17 +148,34 @@ class RESTRequestHandler(BaseHTTPRequestHandler):
                         logging.debug("No more keys, hit the end of the JSON path.")
                     continue
 
+                # Key is not present at this level.  Stop and return a 404
+                # error.
+                logging.debug("Key '" + str(key) + "' not found at current level.")
+                self._send_http_response(404, json.dumps({
+                    "error": "key '" + str(key) + "' not found",
+                    "available_keys": sorted(cursor.keys())}, indent=4))
+                return
+
             # Case: Cursor is pointing at a list.
             if isinstance(cursor, list):
                 logging.debug("Cursor is pointing at a list.")
+            try:
                 cursor = cursor[int(key)]
-                continue
+            except (ValueError, IndexError):
+                self._send_http_response(404, json.dumps({
+                    "error": "invalid list index '" + str(key) + "'",
+                    "list_length": len(cursor)}, indent=4))
+                return
+            continue
 
-            # Case: Cursor is pointing at a string.
-            # This is a terminal case - it's the end of a JSON path.
-            if isinstance(cursor, str):
-                logging.debug("Cursor is pointing at a string.")
-                break
+            # Case: Cursor is pointing at a scalar (string, number, bool, null)
+            # but the client supplied more URI segments.  We can't descend any
+            # further, so report a 404 instead of silently returning the scalar.
+            logging.debug("Cursor is a scalar but URI has more segments.")
+            self._send_http_response(404, json.dumps({
+                "error": "cannot descend into scalar value with key '" + str(key) + "'", "value": cursor}, indent=4))
+            return
+
         # Bottom of loop.
 
         # Return what we found.
